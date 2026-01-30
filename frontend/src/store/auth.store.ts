@@ -9,6 +9,7 @@ export interface User {
   username: string;
   role: string;
   institucionId?: string;
+  fotoUrl?: string;
 }
 
 interface AuthState {

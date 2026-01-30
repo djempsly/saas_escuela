@@ -45,9 +45,17 @@ export const registerSuperAdmin = async (input: CrearUsuarioInput) => {
 };
 
 export const login = async (input: LoginInput) => {
-  const { email, password } = input;
+  const { identificador, password } = input;
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  // Buscar por email O username
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identificador },
+        { username: identificador }
+      ]
+    }
+  });
   if (!user) {
     throw new Error('Credenciales no válidas');
   }
@@ -76,15 +84,32 @@ export const login = async (input: LoginInput) => {
     { expiresIn: '1d' }
   );
 
-  // Retornar información adicional sobre cambio de contraseña
+  // Retornar usuario completo y token
   return {
     token,
     debeCambiarPassword: user.debeCambiarPassword,
+    user: {
+      id: user.id,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      institucionId: user.institucionId,
+    },
   };
 };
 
-export const forgotPassword = async (email: string) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+export const forgotPassword = async (identificador: string) => {
+  // Buscar por email O username
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identificador },
+        { username: identificador }
+      ]
+    }
+  });
 
   // Security: Always return success even if user not found to prevent email enumeration
   if (!user) {
@@ -94,6 +119,11 @@ export const forgotPassword = async (email: string) => {
   // SEGURIDAD: No enviar reset si el usuario está desactivado
   if (!user.activo) {
     return;
+  }
+
+  // Verificar si el usuario tiene email registrado
+  if (!user.email) {
+    throw new Error('NO_EMAIL: Este usuario no tiene email registrado. Contacte al Director para resetear su clave manualmente.');
   }
 
   if (!process.env.JWT_SECRET) {
@@ -110,7 +140,7 @@ export const forgotPassword = async (email: string) => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const link = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-  await sendPasswordResetEmail(email, link);
+  await sendPasswordResetEmail(user.email, link);
 };
 
 export const resetPassword = async (token: string, newPassword: string) => {

@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    email: '',
+    identificador: '',
     password: '',
   });
 
@@ -29,7 +29,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await authApi.login(formData.email, formData.password);
+      const response = await authApi.login(formData.identificador, formData.password);
       const { token, user, institucion } = response.data;
 
       // Guardar usuario y token
@@ -81,13 +81,13 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico</Label>
+              <Label htmlFor="identificador">Email o Usuario</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="tu@correo.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                id="identificador"
+                type="text"
+                placeholder="tu@correo.com o tu.usuario"
+                value={formData.identificador}
+                onChange={(e) => setFormData({ ...formData, identificador: e.target.value })}
                 required
               />
             </div>

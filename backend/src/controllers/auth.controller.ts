@@ -53,15 +53,22 @@ export const loginHandler = async (req: Request, res: Response) => {
 export const forgotPasswordHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = forgotPasswordSchema.parse({ body: req.body });
-    await forgotPassword(validatedData.body.email);
+    await forgotPassword(validatedData.body.identificador);
     // Always return success (security: prevent email enumeration)
-    return res.status(200).json({ message: 'Si el correo existe, recibirás un enlace de recuperación.' });
+    return res.status(200).json({ message: 'Si el usuario tiene email registrado, recibirás un enlace de recuperación.' });
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    // Always return success for security
-    return res.status(200).json({ message: 'Si el correo existe, recibirás un enlace de recuperación.' });
+    // Error específico: usuario sin email
+    if (error.message.includes('NO_EMAIL')) {
+      return res.status(400).json({
+        message: 'Este usuario no tiene email registrado. Contacte al Director para resetear su clave manualmente.',
+        code: 'NO_EMAIL'
+      });
+    }
+    // Always return success for security (other errors)
+    return res.status(200).json({ message: 'Si el usuario tiene email registrado, recibirás un enlace de recuperación.' });
   }
 };
 

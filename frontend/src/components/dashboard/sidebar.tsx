@@ -48,6 +48,14 @@ const menuItems = {
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: Users },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
   ],
+  COORDINADOR_ACADEMICO: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/clases', label: 'Clases', icon: GraduationCap },
+    { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: BookOpen },
+    { href: '/dashboard/asistencia', label: 'Asistencia', icon: ClipboardList },
+    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: Users },
+    { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
+  ],
   DOCENTE: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/mis-clases', label: 'Mis Clases', icon: GraduationCap },

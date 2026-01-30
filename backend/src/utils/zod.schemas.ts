@@ -21,14 +21,14 @@ export const PAISES = {
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().email('Email no válido'),
+    identificador: z.string().min(1, 'Email o username requerido'),
     password: z.string().min(1, 'Password requerido'),
   }),
 });
 
 export const forgotPasswordSchema = z.object({
   body: z.object({
-    email: z.string().email('Email no válido'),
+    identificador: z.string().min(1, 'Email o username requerido'),
   }),
 });
 

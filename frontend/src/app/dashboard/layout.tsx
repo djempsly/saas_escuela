@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
@@ -8,34 +9,44 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
 
+// Usar useSyncExternalStore para detectar hidratación sin cascading renders
+const emptySubscribe = () => () => {};
+const useHydrated = () => useSyncExternalStore(
+  emptySubscribe,
+  () => true,
+  () => false
+);
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const { isAuthenticated, user } = useAuthStore();
   const { branding } = useInstitutionStore();
-  const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const hasRedirected = useRef(false);
 
+  // Redirigir si no está autenticado (solo una vez)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hydrated && !isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true;
       router.push('/login');
-    } else {
-      setIsLoading(false);
     }
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
   // Aplicar colores de branding
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (branding) {
       document.documentElement.style.setProperty('--color-primary', branding.colorPrimario);
       document.documentElement.style.setProperty('--color-secondary', branding.colorSecundario);
     }
   }, [branding]);
 
-  if (isLoading) {
+  // Mostrar loading mientras se hidrata o no está autenticado
+  if (!hydrated || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
