@@ -1,0 +1,278 @@
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "binary"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- ENUMS (Aquí definimos las diferencias de país y sistema) ---
+
+enum Role {
+  ADMIN                 // Superadmin de la plataforma
+  DIRECTOR              // Director de la escuela
+  COORDINADOR_ACADEMICO // ✅ Agregado: Coordinador
+  COORDINADOR
+  DOCENTE
+  ESTUDIANTE
+  SECRETARIA
+}
+
+enum Pais {
+  DO // República Dominicana
+  HT // Haití
+}
+
+// ✅ Aquí diferenciamos los tipos de evaluación
+enum SistemaEducativo {
+  // Dominicana
+  PRIMARIA_DO
+  SECUNDARIA_GENERAL_DO
+  POLITECNICO_DO // Lleva Calificación Técnica (RA)
+  
+  // Haití
+  PRIMARIA_HT
+  SECUNDARIA_HT
+}
+
+enum Idioma {
+  ESPANOL
+  FRANCES
+  INGLES
+  KREYOL
+}
+
+enum EstadoAsistencia {
+  PRESENTE
+  AUSENTE
+  TARDE
+  JUSTIFICADO
+}
+
+enum TipoMateria {
+  GENERAL // Materias normales (Matemáticas, Historia)
+  TECNICA // Módulos técnicos (Solo para Politécnicos)
+}
+
+// --- MODELOS ---
+
+model User {
+  id                  String   @id @default(cuid())
+  username            String   @unique
+  email               String?  @unique
+  password            String
+  nombre              String
+  apellido            String
+  role                Role     @default(ESTUDIANTE)
+  activo              Boolean  @default(true)
+  debeCambiarPassword Boolean  @default(true)
+  fotoUrl             String?
+  telefono            String?
+  direccion           String?
+
+  // Relación con Institución (Multi-tenant)
+  institucionId String?
+  institucion   Institucion? @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
+
+  // Roles Jerárquicos
+  directorDe              Institucion?              @relation("DirectorInstitucion")
+  coordinadorDe           Nivel[]                   @relation("CoordinadorNivel")
+  
+  // Relaciones Académicas
+  clasesDictadas          Clase[]                   @relation("DocenteClase")
+  inscripciones           Inscripcion[]
+  calificaciones          Calificacion[]
+  calificacionesTec       CalificacionTecnica[]
+  asistencias             Asistencia[]
+  actividades             Actividad[]
+  notificaciones          Notificacion[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Institucion {
+  id                String           @id @default(cuid())
+  nombre            String
+  lema              String?
+  direccion         String?
+  
+  // ✅ Branding / Marca (Personalización desde Dashboard)
+  logoUrl           String?
+  colorPrimario     String           @default("#000000") // Para el header/botones
+  colorSecundario   String           @default("#ffffff") // Para fondos/textos
+  
+  // ✅ Configuración Regional
+  pais              Pais             @default(DO)
+  sistema           SistemaEducativo
+  idiomaPrincipal   Idioma           @default(ESPANOL)
+  
+  // Datos Ministeriales
+  codigoCentro      String?
+  distritoEducativo String?
+  regionalEducacion String?
+
+  directorId String @unique
+  director   User   @relation("DirectorInstitucion", fields: [directorId], references: [id])
+
+  usuarios User[]         @relation("UsuariosInstitucion")
+  niveles  Nivel[]
+  materias Materia[]
+  ciclos   CicloLectivo[]
+  clases   Clase[]
+}
+
+model Nivel {
+  id            String      @id @default(cuid())
+  nombre        String      // Ej: "1ro Secundaria", "6to Primaria"
+  institucionId String
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+  
+  coordinadorId String?
+  coordinador   User?       @relation("CoordinadorNivel", fields: [coordinadorId], references: [id])
+  
+  clases        Clase[]
+}
+
+model CicloLectivo {
+  id            String      @id @default(cuid())
+  nombre        String      // Ej: "2023-2024"
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  activo        Boolean     @default(true)
+  institucionId String
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+
+  clases        Clase[]
+  calificaciones Calificacion[]
+}
+
+model Materia {
+  id            String      @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  tipo          TipoMateria @default(GENERAL) // Si es TÉCNICA, usará CalificaciónTecnica
+  institucionId String
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+  clases        Clase[]
+
+  @@unique([nombre, institucionId])
+}
+
+model Clase {
+  id             String       @id @default(cuid())
+  codigo         String       @unique // Código único para inscribirse
+  materiaId      String
+  materia        Materia      @relation(fields: [materiaId], references: [id])
+  nivelId        String
+  nivel          Nivel        @relation(fields: [nivelId], references: [id])
+  docenteId      String
+  docente        User         @relation("DocenteClase", fields: [docenteId], references: [id])
+  cicloLectivoId String
+  cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+  institucionId  String
+  institucion    Institucion  @relation(fields: [institucionId], references: [id])
+
+  inscripciones           Inscripcion[]
+  asistencias             Asistencia[]
+  calificaciones          Calificacion[]
+  calificacionesTec       CalificacionTecnica[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Inscripcion {
+  id           String   @id @default(cuid())
+  fecha        DateTime @default(now())
+  estudianteId String
+  estudiante   User     @relation(fields: [estudianteId], references: [id])
+  claseId      String
+  clase        Clase    @relation(fields: [claseId], references: [id])
+
+  @@unique([estudianteId, claseId])
+}
+
+// ✅ CALIFICACIÓN GENERAL (Sirve para Primaria/Secundaria DO y HT)
+// La lógica de cálculo se hará en el Backend dependiendo del Institucion.sistema
+model Calificacion {
+  id            String       @id @default(cuid())
+  
+  // Periodos (Haití usa 3 o 4 periodos, RD usa 4)
+  p1            Float?       @default(0)
+  p2            Float?       @default(0)
+  p3            Float?       @default(0)
+  p4            Float?       @default(0)
+  
+  // Recuperaciones
+  rp1           Float?       @default(0)
+  rp2           Float?       @default(0)
+  rp3           Float?       @default(0)
+  rp4           Float?       @default(0)
+  
+  // Campos específicos de la adecuación curricular RD (Pueden quedar null en HT)
+  cpc_30        Float?       @default(0)
+  cpc_total     Float?       @default(0)
+  cpex_70       Float?       @default(0)
+  cpex_total    Float?       @default(0)
+  
+  promedioFinal Float?       @default(0)
+  situacion     String?      @default("PENDIENTE") // Aprobado, Reprobado, Aplazado
+  
+  estudianteId  String
+  estudiante    User         @relation(fields: [estudianteId], references: [id])
+  claseId       String
+  clase         Clase        @relation(fields: [claseId], references: [id])
+  cicloLectivoId String
+  cicloLectivo  CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+
+  updatedAt DateTime @updatedAt
+  @@unique([estudianteId, claseId, cicloLectivoId])
+}
+
+// ✅ CALIFICACIÓN TÉCNICA (Solo para Politécnicos DO)
+// Se basa en Resultados de Aprendizaje (RA)
+model CalificacionTecnica {
+  id           String @id @default(cuid())
+  ra_codigo    String // Ej: "RA1.1"
+  valor        Float  @default(0) // Nota del RA
+  
+  estudianteId String
+  estudiante   User   @relation(fields: [estudianteId], references: [id])
+  claseId      String
+  clase        Clase  @relation(fields: [claseId], references: [id])
+
+  @@unique([estudianteId, claseId, ra_codigo])
+}
+
+model Asistencia {
+  id           String           @id @default(cuid())
+  fecha        DateTime         @default(now())
+  estado       EstadoAsistencia
+  estudianteId String
+  estudiante   User             @relation(fields: [estudianteId], references: [id])
+  claseId      String
+  clase        Clase            @relation(fields: [claseId], references: [id])
+}
+
+model Actividad {
+  id        String   @id @default(cuid())
+  titulo    String
+  contenido String   @db.Text
+  urlArchivo String?
+  autorId   String
+  autor     User     @relation(fields: [autorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Notificacion {
+  id            String   @id @default(cuid())
+  titulo        String
+  mensaje       String
+  leida         Boolean  @default(false)
+  usuarioId     String
+  usuario       User     @relation(fields: [usuarioId], references: [id])
+  createdAt     DateTime @default(now())
+}
