@@ -112,3 +112,58 @@ export const deleteInstitucion = async (id: string) => {
     where: { id },
   });
 };
+
+// Obtener configuración de branding (pública para login)
+export const getInstitucionBranding = async (id: string) => {
+  return prisma.institucion.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      nombre: true,
+      lema: true,
+      logoUrl: true,
+      colorPrimario: true,
+      colorSecundario: true,
+      pais: true,
+      sistema: true,
+      idiomaPrincipal: true,
+    },
+  });
+};
+
+// Actualizar configuración de branding (Solo ADMIN)
+export const updateInstitucionConfig = async (
+  id: string,
+  input: {
+    colorPrimario?: string;
+    colorSecundario?: string;
+    logoUrl?: string;
+    lema?: string;
+  }
+) => {
+  const institucion = await prisma.institucion.findUnique({
+    where: { id },
+  });
+
+  if (!institucion) {
+    throw new Error('Institución no encontrada');
+  }
+
+  return prisma.institucion.update({
+    where: { id },
+    data: {
+      colorPrimario: input.colorPrimario,
+      colorSecundario: input.colorSecundario,
+      logoUrl: input.logoUrl,
+      lema: input.lema,
+    },
+    select: {
+      id: true,
+      nombre: true,
+      lema: true,
+      logoUrl: true,
+      colorPrimario: true,
+      colorSecundario: true,
+    },
+  });
+};

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, Pais, SistemaEducativo, TipoMateria } from '@prisma/client';
+import { Role, Pais, SistemaEducativo, TipoMateria, EstadoAsistencia } from '@prisma/client';
 
 // Re-export Enums as objects to ensure they are available as values and types
 export const ROLES = {
@@ -98,6 +98,102 @@ export const materiaSchema = z.object({
   }),
 });
 
+// --- CLASE (CLASSROOM) ---
+
+export const claseSchema = z.object({
+  body: z.object({
+    materiaId: z.string().min(1, 'Materia requerida'),
+    nivelId: z.string().min(1, 'Nivel requerido'),
+    docenteId: z.string().min(1, 'Docente requerido'),
+    cicloLectivoId: z.string().min(1, 'Ciclo lectivo requerido'),
+  }),
+});
+
+// --- INSCRIPCION (ENROLLMENT) ---
+
+export const inscripcionSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    claseId: z.string().min(1, 'Clase requerida'),
+  }),
+});
+
+export const inscripcionMasivaSchema = z.object({
+  body: z.object({
+    claseId: z.string().min(1, 'Clase requerida'),
+    estudianteIds: z.array(z.string()).min(1, 'Al menos un estudiante requerido'),
+  }),
+});
+
+// --- ASISTENCIA (ATTENDANCE) ---
+
+export const tomarAsistenciaSchema = z.object({
+  body: z.object({
+    claseId: z.string().min(1, 'Clase requerida'),
+    fecha: z.coerce.date(),
+    asistencias: z.array(z.object({
+      estudianteId: z.string().min(1),
+      estado: z.nativeEnum(EstadoAsistencia),
+    })).min(1, 'Al menos una asistencia requerida'),
+  }),
+});
+
+export const reporteAsistenciaSchema = z.object({
+  query: z.object({
+    claseId: z.string().min(1, 'Clase requerida'),
+    fechaInicio: z.coerce.date(),
+    fechaFin: z.coerce.date(),
+  }),
+});
+
+// --- CALIFICACION (GRADES) ---
+
+export const calificacionSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    claseId: z.string().min(1, 'Clase requerida'),
+    p1: z.number().min(0).max(100).optional(),
+    p2: z.number().min(0).max(100).optional(),
+    p3: z.number().min(0).max(100).optional(),
+    p4: z.number().min(0).max(100).optional(),
+    rp1: z.number().min(0).max(100).optional(),
+    rp2: z.number().min(0).max(100).optional(),
+    rp3: z.number().min(0).max(100).optional(),
+    rp4: z.number().min(0).max(100).optional(),
+    cpc_30: z.number().min(0).max(30).optional(),
+    cpex_70: z.number().min(0).max(70).optional(),
+  }),
+});
+
+export const calificacionTecnicaSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    claseId: z.string().min(1, 'Clase requerida'),
+    ra_codigo: z.string().min(1, 'Código RA requerido'),
+    valor: z.number().min(0).max(100, 'Valor debe estar entre 0 y 100'),
+  }),
+});
+
+export const calificacionMasivaSchema = z.object({
+  body: z.object({
+    claseId: z.string().min(1, 'Clase requerida'),
+    periodo: z.enum(['p1', 'p2', 'p3', 'p4']),
+    calificaciones: z.array(z.object({
+      estudianteId: z.string().min(1),
+      nota: z.number().min(0).max(100),
+    })).min(1),
+  }),
+});
+
+// --- ACTIVIDAD (ACTIVITIES) ---
+
+export const actividadSchema = z.object({
+  body: z.object({
+    titulo: z.string().min(1, 'Título requerido').max(200),
+    contenido: z.string().min(1, 'Contenido requerido'),
+  }),
+});
+
 // --- INFERRED TYPES ---
 
 export type LoginInput = z.infer<typeof loginSchema>['body'];
@@ -108,3 +204,9 @@ export type NivelInput = z.infer<typeof nivelSchema>['body'];
 export type MateriaInput = z.infer<typeof materiaSchema>['body'];
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>['body'];
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>['body'];
+export type ClaseInput = z.infer<typeof claseSchema>['body'];
+export type InscripcionInput = z.infer<typeof inscripcionSchema>['body'];
+export type TomarAsistenciaInput = z.infer<typeof tomarAsistenciaSchema>['body'];
+export type CalificacionInput = z.infer<typeof calificacionSchema>['body'];
+export type CalificacionTecnicaInput = z.infer<typeof calificacionTecnicaSchema>['body'];
+export type ActividadInput = z.infer<typeof actividadSchema>['body'];

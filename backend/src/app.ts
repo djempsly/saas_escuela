@@ -1,5 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
+import path from 'path';
 import routes from './routes'; // Importa el index.ts de routes
 
 const app: Application = express();
@@ -8,6 +9,9 @@ const app: Application = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos (uploads)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Rutas
 app.use('/api/v1', routes);
