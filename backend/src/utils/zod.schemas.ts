@@ -1,80 +1,110 @@
 import { z } from 'zod';
+import { Role, Pais, SistemaEducativo, TipoMateria } from '@prisma/client';
 
-// Enum for user roles
+// Re-export Enums as objects to ensure they are available as values and types
 export const ROLES = {
-  ADMIN: 'ADMIN',
-  DIRECTOR: 'DIRECTOR',
-  DOCENTE: 'DOCENTE',
-  ESTUDIANTE: 'ESTUDIANTE',
-  SECRETARIA: 'SECRETARIA',
+  ADMIN: Role.ADMIN,
+  DIRECTOR: Role.DIRECTOR,
+  DOCENTE: Role.DOCENTE,
+  ESTUDIANTE: Role.ESTUDIANTE,
+  SECRETARIA: Role.SECRETARIA,
+  COORDINADOR: Role.COORDINADOR,
+  COORDINADOR_ACADEMICO: Role.COORDINADOR_ACADEMICO
 } as const;
 
-// Enum for countries
 export const PAISES = {
-  RD: 'RD',
-  HT: 'HT',
+  DO: Pais.DO,
+  HT: Pais.HT
 } as const;
 
-// Schema for Login
+// --- AUTH & SETUP ---
+
 export const loginSchema = z.object({
   body: z.object({
     email: z.string().email('Email no válido'),
-    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    password: z.string().min(1, 'Password requerido'),
   }),
 });
 
-// Schema for Institution Registration
-export const institucionSchema = z.object({
-  body: z.object({
-    nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-    pais: z.nativeEnum(PAISES, {
-      errorMap: () => ({ message: 'País no válido' }),
-    }),
-    sistemaEducativo: z.string().optional(),
-    logo: z.string().url('URL de logo no válida').optional(),
-    colores: z
-      .object({
-        primario: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color primario no válido'),
-        secundario: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color secundario no válido'),
-      })
-      .optional(),
-    director: z.object({
-      nombre: z.string().min(3, 'El nombre del director es requerido'),
-      apellido: z.string().min(3, 'El apellido del director es requerido'),
-      email: z.string().email('Email del director no válido'),
-      password: z.string().min(6, 'La contraseña del director debe tener al menos 6 caracteres'),
-    }),
-  }),
-});
-
-// Schema for User Creation
-export const crearUsuarioSchema = z.object({
-  body: z.object({
-    nombre: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
-    apellido: z.string().min(3, 'El apellido debe tener al menos 3 caracteres'),
-    email: z.string().email('Email no válido'),
-    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-    rol: z.nativeEnum(ROLES, {
-      errorMap: () => ({ message: 'Rol no válido' }),
-    }),
-  }),
-});
-
-export type LoginInput = z.infer<typeof loginSchema>['body'];
-export type InstitucionInput = z.infer<typeof institucionSchema>['body'];
-export type CrearUsuarioInput = z.infer<typeof crearUsuarioSchema>['body'];
-
-// Schema for Forgot Password
 export const forgotPasswordSchema = z.object({
   body: z.object({
     email: z.string().email('Email no válido'),
   }),
 });
 
-// Schema for Reset Password (Token based)
 export const resetPasswordSchema = z.object({
   body: z.object({
-    token: z.string().min(1, 'El token es requerido'),
-    newPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    token: z.string().min(1),
+    newPassword: z.string().min(6, 'Mínimo 6 caracteres'),
   }),
 });
+
+export const institucionSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(3, 'Nombre requerido'),
+    pais: z.nativeEnum(Pais),
+    sistemaEducativo: z.nativeEnum(SistemaEducativo),
+    logo: z.string().optional(),
+    colores: z.object({
+        primario: z.string(),
+        secundario: z.string()
+    }).optional(),
+    director: z.object({
+      nombre: z.string().min(1),
+      apellido: z.string().min(1),
+      email: z.string().email()
+    })
+  }),
+});
+
+// --- USER MANAGEMENT ---
+
+export const crearUsuarioSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(1, 'Nombre requerido'),
+    apellido: z.string().min(1, 'Apellido requerido'),
+    email: z.string().email().optional().or(z.literal('')),
+    rol: z.nativeEnum(Role),
+    institucionId: z.string().optional()
+  }),
+});
+
+// --- ACADEMIC ---
+
+export const cicloLectivoSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(1),
+    fechaInicio: z.coerce.date(),
+    fechaFin: z.coerce.date(),
+    activo: z.boolean().optional()
+  }).refine(data => data.fechaFin > data.fechaInicio, {
+    message: "Fecha fin debe ser mayor a inicio",
+    path: ["fechaFin"]
+  })
+});
+
+export const nivelSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(1),
+    coordinadorId: z.string().optional()
+  }),
+});
+
+export const materiaSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(1),
+    descripcion: z.string().optional(),
+    tipo: z.nativeEnum(TipoMateria).default('GENERAL')
+  }),
+});
+
+// --- INFERRED TYPES ---
+
+export type LoginInput = z.infer<typeof loginSchema>['body'];
+export type InstitucionInput = z.infer<typeof institucionSchema>['body'];
+export type CrearUsuarioInput = z.infer<typeof crearUsuarioSchema>['body'];
+export type CicloLectivoInput = z.infer<typeof cicloLectivoSchema>['body'];
+export type NivelInput = z.infer<typeof nivelSchema>['body'];
+export type MateriaInput = z.infer<typeof materiaSchema>['body'];
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>['body'];
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>['body'];

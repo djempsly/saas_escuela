@@ -54,11 +54,14 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    
+
     /* Carpetas */
     "rootDir": "./src",
     "outDir": "./dist",
-    
+
+    /* Tipos personalizados */
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+
     /* Solución a tu error específico */
     "verbatimModuleSyntax": false     /* Desactivamos esta regla estricta */
   },

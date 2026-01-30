@@ -1,30 +1,52 @@
 import { Request, Response } from 'express';
 import { registerSuperAdmin, login, forgotPassword, resetPassword } from '../services/auth.service';
 import { loginSchema, crearUsuarioSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/zod.schemas';
+import { sanitizeErrorMessage } from '../utils/security';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = crearUsuarioSchema.parse({ body: req.body });
-    const user = await registerSuperAdmin(validatedData.body);
-    return res.status(201).json(user);
+    const result = await registerSuperAdmin(validatedData.body);
+    return res.status(201).json({
+      status: 'success',
+      data: {
+        user: {
+          id: result.user.id,
+          nombre: result.user.nombre,
+          apellido: result.user.apellido,
+          email: result.user.email,
+          username: result.user.username,
+          role: result.user.role,
+        },
+        tempPassword: result.tempPassword
+      }
+    });
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    return res.status(500).json({ message: error.message });
+    // Manejar error específico de admin existente
+    if (error.message.includes('Ya existe un administrador')) {
+      return res.status(409).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
 
 export const loginHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = loginSchema.parse({ body: req.body });
-    const token = await login(validatedData.body);
-    return res.status(200).json(token);
+    const result = await login(validatedData.body);
+    return res.status(200).json(result);
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    return res.status(401).json({ message: error.message });
+    // Errores de autenticación son seguros para mostrar
+    if (error.message.includes('Credenciales') || error.message.includes('desactivado')) {
+      return res.status(401).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
 
@@ -32,13 +54,14 @@ export const forgotPasswordHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = forgotPasswordSchema.parse({ body: req.body });
     await forgotPassword(validatedData.body.email);
-    // Always return success
+    // Always return success (security: prevent email enumeration)
     return res.status(200).json({ message: 'Si el correo existe, recibirás un enlace de recuperación.' });
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    return res.status(500).json({ message: error.message });
+    // Always return success for security
+    return res.status(200).json({ message: 'Si el correo existe, recibirás un enlace de recuperación.' });
   }
 };
 
@@ -51,6 +74,10 @@ export const resetPasswordHandler = async (req: Request, res: Response) => {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    return res.status(400).json({ message: error.message });
+    // Errores de token son seguros para mostrar
+    if (error.message.includes('Token') || error.message.includes('desactivado')) {
+      return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

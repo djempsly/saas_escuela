@@ -1,39 +1,52 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import prisma from '../config/db';
 import { CrearUsuarioInput } from '../utils/zod.schemas';
-
-const prisma = new PrismaClient();
+import { generateSecurePassword, generateUsername } from '../utils/security';
 
 export const createUser = async (input: CrearUsuarioInput, institucionId: string) => {
-  const { email, password, nombre, apellido, rol } = input;
+  const { email, nombre, apellido, rol } = input;
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    throw new Error('El correo electrónico ya está en uso');
+  if (email) {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new Error('El correo electrónico ya está en uso');
+    }
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const tempPassword = generateSecurePassword();
+  const hashedPassword = await bcrypt.hash(tempPassword, 12);
+  const username = generateUsername(nombre, apellido);
 
   const user = await prisma.user.create({
     data: {
       nombre,
       apellido,
-      username: email, // Use email as username
-      email,
+      username,
+      email: email || null,
       password: hashedPassword,
       role: rol as Role,
       institucionId,
+      debeCambiarPassword: true,
     },
   });
 
-  return user;
+  return { user, tempPassword };
 };
 
-export const resetUserPasswordManual = async (targetUserId: string, requester: { id: string; institucionId: string | null; role: string }) => {
+export const resetUserPasswordManual = async (
+  targetUserId: string,
+  requester: { id: string; institucionId: string | null; role: string }
+) => {
   const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
 
   if (!targetUser) {
     throw new Error('Usuario no encontrado');
+  }
+
+  // SEGURIDAD: Verificar que el usuario objetivo esté activo
+  if (!targetUser.activo) {
+    throw new Error('No se puede resetear la contraseña de un usuario desactivado');
   }
 
   // 1. Multi-tenant Check: Must be in same institution (unless Requester is ADMIN)
@@ -43,26 +56,40 @@ export const resetUserPasswordManual = async (targetUserId: string, requester: {
     }
   }
 
-  // 2. Hierarchy Check
+  // 2. Hierarchy Check - ADMIN
+  if (requester.role === Role.ADMIN) {
+    // ADMIN no puede resetear a otro ADMIN (para evitar escalación)
+    if (targetUser.role === Role.ADMIN && targetUser.id !== requester.id) {
+      throw new Error('No tienes permisos para resetear la contraseña de otro administrador');
+    }
+  }
+
+  // 3. Hierarchy Check - DIRECTOR
   if (requester.role === Role.DIRECTOR) {
     if (targetUser.role === Role.ADMIN || targetUser.role === Role.DIRECTOR) {
       throw new Error('No tienes permisos para resetear la contraseña de este usuario (Jerarquía)');
     }
   }
 
-  if (requester.role === 'SECRETARIA') { // Assuming SECRETARIA role string from previous prompt context if exists in Prisma
-     // Check if target is Admin or Director or Coordinator
-     if ([Role.ADMIN, Role.DIRECTOR, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO].includes(targetUser.role)) {
-         throw new Error('No tienes permisos para resetear la contraseña de personal directivo');
-     }
+  // 4. Hierarchy Check - SECRETARIA (usando enum para consistencia)
+  if (requester.role === Role.SECRETARIA) {
+    const privilegedRoles: Role[] = [
+      Role.ADMIN,
+      Role.DIRECTOR,
+      Role.COORDINADOR,
+      Role.COORDINADOR_ACADEMICO
+    ];
+    if (privilegedRoles.includes(targetUser.role)) {
+      throw new Error('No tienes permisos para resetear la contraseña de personal directivo');
+    }
   }
 
-  // 3. Generate Temp Password
-  const tempPassword = Math.random().toString(36).slice(-8); // Simple random string
+  // 5. Generate Temp Password usando crypto seguro
+  const tempPassword = generateSecurePassword();
 
-  // 4. Update User
-  const hashedPassword = await bcrypt.hash(tempPassword, 10);
-  
+  // 6. Update User
+  const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
   await prisma.user.update({
     where: { id: targetUserId },
     data: {
@@ -72,4 +99,38 @@ export const resetUserPasswordManual = async (targetUserId: string, requester: {
   });
 
   return { tempPassword };
+};
+
+export const findUserById = async (id: string) => {
+  return prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      activo: true,
+      institucionId: true,
+      createdAt: true,
+    },
+  });
+};
+
+export const findUsersByInstitucion = async (institucionId: string) => {
+  return prisma.user.findMany({
+    where: { institucionId },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      activo: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 };

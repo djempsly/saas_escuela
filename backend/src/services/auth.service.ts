@@ -1,33 +1,47 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import prisma from '../config/db';
 import { LoginInput, CrearUsuarioInput } from '../utils/zod.schemas';
+import { generateSecurePassword, generateUsername } from '../utils/security';
 import { sendPasswordResetEmail } from './email.service';
 
-const prisma = new PrismaClient();
-
 export const registerSuperAdmin = async (input: CrearUsuarioInput) => {
-  const { email, password, nombre, apellido } = input;
+  const { email, nombre, apellido } = input;
 
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    throw new Error('El correo electrónico ya está en uso');
+  // SEGURIDAD: Verificar que no existan ADMINs previos
+  const existingAdmin = await prisma.user.findFirst({
+    where: { role: Role.ADMIN },
+  });
+
+  if (existingAdmin) {
+    throw new Error('Ya existe un administrador en el sistema. Contacte al administrador existente.');
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  if (email) {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      throw new Error('El correo electrónico ya está en uso');
+    }
+  }
+
+  const tempPassword = generateSecurePassword();
+  const hashedPassword = await bcrypt.hash(tempPassword, 12);
+  const username = generateUsername(nombre, apellido);
 
   const user = await prisma.user.create({
     data: {
       nombre,
       apellido,
-      username: email,
-      email,
+      username,
+      email: email || null,
       password: hashedPassword,
       role: Role.ADMIN,
+      debeCambiarPassword: true,
     },
   });
 
-  return user;
+  return { user, tempPassword };
 };
 
 export const login = async (input: LoginInput) => {
@@ -36,6 +50,11 @@ export const login = async (input: LoginInput) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     throw new Error('Credenciales no válidas');
+  }
+
+  // SEGURIDAD: Verificar que el usuario esté activo
+  if (!user.activo) {
+    throw new Error('Usuario desactivado. Contacte al administrador.');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -57,14 +76,23 @@ export const login = async (input: LoginInput) => {
     { expiresIn: '1d' }
   );
 
-  return { token };
+  // Retornar información adicional sobre cambio de contraseña
+  return {
+    token,
+    debeCambiarPassword: user.debeCambiarPassword,
+  };
 };
 
 export const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
-  
+
   // Security: Always return success even if user not found to prevent email enumeration
   if (!user) {
+    return;
+  }
+
+  // SEGURIDAD: No enviar reset si el usuario está desactivado
+  if (!user.activo) {
     return;
   }
 
@@ -72,19 +100,16 @@ export const forgotPassword = async (email: string) => {
     throw new Error('CRITICAL: JWT_SECRET no está definido en el servidor.');
   }
 
-  // Generate Reset Token (15 mins)
+  // Generate Reset Token (8 hours)
   const resetToken = jwt.sign(
     { id: user.id, type: 'reset' },
     process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '8h' }
   );
 
-  // Generate Link
-  // Assuming frontend URL is in env or hardcoded for now
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const link = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-  // Send Email
   await sendPasswordResetEmail(email, link);
 };
 
@@ -105,17 +130,25 @@ export const resetPassword = async (token: string, newPassword: string) => {
       throw new Error('Usuario no encontrado');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // SEGURIDAD: Verificar que el usuario esté activo
+    if (!user.activo) {
+      throw new Error('Usuario desactivado. Contacte al administrador.');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
-        debeCambiarPassword: false, // User set it themselves
+        debeCambiarPassword: false,
       },
     });
 
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Usuario desactivado')) {
+      throw error;
+    }
     throw new Error('Token inválido o expirado');
   }
 };
