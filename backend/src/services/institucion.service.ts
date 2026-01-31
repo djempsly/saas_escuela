@@ -370,6 +370,7 @@ export const getInstitucionBrandingBySlug = async (slug: string) => {
       nombre: true,
       lema: true,
       logoUrl: true,
+      logoPosicion: true,
       colorPrimario: true,
       colorSecundario: true,
       pais: true,
@@ -390,6 +391,7 @@ export const getInstitucionBrandingByDominio = async (dominio: string) => {
       nombre: true,
       lema: true,
       logoUrl: true,
+      logoPosicion: true,
       colorPrimario: true,
       colorSecundario: true,
       pais: true,
@@ -409,6 +411,7 @@ export const updateSensitiveConfig = async (
     slug?: string;
     dominioPersonalizado?: string | null;
     idiomaPrincipal?: Idioma;
+    logoPosicion?: string;
     activo?: boolean;
     autogestionActividades?: boolean;
   }
@@ -448,6 +451,7 @@ export const updateSensitiveConfig = async (
       ...(input.slug && { slug: generateSlug(input.slug) }),
       ...(input.dominioPersonalizado !== undefined && { dominioPersonalizado: input.dominioPersonalizado }),
       ...(input.idiomaPrincipal && { idiomaPrincipal: input.idiomaPrincipal }),
+      ...(input.logoPosicion && { logoPosicion: input.logoPosicion }),
       ...(input.activo !== undefined && { activo: input.activo }),
       ...(input.autogestionActividades !== undefined && { autogestionActividades: input.autogestionActividades }),
     },

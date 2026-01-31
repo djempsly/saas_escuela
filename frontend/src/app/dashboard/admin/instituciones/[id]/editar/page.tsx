@@ -39,6 +39,7 @@ interface Institucion {
   sistema: string;
   idiomaPrincipal?: string;
   logoUrl?: string;
+  logoPosicion?: string;
   colorPrimario: string;
   colorSecundario: string;
   activo: boolean;
@@ -47,6 +48,12 @@ interface Institucion {
   distritoEducativo?: string;
   regionalEducacion?: string;
 }
+
+const LOGO_POSICIONES = [
+  { value: 'left', label: 'Izquierda' },
+  { value: 'center', label: 'Centro' },
+  { value: 'right', label: 'Derecha' },
+];
 
 const IDIOMAS_POR_PAIS: Record<string, Array<{ value: string; label: string }>> = {
   DO: [
@@ -95,6 +102,7 @@ export default function EditarInstitucionPage() {
     dominioPersonalizado: '',
     pais: 'DO',
     idiomaPrincipal: 'ESPANOL',
+    logoPosicion: 'center',
     colorPrimario: '#1a365d',
     colorSecundario: '#3182ce',
     activo: true,
@@ -126,6 +134,7 @@ export default function EditarInstitucionPage() {
         dominioPersonalizado: inst.dominioPersonalizado || '',
         pais: inst.pais || 'DO',
         idiomaPrincipal: inst.idiomaPrincipal || 'ESPANOL',
+        logoPosicion: inst.logoPosicion || 'center',
         colorPrimario: inst.colorPrimario || '#1a365d',
         colorSecundario: inst.colorSecundario || '#3182ce',
         activo: inst.activo,
@@ -224,12 +233,13 @@ export default function EditarInstitucionPage() {
     }
 
     try {
-      // Actualizar configuracion sensible (nombre, slug, dominio, idioma, activo, autogestion)
+      // Actualizar configuracion sensible (nombre, slug, dominio, idioma, posicion logo, activo, autogestion)
       await institucionesApi.updateSensitive(id, {
         nombre: formData.nombre,
         slug: formData.slug,
         dominioPersonalizado: formData.dominioPersonalizado || null,
         idiomaPrincipal: formData.idiomaPrincipal,
+        logoPosicion: formData.logoPosicion,
         activo: formData.activo,
         autogestionActividades: formData.autogestionActividades,
       });
@@ -324,6 +334,30 @@ export default function EditarInstitucionPage() {
                   maxSizeMB={2}
                 />
               </div>
+            </div>
+
+            {/* Posicion del Logo en Landing */}
+            <div className="space-y-2">
+              <Label htmlFor="logoPosicion">Posicion del Logo en Landing Page</Label>
+              <div className="flex gap-2">
+                {LOGO_POSICIONES.map((pos) => (
+                  <button
+                    key={pos.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, logoPosicion: pos.value })}
+                    className={`flex-1 py-2 px-4 rounded-lg border-2 transition-colors ${
+                      formData.logoPosicion === pos.value
+                        ? 'border-primary bg-primary/10 text-primary font-medium'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {pos.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Define donde se mostrara el logo y nombre en la seccion principal del landing
+              </p>
             </div>
 
             {/* Nombre */}

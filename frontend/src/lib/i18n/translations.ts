@@ -4,6 +4,29 @@ export type Locale = 'es' | 'fr' | 'en' | 'ht';
 
 export const translations = {
   es: {
+    // Landing Page
+    landing: {
+      login: 'Iniciar Sesión',
+      accessPortal: 'Acceder al Portal',
+      newsAndActivities: 'Noticias y Actividades',
+      stayUpdated: 'Mantente al día con las últimas novedades de nuestra institución',
+      comingSoon: 'Próximamente',
+      comingSoonDesc: 'Pronto publicaremos noticias y actividades de nuestra institución.',
+      joinCommunity: 'Forma parte de nuestra comunidad',
+      accessEducationalPortal: 'Accede al portal educativo para gestionar tu información académica',
+      allRightsReserved: 'Todos los derechos reservados',
+      by: 'Por',
+      photos: 'Fotos',
+      videos: 'Videos',
+      viewGallery: 'Ver Galería',
+      close: 'Cerrar',
+      previous: 'Anterior',
+      next: 'Siguiente',
+      notFound: 'Institución no encontrada',
+      notFoundDesc: 'La institución que buscas no existe o no está disponible.',
+      backToHome: 'Volver al inicio',
+      language: 'Idioma',
+    },
     // Generales
     app: {
       name: 'Plataforma Educativa',
@@ -115,6 +138,29 @@ export const translations = {
   },
 
   fr: {
+    // Page d'accueil
+    landing: {
+      login: 'Connexion',
+      accessPortal: 'Accéder au Portail',
+      newsAndActivities: 'Nouvelles et Activités',
+      stayUpdated: 'Restez informé des dernières nouvelles de notre institution',
+      comingSoon: 'Bientôt disponible',
+      comingSoonDesc: 'Nous publierons bientôt des nouvelles et activités de notre institution.',
+      joinCommunity: 'Rejoignez notre communauté',
+      accessEducationalPortal: 'Accédez au portail éducatif pour gérer vos informations académiques',
+      allRightsReserved: 'Tous droits réservés',
+      by: 'Par',
+      photos: 'Photos',
+      videos: 'Vidéos',
+      viewGallery: 'Voir la Galerie',
+      close: 'Fermer',
+      previous: 'Précédent',
+      next: 'Suivant',
+      notFound: 'Institution non trouvée',
+      notFoundDesc: 'L\'institution que vous recherchez n\'existe pas ou n\'est pas disponible.',
+      backToHome: 'Retour à l\'accueil',
+      language: 'Langue',
+    },
     // Généraux
     app: {
       name: 'Plateforme Éducative',
@@ -226,6 +272,29 @@ export const translations = {
   },
 
   en: {
+    // Landing Page
+    landing: {
+      login: 'Login',
+      accessPortal: 'Access Portal',
+      newsAndActivities: 'News and Activities',
+      stayUpdated: 'Stay updated with the latest news from our institution',
+      comingSoon: 'Coming Soon',
+      comingSoonDesc: 'We will soon publish news and activities from our institution.',
+      joinCommunity: 'Join our community',
+      accessEducationalPortal: 'Access the educational portal to manage your academic information',
+      allRightsReserved: 'All rights reserved',
+      by: 'By',
+      photos: 'Photos',
+      videos: 'Videos',
+      viewGallery: 'View Gallery',
+      close: 'Close',
+      previous: 'Previous',
+      next: 'Next',
+      notFound: 'Institution not found',
+      notFoundDesc: 'The institution you are looking for does not exist or is not available.',
+      backToHome: 'Back to home',
+      language: 'Language',
+    },
     // General
     app: {
       name: 'Educational Platform',
@@ -337,6 +406,29 @@ export const translations = {
   },
 
   ht: {
+    // Paj Dakèy
+    landing: {
+      login: 'Konekte',
+      accessPortal: 'Antre nan Pòtay la',
+      newsAndActivities: 'Nouvèl ak Aktivite',
+      stayUpdated: 'Rete okouran ak dènye nouvèl enstitisyon nou an',
+      comingSoon: 'Byento',
+      comingSoonDesc: 'Nou pral pibliye nouvèl ak aktivite enstitisyon nou an byento.',
+      joinCommunity: 'Vin fè pati kominote nou an',
+      accessEducationalPortal: 'Antre nan pòtay edikasyon an pou jere enfòmasyon akademik ou',
+      allRightsReserved: 'Tout dwa rezève',
+      by: 'Pa',
+      photos: 'Foto',
+      videos: 'Videyo',
+      viewGallery: 'Gade Galri',
+      close: 'Fèmen',
+      previous: 'Anvan',
+      next: 'Apre',
+      notFound: 'Enstitisyon pa jwenn',
+      notFoundDesc: 'Enstitisyon w ap chèche a pa egziste oswa li pa disponib.',
+      backToHome: 'Retounen lakay',
+      language: 'Lang',
+    },
     // Jeneral
     app: {
       name: 'Platfòm Edikasyon',

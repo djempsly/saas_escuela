@@ -218,6 +218,7 @@ export const updateSensitiveConfigHandler = async (req: Request, res: Response) 
       slug: z.string().min(3).optional(),
       dominioPersonalizado: z.string().nullable().optional(),
       idiomaPrincipal: z.nativeEnum(Idioma).optional(),
+      logoPosicion: z.enum(['left', 'center', 'right']).optional(),
       activo: z.boolean().optional(),
       autogestionActividades: z.boolean().optional(),
     });
