@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
 import { Sidebar } from '@/components/dashboard/sidebar';
@@ -23,6 +23,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const hydrated = useHydrated();
   const { isAuthenticated, user } = useAuthStore();
   const { branding } = useInstitutionStore();
@@ -37,6 +38,18 @@ export default function DashboardLayout({
     }
   }, [hydrated, isAuthenticated, router]);
 
+  // GUARD: Forzar cambio de contraseña si es requerido
+  useEffect(() => {
+    if (
+      hydrated &&
+      isAuthenticated &&
+      user?.debeCambiarPassword &&
+      pathname !== '/dashboard/cambiar-password'
+    ) {
+      router.replace('/dashboard/cambiar-password');
+    }
+  }, [hydrated, isAuthenticated, user?.debeCambiarPassword, pathname, router]);
+
   // Aplicar colores de branding
   useLayoutEffect(() => {
     if (branding) {
@@ -50,6 +63,15 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Si debe cambiar contraseña, mostrar solo el contenido sin sidebar/header
+  if (user?.debeCambiarPassword && pathname === '/dashboard/cambiar-password') {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {children}
       </div>
     );
   }

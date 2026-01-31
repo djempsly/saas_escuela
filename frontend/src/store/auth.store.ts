@@ -10,6 +10,7 @@ export interface User {
   role: string;
   institucionId?: string;
   fotoUrl?: string;
+  debeCambiarPassword?: boolean;
 }
 
 interface AuthState {

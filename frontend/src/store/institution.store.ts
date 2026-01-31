@@ -10,6 +10,7 @@ export interface InstitutionBranding {
   colorSecundario: string;
   pais?: string;
   sistema?: string;
+  sistemaEducativo?: string;
   idiomaPrincipal?: string;
 }
 

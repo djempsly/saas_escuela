@@ -43,6 +43,8 @@ export const authApi = {
     api.post('/auth/forgot-password', { identificador }),
   resetPassword: (token: string, newPassword: string) =>
     api.post('/auth/reset-password', { token, newPassword }),
+  changePassword: (newPassword: string) =>
+    api.post('/auth/change-password', { newPassword }),
 };
 
 // Instituciones API
@@ -57,10 +59,14 @@ export const institucionesApi = {
     api.post('/instituciones', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  createJson: (data: any) =>
+    api.post('/instituciones', data),
   update: (id: string, data: FormData) =>
     api.put(`/instituciones/${id}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  updateJson: (id: string, data: any) =>
+    api.put(`/instituciones/${id}`, data),
   updateConfig: (id: string, data: FormData) =>
     api.patch(`/instituciones/${id}/config`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },

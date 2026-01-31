@@ -16,12 +16,17 @@ const PAISES = [
   { value: 'HT', label: 'Haití' },
 ];
 
-const SISTEMAS_EDUCATIVOS = [
-  { value: 'RD_POLITECNICO', label: 'RD - Politécnico' },
-  { value: 'RD_GENERAL', label: 'RD - General' },
-  { value: 'RD_PRIMARIA', label: 'RD - Primaria' },
-  { value: 'HAITI', label: 'Haití' },
-];
+const SISTEMAS_EDUCATIVOS = {
+  DO: [
+    { value: 'PRIMARIA_DO', label: 'Primaria' },
+    { value: 'SECUNDARIA_GENERAL_DO', label: 'Secundaria General' },
+    { value: 'POLITECNICO_DO', label: 'Politécnico' },
+  ],
+  HT: [
+    { value: 'PRIMARIA_HT', label: 'Primaria' },
+    { value: 'SECUNDARIA_HT', label: 'Secundaria' },
+  ],
+};
 
 export default function NuevaInstitucionPage() {
   const router = useRouter();
@@ -32,8 +37,8 @@ export default function NuevaInstitucionPage() {
 
   const [formData, setFormData] = useState({
     nombre: '',
-    pais: 'DO',
-    sistemaEducativo: 'RD_GENERAL',
+    pais: 'DO' as 'DO' | 'HT',
+    sistemaEducativo: 'SECUNDARIA_GENERAL_DO',
     colorPrimario: '#1a365d',
     colorSecundario: '#3182ce',
     director: {
@@ -42,6 +47,12 @@ export default function NuevaInstitucionPage() {
       email: '',
     },
   });
+
+  // Actualizar sistema educativo cuando cambia el país
+  const handlePaisChange = (pais: 'DO' | 'HT') => {
+    const defaultSistema = pais === 'DO' ? 'SECUNDARIA_GENERAL_DO' : 'PRIMARIA_HT';
+    setFormData({ ...formData, pais, sistemaEducativo: defaultSistema });
+  };
 
   const handleLogoChange = (file: File | null, previewUrl: string | null) => {
     setLogoFile(file);
@@ -54,25 +65,39 @@ export default function NuevaInstitucionPage() {
     setError('');
 
     try {
-      // Crear FormData para enviar con el logo
-      const data = new FormData();
-      data.append('nombre', formData.nombre);
-      data.append('pais', formData.pais);
-      data.append('sistemaEducativo', formData.sistemaEducativo);
-      data.append('colores', JSON.stringify({
-        primario: formData.colorPrimario,
-        secundario: formData.colorSecundario,
-      }));
-      data.append('director', JSON.stringify(formData.director));
+      // Enviar JSON directamente (el logo se sube por separado después)
+      const payload = {
+        nombre: formData.nombre,
+        pais: formData.pais,
+        sistemaEducativo: formData.sistemaEducativo,
+        colores: {
+          primario: formData.colorPrimario,
+          secundario: formData.colorSecundario,
+        },
+        director: formData.director,
+      };
 
-      if (logoFile) {
-        data.append('logo', logoFile);
+      const response = await institucionesApi.createJson(payload);
+
+      // Si hay logo, subirlo después de crear la institución
+      if (logoFile && response.data?.data?.institucion?.id) {
+        const logoData = new FormData();
+        logoData.append('logo', logoFile);
+        await institucionesApi.updateConfig(response.data.data.institucion.id, logoData);
       }
 
-      await institucionesApi.create(data);
+      // Mostrar contraseña temporal del director
+      if (response.data?.data?.tempPassword) {
+        alert(`Institución creada exitosamente.\n\nContraseña temporal del director: ${response.data.data.tempPassword}\n\nGuárdela en un lugar seguro.`);
+      }
+
       router.push('/dashboard/admin/instituciones');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear la institución');
+      console.error('Error completo:', err.response?.data);
+      const errorMsg = err.response?.data?.errors
+        ? err.response.data.errors.map((e: any) => e.message).join(', ')
+        : err.response?.data?.message || 'Error al crear la institución';
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +169,7 @@ export default function NuevaInstitucionPage() {
                 <select
                   id="pais"
                   value={formData.pais}
-                  onChange={(e) => setFormData({ ...formData, pais: e.target.value })}
+                  onChange={(e) => handlePaisChange(e.target.value as 'DO' | 'HT')}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 >
@@ -165,7 +190,7 @@ export default function NuevaInstitucionPage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 >
-                  {SISTEMAS_EDUCATIVOS.map((s) => (
+                  {SISTEMAS_EDUCATIVOS[formData.pais].map((s) => (
                     <option key={s.value} value={s.value}>
                       {s.label}
                     </option>
