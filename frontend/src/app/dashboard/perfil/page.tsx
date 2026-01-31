@@ -11,6 +11,15 @@ import { usersApi } from '@/lib/api';
 import { Loader2, Save, User } from 'lucide-react';
 import Image from 'next/image';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 // Función para construir la URL completa de la imagen
@@ -75,10 +84,11 @@ export default function PerfilPage() {
       }
 
       setMessage({ type: 'success', text: 'Perfil actualizado correctamente' });
-    } catch (error: any) {
+    } catch (error) {
+      const apiError = error as ApiError;
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Error al actualizar el perfil',
+        text: apiError.response?.data?.message || 'Error al actualizar el perfil',
       });
     } finally {
       setIsLoading(false);

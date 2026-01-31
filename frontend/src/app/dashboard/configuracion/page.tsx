@@ -20,6 +20,15 @@ import {
   Languages,
 } from 'lucide-react';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 export default function ConfiguracionPage() {
   const { user } = useAuthStore();
   const { branding, setBranding } = useInstitutionStore();
@@ -80,10 +89,11 @@ export default function ConfiguracionPage() {
       });
 
       setMessage({ type: 'success', text: 'Configuración guardada correctamente' });
-    } catch (error: any) {
+    } catch (error) {
+      const apiError = error as ApiError;
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Error al guardar la configuración',
+        text: apiError.response?.data?.message || 'Error al guardar la configuración',
       });
     } finally {
       setIsSaving(false);

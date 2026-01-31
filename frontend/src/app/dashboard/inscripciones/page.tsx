@@ -7,6 +7,15 @@ import { Input } from '@/components/ui/input';
 import { inscripcionesApi, clasesApi, estudiantesApi } from '@/lib/api';
 import { Users, Loader2, Plus, Search, UserPlus } from 'lucide-react';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 export default function InscripcionesPage() {
   const [clases, setClases] = useState<any[]>([]);
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
@@ -51,8 +60,9 @@ export default function InscripcionesPage() {
     try {
       await inscripcionesApi.inscribirMasivo(selectedClase, [estudianteId]);
       loadInscritos(selectedClase);
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al inscribir');
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al inscribir');
     }
   };
 

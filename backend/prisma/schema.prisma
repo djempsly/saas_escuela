@@ -51,6 +51,62 @@ enum EstadoAsistencia {
   JUSTIFICADO
 }
 
+// ========== TASKS/ASSIGNMENTS ENUMS ==========
+enum EstadoTarea {
+  BORRADOR
+  PUBLICADA
+  CERRADA
+}
+
+enum EstadoEntrega {
+  PENDIENTE
+  ENTREGADO
+  CALIFICADO
+  ATRASADO
+}
+
+enum TipoRecurso {
+  ENLACE
+  VIDEO
+  ARCHIVO
+  IMAGEN
+}
+
+// ========== EVENTS ENUMS ==========
+enum TipoEvento {
+  ACADEMICO
+  CULTURAL
+  DEPORTIVO
+  REUNION_PADRES
+  FERIADO
+  EVALUACION
+  OTRO
+}
+
+// ========== PAYMENTS ENUMS ==========
+enum ConceptoCobro {
+  MATRICULA
+  MENSUALIDAD
+  MATERIAL
+  UNIFORME
+  ACTIVIDAD
+  OTRO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PARCIAL
+  PAGADO
+  VENCIDO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  CHEQUE
+}
+
 enum TipoMateria {
   GENERAL // Materias normales (Matemáticas, Historia)
   TECNICA // Módulos técnicos (Solo para Politécnicos)
@@ -88,7 +144,17 @@ model User {
   asistencias             Asistencia[]
   actividades             Actividad[]
   notificaciones          Notificacion[]
-  
+
+  // Relaciones de nuevos módulos
+  tareasCreadas           Tarea[]                   @relation("TareasCreadas")
+  entregasTareas          EntregaTarea[]            @relation("EntregasTareas")
+  eventosCreados          Evento[]                  @relation("EventosCreados")
+  conversacionesCreadas   Conversacion[]            @relation("ConversacionesCreadas")
+  mensajesEnviados        Mensaje[]                 @relation("MensajesEnviados")
+  participaciones         ParticipanteConversacion[]
+  cobros                  Cobro[]                   @relation("CobrosEstudiante")
+  pagosRegistrados        Pago[]                    @relation("PagosRegistrados")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -122,6 +188,11 @@ model Institucion {
   materias Materia[]
   ciclos   CicloLectivo[]
   clases   Clase[]
+
+  // Relaciones de nuevos módulos
+  eventos         Evento[]
+  conversaciones  Conversacion[]
+  cobros          Cobro[]
 }
 
 model Nivel {
@@ -147,6 +218,7 @@ model CicloLectivo {
 
   clases        Clase[]
   calificaciones Calificacion[]
+  cobros        Cobro[]
 }
 
 model Materia {
@@ -179,6 +251,10 @@ model Clase {
   asistencias             Asistencia[]
   calificaciones          Calificacion[]
   calificacionesTec       CalificacionTecnica[]
+
+  // Relaciones de nuevos módulos
+  tareas                  Tarea[]
+  eventos                 Evento[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,4 +351,193 @@ model Notificacion {
   usuarioId     String
   usuario       User     @relation(fields: [usuarioId], references: [id])
   createdAt     DateTime @default(now())
+}
+
+// ========== TASKS/ASSIGNMENTS MODELS ==========
+
+model Tarea {
+  id              String       @id @default(cuid())
+  titulo          String
+  descripcion     String       @db.Text
+  instrucciones   String?      @db.Text
+  fechaPublicacion DateTime?
+  fechaVencimiento DateTime
+  puntajeMaximo   Float?
+  estado          EstadoTarea  @default(BORRADOR)
+
+  claseId         String
+  clase           Clase        @relation(fields: [claseId], references: [id])
+  docenteId       String
+  docente         User         @relation("TareasCreadas", fields: [docenteId], references: [id])
+
+  entregas        EntregaTarea[]
+  recursos        RecursoTarea[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model EntregaTarea {
+  id              String       @id @default(cuid())
+  contenido       String?      @db.Text
+  comentarioEstudiante String? @db.Text
+  estado          EstadoEntrega @default(PENDIENTE)
+  fechaEntrega    DateTime?
+  calificacion    Float?
+  comentarioDocente String?    @db.Text
+
+  tareaId         String
+  tarea           Tarea        @relation(fields: [tareaId], references: [id])
+  estudianteId    String
+  estudiante      User         @relation("EntregasTareas", fields: [estudianteId], references: [id])
+
+  archivos        ArchivoEntrega[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([tareaId, estudianteId])
+}
+
+model RecursoTarea {
+  id              String       @id @default(cuid())
+  tipo            TipoRecurso
+  titulo          String
+  url             String
+
+  tareaId         String
+  tarea           Tarea        @relation(fields: [tareaId], references: [id])
+
+  createdAt       DateTime     @default(now())
+}
+
+model ArchivoEntrega {
+  id              String       @id @default(cuid())
+  nombre          String
+  url             String
+  tipo            String       // mime type
+
+  entregaId       String
+  entrega         EntregaTarea @relation(fields: [entregaId], references: [id])
+
+  createdAt       DateTime     @default(now())
+}
+
+// ========== EVENTS/CALENDAR MODELS ==========
+
+model Evento {
+  id              String       @id @default(cuid())
+  titulo          String
+  descripcion     String?      @db.Text
+  ubicacion       String?
+  tipo            TipoEvento
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  todoElDia       Boolean      @default(false)
+  color           String?
+
+  creadorId       String
+  creador         User         @relation("EventosCreados", fields: [creadorId], references: [id])
+  institucionId   String
+  institucion     Institucion  @relation(fields: [institucionId], references: [id])
+  claseId         String?
+  clase           Clase?       @relation(fields: [claseId], references: [id])
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+// ========== MESSAGING MODELS ==========
+
+model Conversacion {
+  id              String       @id @default(cuid())
+  titulo          String?
+  esGrupal        Boolean      @default(false)
+
+  creadorId       String
+  creador         User         @relation("ConversacionesCreadas", fields: [creadorId], references: [id])
+  institucionId   String
+  institucion     Institucion  @relation(fields: [institucionId], references: [id])
+
+  participantes   ParticipanteConversacion[]
+  mensajes        Mensaje[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model ParticipanteConversacion {
+  id              String       @id @default(cuid())
+
+  conversacionId  String
+  conversacion    Conversacion @relation(fields: [conversacionId], references: [id])
+  usuarioId       String
+  usuario         User         @relation(fields: [usuarioId], references: [id])
+
+  ultimoLeido     DateTime?
+
+  @@unique([conversacionId, usuarioId])
+}
+
+model Mensaje {
+  id              String       @id @default(cuid())
+  contenido       String       @db.Text
+
+  conversacionId  String
+  conversacion    Conversacion @relation(fields: [conversacionId], references: [id])
+  remitenteId     String
+  remitente       User         @relation("MensajesEnviados", fields: [remitenteId], references: [id])
+
+  archivos        ArchivoMensaje[]
+
+  createdAt       DateTime     @default(now())
+}
+
+model ArchivoMensaje {
+  id              String       @id @default(cuid())
+  nombre          String
+  url             String
+  tipo            String
+
+  mensajeId       String
+  mensaje         Mensaje      @relation(fields: [mensajeId], references: [id])
+}
+
+// ========== PAYMENTS MODELS ==========
+
+model Cobro {
+  id              String       @id @default(cuid())
+  concepto        ConceptoCobro
+  descripcion     String?
+  monto           Decimal      @db.Decimal(10, 2)
+  fechaVencimiento DateTime
+  estado          EstadoPago   @default(PENDIENTE)
+
+  estudianteId    String
+  estudiante      User         @relation("CobrosEstudiante", fields: [estudianteId], references: [id])
+  institucionId   String
+  institucion     Institucion  @relation(fields: [institucionId], references: [id])
+  cicloLectivoId  String
+  cicloLectivo    CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+
+  pagos           Pago[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Pago {
+  id              String       @id @default(cuid())
+  monto           Decimal      @db.Decimal(10, 2)
+  metodoPago      MetodoPago
+  referencia      String?
+  fechaPago       DateTime     @default(now())
+  comprobanteUrl  String?
+
+  cobroId         String
+  cobro           Cobro        @relation(fields: [cobroId], references: [id])
+  registradoPorId String
+  registradoPor   User         @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
+
+  createdAt       DateTime     @default(now())
 }

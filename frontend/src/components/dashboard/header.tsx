@@ -64,7 +64,7 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
         </Button>
         {branding?.lema && (
           <span className="hidden md:block text-sm text-muted-foreground italic">
-            "{branding.lema}"
+            &ldquo;{branding.lema}&rdquo;
           </span>
         )}
       </div>

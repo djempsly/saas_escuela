@@ -10,6 +10,10 @@ import inscripcionRoutes from './inscripcion.routes';
 import asistenciaRoutes from './asistencia.routes';
 import calificacionRoutes from './calificacion.routes';
 import actividadRoutes from './actividad.routes';
+import tareaRoutes from './tarea.routes';
+import eventoRoutes from './evento.routes';
+import mensajeRoutes from './mensaje.routes';
+import cobroRoutes from './cobro.routes';
 
 const router = Router();
 
@@ -33,5 +37,11 @@ router.use('/calificaciones', calificacionRoutes);
 
 // Rutas de actividades (públicas + admin)
 router.use('/actividades', actividadRoutes);
+
+// Nuevas rutas de módulos
+router.use('/tareas', tareaRoutes);
+router.use('/eventos', eventoRoutes);
+router.use('/mensajes', mensajeRoutes);
+router.use('/cobros', cobroRoutes);
 
 export default router;

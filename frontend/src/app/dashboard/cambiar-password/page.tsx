@@ -10,6 +10,15 @@ import { useAuthStore } from '@/store/auth.store';
 import { authApi } from '@/lib/api';
 import { Loader2, Lock, ShieldAlert, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 export default function CambiarPasswordPage() {
   const router = useRouter();
   const { user, updateUser, token } = useAuthStore();
@@ -59,8 +68,9 @@ export default function CambiarPasswordPage() {
 
       // Redirigir al dashboard
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cambiar la contraseña');
+    } catch (err) {
+      const apiError = err as ApiError;
+      setError(apiError.response?.data?.message || 'Error al cambiar la contraseña');
     } finally {
       setIsLoading(false);
     }

@@ -207,6 +207,151 @@ export const docentesApi = {
   getClases: (docenteId: string) => api.get(`/clases?docenteId=${docenteId}`),
 };
 
+// Tareas API
+export const tareasApi = {
+  getAll: (claseId?: string) =>
+    api.get('/tareas', { params: { claseId } }),
+  getById: (id: string) =>
+    api.get(`/tareas/${id}`),
+  create: (data: {
+    titulo: string;
+    descripcion: string;
+    instrucciones?: string;
+    fechaPublicacion?: string;
+    fechaVencimiento: string;
+    puntajeMaximo?: number;
+    estado?: string;
+    claseId: string;
+  }) => api.post('/tareas', data),
+  update: (id: string, data: Partial<{
+    titulo: string;
+    descripcion: string;
+    instrucciones?: string;
+    fechaPublicacion?: string;
+    fechaVencimiento: string;
+    puntajeMaximo?: number;
+    estado?: string;
+  }>) => api.put(`/tareas/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/tareas/${id}`),
+  agregarRecurso: (tareaId: string, recurso: { tipo: string; titulo: string; url: string }) =>
+    api.post(`/tareas/${tareaId}/recursos`, recurso),
+  getEntregas: (tareaId: string) =>
+    api.get(`/tareas/${tareaId}/entregas`),
+  entregar: (tareaId: string, data: {
+    contenido?: string;
+    comentarioEstudiante?: string;
+    archivos?: { nombre: string; url: string; tipo: string }[];
+  }) => api.post(`/tareas/${tareaId}/entregar`, data),
+  calificar: (tareaId: string, entregaId: string, data: {
+    calificacion: number;
+    comentarioDocente?: string;
+  }) => api.put(`/tareas/${tareaId}/entregas/${entregaId}/calificar`, data),
+};
+
+// Eventos API
+export const eventosApi = {
+  getAll: (params?: { fechaInicio?: string; fechaFin?: string; claseId?: string }) =>
+    api.get('/eventos', { params }),
+  getById: (id: string) =>
+    api.get(`/eventos/${id}`),
+  getTipos: () =>
+    api.get('/eventos/tipos'),
+  create: (data: {
+    titulo: string;
+    descripcion?: string;
+    ubicacion?: string;
+    tipo: string;
+    fechaInicio: string;
+    fechaFin: string;
+    todoElDia?: boolean;
+    color?: string;
+    claseId?: string;
+  }) => api.post('/eventos', data),
+  update: (id: string, data: Partial<{
+    titulo: string;
+    descripcion?: string;
+    ubicacion?: string;
+    tipo: string;
+    fechaInicio: string;
+    fechaFin: string;
+    todoElDia?: boolean;
+    color?: string;
+    claseId?: string;
+  }>) => api.put(`/eventos/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/eventos/${id}`),
+};
+
+// Mensajes API
+export const mensajesApi = {
+  getUsuariosDisponibles: () =>
+    api.get('/mensajes/usuarios'),
+  getNoLeidos: () =>
+    api.get('/mensajes/no-leidos'),
+  getConversaciones: () =>
+    api.get('/mensajes/conversaciones'),
+  crearConversacion: (data: {
+    titulo?: string;
+    esGrupal?: boolean;
+    participanteIds: string[];
+  }) => api.post('/mensajes/conversaciones', data),
+  getMensajes: (conversacionId: string, params?: { limit?: number; cursor?: string }) =>
+    api.get(`/mensajes/conversaciones/${conversacionId}`, { params }),
+  getMensajesNuevos: (conversacionId: string, desde: string) =>
+    api.get(`/mensajes/conversaciones/${conversacionId}/nuevos`, { params: { desde } }),
+  enviarMensaje: (conversacionId: string, data: {
+    contenido: string;
+    archivos?: { nombre: string; url: string; tipo: string }[];
+  }) => api.post(`/mensajes/conversaciones/${conversacionId}/mensajes`, data),
+  marcarComoLeida: (conversacionId: string) =>
+    api.put(`/mensajes/conversaciones/${conversacionId}/leer`),
+};
+
+// Cobros API
+export const cobrosApi = {
+  getConceptos: () =>
+    api.get('/cobros/conceptos'),
+  getMetodosPago: () =>
+    api.get('/cobros/metodos-pago'),
+  getMisCobros: () =>
+    api.get('/cobros/mis-cobros'),
+  getAll: (params?: { estado?: string; concepto?: string; estudianteId?: string; cicloLectivoId?: string }) =>
+    api.get('/cobros', { params }),
+  getPendientes: () =>
+    api.get('/cobros/pendientes'),
+  getReporte: (fechaInicio: string, fechaFin: string) =>
+    api.get('/cobros/reporte', { params: { fechaInicio, fechaFin } }),
+  getEstadisticas: (cicloLectivoId?: string) =>
+    api.get('/cobros/estadisticas', { params: { cicloLectivoId } }),
+  getByEstudiante: (estudianteId: string) =>
+    api.get(`/cobros/estudiante/${estudianteId}`),
+  getById: (id: string) =>
+    api.get(`/cobros/${id}`),
+  create: (data: {
+    concepto: string;
+    descripcion?: string;
+    monto: number;
+    fechaVencimiento: string;
+    estudianteId: string;
+    cicloLectivoId: string;
+  }) => api.post('/cobros', data),
+  createMasivo: (data: {
+    concepto: string;
+    descripcion?: string;
+    monto: number;
+    fechaVencimiento: string;
+    estudianteIds: string[];
+    cicloLectivoId: string;
+  }) => api.post('/cobros/masivo', data),
+  registrarPago: (cobroId: string, data: {
+    monto: number;
+    metodoPago: string;
+    referencia?: string;
+    comprobanteUrl?: string;
+  }) => api.post(`/cobros/${cobroId}/pagar`, data),
+};
+
 // Upload API
 export const uploadApi = {
   uploadImage: (file: File, tipo: 'logo' | 'foto' | 'actividad') => {

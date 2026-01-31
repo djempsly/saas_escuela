@@ -19,6 +19,15 @@ import {
   UserX,
 } from 'lucide-react';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 interface Usuario {
   id: string;
   nombre: string;
@@ -88,8 +97,9 @@ export default function UsuariosPage() {
       setTempPassword(response.data.data?.tempPassword || '');
       setUsuarios([response.data.data?.user, ...usuarios]);
       setNewUser({ nombre: '', apellido: '', email: '', rol: 'ESTUDIANTE' });
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al crear usuario');
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al crear usuario');
     } finally {
       setIsCreating(false);
     }
@@ -101,8 +111,9 @@ export default function UsuariosPage() {
     try {
       const response = await usersApi.resetPasswordManual(userId);
       alert(`Nueva contraseña temporal: ${response.data.tempPassword}`);
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al resetear contraseña');
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al resetear contraseña');
     }
   };
 

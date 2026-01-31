@@ -11,6 +11,16 @@ import { institucionesApi } from '@/lib/api';
 import { ArrowLeft, Building2, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      errors?: Array<{ message: string }>;
+    };
+  };
+  message?: string;
+}
+
 const PAISES = [
   { value: 'DO', label: 'República Dominicana' },
   { value: 'HT', label: 'Haití' },
@@ -92,11 +102,12 @@ export default function NuevaInstitucionPage() {
       }
 
       router.push('/dashboard/admin/instituciones');
-    } catch (err: any) {
-      console.error('Error completo:', err.response?.data);
-      const errorMsg = err.response?.data?.errors
-        ? err.response.data.errors.map((e: any) => e.message).join(', ')
-        : err.response?.data?.message || 'Error al crear la institución';
+    } catch (err) {
+      const apiError = err as ApiError;
+      console.error('Error completo:', apiError.response?.data);
+      const errorMsg = apiError.response?.data?.errors
+        ? apiError.response.data.errors.map((e) => e.message).join(', ')
+        : apiError.response?.data?.message || 'Error al crear la institución';
       setError(errorMsg);
     } finally {
       setIsLoading(false);

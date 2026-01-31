@@ -8,6 +8,15 @@ import { Label } from '@/components/ui/label';
 import { ciclosApi } from '@/lib/api';
 import { Calendar, Plus, Loader2, CheckCircle, Circle } from 'lucide-react';
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 interface CicloLectivo {
   id: string;
   nombre: string;
@@ -48,8 +57,9 @@ export default function CiclosPage() {
       setCiclos([response.data, ...ciclos]);
       setShowModal(false);
       setNewCiclo({ nombre: '', fechaInicio: '', fechaFin: '', activo: false });
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al crear ciclo');
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al crear ciclo');
     }
   };
 
