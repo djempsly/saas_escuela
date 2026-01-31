@@ -1,10 +1,50 @@
 import { Router } from 'express';
-import { createUserHandler, resetUserPasswordManualHandler } from '../controllers/user.controller';
+import {
+  createUserHandler,
+  resetUserPasswordManualHandler,
+  getAllUsersHandler,
+  getUserByIdHandler,
+  updateProfileHandler,
+  updateUserHandler,
+  uploadPhotoHandler
+} from '../controllers/user.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { ROLES } from '../utils/zod.schemas';
+import { upload as uploadMiddleware } from '../middleware/upload.middleware';
 
 const router = Router();
+
+// Get all users (for institution) - Director, Coordinador, Secretaria can see users
+router.get(
+  '/',
+  authMiddleware,
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.SECRETARIA]),
+  getAllUsersHandler
+);
+
+// Update own profile - any authenticated user (MUST come before /:id)
+router.put(
+  '/profile',
+  authMiddleware,
+  uploadMiddleware.single('foto'),
+  updateProfileHandler
+);
+
+// Upload profile photo - any authenticated user (MUST come before /:id)
+router.post(
+  '/upload-photo',
+  authMiddleware,
+  uploadMiddleware.single('foto'),
+  uploadPhotoHandler
+);
+
+// Get user by ID
+router.get(
+  '/:id',
+  authMiddleware,
+  getUserByIdHandler
+);
 
 // Only a DIRECTOR can create users (Docente, Estudiante)
 router.post(
@@ -14,18 +54,20 @@ router.post(
   createUserHandler
 );
 
+// Update user by ID (Director, Admin)
+router.put(
+  '/:id',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  updateUserHandler
+);
+
 // Manual Password Reset (Admin, Director, Secretaria)
 router.post(
-    '/:id/reset-password',
-    authMiddleware,
-    // Assuming ROLES object in zod.schemas might not have SECRETARIA yet if it wasn't added previously.
-    // Based on previous reads, ROLES has ADMIN, DIRECTOR, DOCENTE, ESTUDIANTE.
-    // I should check if SECRETARIA is in ROLES.
-    // The prompt says "roles: ADMIN, DIRECTOR, SECRETARIA".
-    // I will add SECRETARIA to ROLES in zod.schemas first to be safe, or just use string literal if dynamic.
-    // But roleMiddleware expects keys of ROLES.
-    roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA]),
-    resetUserPasswordManualHandler
+  '/:id/reset-password',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA]),
+  resetUserPasswordManualHandler
 );
 
 export default router;

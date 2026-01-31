@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { registerSuperAdmin, login, forgotPassword, resetPassword } from '../services/auth.service';
-import { loginSchema, crearUsuarioSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/zod.schemas';
+import { registerSuperAdmin, login, forgotPassword, resetPassword, changePassword, manualResetPassword } from '../services/auth.service';
+import { loginSchema, crearUsuarioSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
@@ -84,6 +84,64 @@ export const resetPasswordHandler = async (req: Request, res: Response) => {
     // Errores de token son seguros para mostrar
     if (error.message.includes('Token') || error.message.includes('desactivado')) {
       return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const changePasswordHandler = async (req: Request, res: Response) => {
+  try {
+    const validatedData = changePasswordSchema.parse({ body: req.body });
+    const userId = req.user?.usuarioId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+
+    const result = await changePassword(userId, validatedData.body);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
+    }
+    // Errores específicos son seguros para mostrar
+    if (
+      error.message.includes('Contraseña actual') ||
+      error.message.includes('Usuario') ||
+      error.message.includes('desactivado')
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const manualResetPasswordHandler = async (req: Request, res: Response) => {
+  try {
+    const adminUserId = req.user?.usuarioId;
+    const { userId: targetUserId } = req.body;
+
+    if (!adminUserId) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'ID de usuario requerido' });
+    }
+
+    const result = await manualResetPassword(adminUserId, targetUserId);
+    return res.status(200).json({
+      message: 'Contraseña reseteada correctamente',
+      tempPassword: result.tempPassword,
+    });
+  } catch (error: any) {
+    // Errores de permisos son seguros para mostrar
+    if (
+      error.message.includes('permisos') ||
+      error.message.includes('Usuario') ||
+      error.message.includes('institución')
+    ) {
+      return res.status(403).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

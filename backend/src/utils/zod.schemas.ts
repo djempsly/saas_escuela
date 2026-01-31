@@ -39,6 +39,13 @@ export const resetPasswordSchema = z.object({
   }),
 });
 
+export const changePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1, 'Contraseña actual requerida'),
+    newPassword: z.string().min(6, 'Mínimo 6 caracteres'),
+  }),
+});
+
 export const institucionSchema = z.object({
   body: z.object({
     nombre: z.string().min(3, 'Nombre requerido'),
@@ -210,3 +217,4 @@ export type TomarAsistenciaInput = z.infer<typeof tomarAsistenciaSchema>['body']
 export type CalificacionInput = z.infer<typeof calificacionSchema>['body'];
 export type CalificacionTecnicaInput = z.infer<typeof calificacionTecnicaSchema>['body'];
 export type ActividadInput = z.infer<typeof actividadSchema>['body'];
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>['body'];

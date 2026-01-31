@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,24 @@ import { usersApi } from '@/lib/api';
 import { Loader2, Save, User } from 'lucide-react';
 import Image from 'next/image';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// Función para construir la URL completa de la imagen
+const getFullImageUrl = (url: string | null | undefined): string | null => {
+  if (!url) return null;
+  if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  // Si la URL comienza con /uploads, añadir el dominio del backend
+  return `${API_BASE_URL}${url}`;
+};
+
 export default function PerfilPage() {
   const { user, updateUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(user?.fotoUrl || null);
+  const initialFotoUrl = useMemo(() => getFullImageUrl(user?.fotoUrl), [user?.fotoUrl]);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(initialFotoUrl);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
@@ -48,12 +61,18 @@ export default function PerfilPage() {
       const response = await usersApi.updateProfile(data);
 
       // Actualizar store con nuevos datos
+      const newFotoUrl = response.data.fotoUrl || response.data.data?.fotoUrl;
       updateUser({
         nombre: formData.nombre,
         apellido: formData.apellido,
         email: formData.email,
-        fotoUrl: response.data.fotoUrl,
+        fotoUrl: newFotoUrl,
       });
+
+      // Actualizar preview con la URL completa
+      if (newFotoUrl) {
+        setFotoPreview(getFullImageUrl(newFotoUrl));
+      }
 
       setMessage({ type: 'success', text: 'Perfil actualizado correctamente' });
     } catch (error: any) {

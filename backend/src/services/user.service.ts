@@ -118,9 +118,12 @@ export const findUserById = async (id: string) => {
   });
 };
 
-export const findUsersByInstitucion = async (institucionId: string) => {
+export const findUsersByInstitucion = async (institucionId: string, role?: string) => {
   return prisma.user.findMany({
-    where: { institucionId },
+    where: {
+      institucionId,
+      ...(role && { role: role as Role })
+    },
     select: {
       id: true,
       nombre: true,
@@ -129,8 +132,98 @@ export const findUsersByInstitucion = async (institucionId: string) => {
       username: true,
       role: true,
       activo: true,
+      fotoUrl: true,
       createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
+  });
+};
+
+export const updateUserProfile = async (
+  userId: string,
+  data: { nombre?: string; apellido?: string; email?: string; fotoUrl?: string }
+) => {
+  // Verificar si el email ya está en uso por otro usuario
+  if (data.email) {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: data.email,
+        NOT: { id: userId },
+      },
+    });
+    if (existingUser) {
+      throw new Error('El correo electrónico ya está en uso');
+    }
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(data.nombre && { nombre: data.nombre }),
+      ...(data.apellido && { apellido: data.apellido }),
+      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl }),
+    },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      fotoUrl: true,
+      institucionId: true,
+    },
+  });
+};
+
+export const updateUserById = async (
+  userId: string,
+  data: { nombre?: string; apellido?: string; email?: string; activo?: boolean },
+  requesterInstitucionId: string | null,
+  requesterRole: string
+) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  // Verificar permisos multi-tenant
+  if (requesterRole !== Role.ADMIN && user.institucionId !== requesterInstitucionId) {
+    throw new Error('No tienes permisos para modificar este usuario');
+  }
+
+  // Verificar si el email ya está en uso
+  if (data.email) {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: data.email,
+        NOT: { id: userId },
+      },
+    });
+    if (existingUser) {
+      throw new Error('El correo electrónico ya está en uso');
+    }
+  }
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(data.nombre && { nombre: data.nombre }),
+      ...(data.apellido && { apellido: data.apellido }),
+      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.activo !== undefined && { activo: data.activo }),
+    },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      activo: true,
+      fotoUrl: true,
+    },
   });
 };

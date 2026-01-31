@@ -2,9 +2,19 @@
 
 export * from './types';
 export { ReportCardDocument } from './report-card-document';
+export {
+  PolitecnicoReportDocument,
+  defaultGradeColors as politecnicoGradeColors,
+  type PolitecnicoReportData,
+  type PolitecnicoConfig,
+  type CompetenciaCalificacion,
+  type ModuloTecnico,
+  type ResultadoAprendizaje,
+} from './politecnico-report';
 
 import { pdf } from '@react-pdf/renderer';
 import { ReportCardDocument } from './report-card-document';
+import { PolitecnicoReportDocument, PolitecnicoReportData, PolitecnicoConfig, defaultGradeColors as politecnicoDefaultColors } from './politecnico-report';
 import { ReportCardData, PDFConfig, getPaperSize, GradeColors } from './types';
 import { Locale } from '../i18n';
 
@@ -92,4 +102,67 @@ export const generateBulkReportCards = async (
   // Por simplicidad, devolvemos el primero
   // En implementación completa, combinaríamos todos los PDFs
   return generateReportCardBlob(students[0], config);
+};
+
+// ============================================
+// POLITÉCNICO REPORT FUNCTIONS
+// ============================================
+
+// Crear configuración por defecto para Politécnico
+export const createPolitecnicoConfig = (
+  grado: string,
+  locale: Locale = 'es'
+): PolitecnicoConfig => {
+  return {
+    locale,
+    gradeColors: politecnicoDefaultColors,
+    colorNotas: {
+      excelente: '#22c55e',
+      bueno: '#3b82f6',
+      regular: '#f59e0b',
+      deficiente: '#ef4444',
+    },
+  };
+};
+
+// Generar PDF de Politécnico como Blob
+export const generatePolitecnicoReportBlob = async (
+  data: PolitecnicoReportData,
+  config: PolitecnicoConfig
+): Promise<Blob> => {
+  const doc = <PolitecnicoReportDocument data={data} config={config} />;
+  const blob = await pdf(doc).toBlob();
+  return blob;
+};
+
+// Generar y descargar PDF de Politécnico
+export const downloadPolitecnicoReport = async (
+  data: PolitecnicoReportData,
+  config: PolitecnicoConfig,
+  filename?: string
+): Promise<void> => {
+  const blob = await generatePolitecnicoReportBlob(data, config);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `sabana_politecnico_${data.estudiante.nombre}_${data.estudiante.apellido}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Generar y abrir para imprimir PDF de Politécnico
+export const printPolitecnicoReport = async (
+  data: PolitecnicoReportData,
+  config: PolitecnicoConfig
+): Promise<void> => {
+  const blob = await generatePolitecnicoReportBlob(data, config);
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank');
+  if (printWindow) {
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }
 };

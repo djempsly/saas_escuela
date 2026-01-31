@@ -19,12 +19,15 @@ export default function CambiarPasswordPage() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
+    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+  const [showCurrent, setShowCurrent] = useState(false);
 
   // Validaciones de contraseña
   const validations = {
+    hasCurrentPassword: formData.currentPassword.length >= 1,
     minLength: formData.newPassword.length >= 8,
     hasUppercase: /[A-Z]/.test(formData.newPassword),
     hasLowercase: /[a-z]/.test(formData.newPassword),
@@ -48,8 +51,8 @@ export default function CambiarPasswordPage() {
     setError('');
 
     try {
-      // Usar el token para cambiar contraseña (sin token de reset)
-      await authApi.changePassword(formData.newPassword);
+      // Usar el token para cambiar contraseña
+      await authApi.changePassword(formData.currentPassword, formData.newPassword);
 
       // Actualizar el estado del usuario
       updateUser({ debeCambiarPassword: false });
@@ -84,6 +87,33 @@ export default function CambiarPasswordPage() {
                 {error}
               </div>
             )}
+
+            {/* Contraseña Actual */}
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Contraseña Actual (Temporal)</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="currentPassword"
+                  type={showCurrent ? 'text' : 'password'}
+                  value={formData.currentPassword}
+                  onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                  className="pl-10 pr-10"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ingresa la contraseña temporal que te fue asignada
+              </p>
+            </div>
 
             {/* Nueva Contraseña */}
             <div className="space-y-2">

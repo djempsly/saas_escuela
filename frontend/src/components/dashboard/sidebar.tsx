@@ -39,8 +39,8 @@ const menuItems = {
     { href: '/dashboard/usuarios', label: 'Usuarios', icon: Users },
     { href: '/dashboard/clases', label: 'Clases', icon: GraduationCap },
     { href: '/dashboard/ciclos', label: 'Ciclos Lectivos', icon: Calendar },
+    { href: '/dashboard/actividades', label: 'Actividades', icon: BookOpen },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
-    { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings },
   ],
   COORDINADOR: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },

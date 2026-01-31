@@ -3,14 +3,18 @@ import {
   registerSuperAdminHandler,
   loginHandler,
   forgotPasswordHandler,
-  resetPasswordHandler
+  resetPasswordHandler,
+  changePasswordHandler,
+  manualResetPasswordHandler
 } from '../controllers/auth.controller';
 import {
   loginLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
-  registerLimiter
+  registerLimiter,
+  changePasswordLimiter
 } from '../middleware/rateLimit.middleware';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -25,5 +29,11 @@ router.post('/forgot-password', forgotPasswordLimiter, forgotPasswordHandler);
 
 // Reset password - limitado
 router.post('/reset-password', resetPasswordLimiter, resetPasswordHandler);
+
+// Change password - requiere autenticación
+router.post('/change-password', authMiddleware, changePasswordLimiter, changePasswordHandler);
+
+// Manual reset password - requiere autenticación (ADMIN/DIRECTOR)
+router.post('/manual-reset-password', authMiddleware, changePasswordLimiter, manualResetPasswordHandler);
 
 export default router;

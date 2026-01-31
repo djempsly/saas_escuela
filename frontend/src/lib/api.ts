@@ -43,8 +43,10 @@ export const authApi = {
     api.post('/auth/forgot-password', { identificador }),
   resetPassword: (token: string, newPassword: string) =>
     api.post('/auth/reset-password', { token, newPassword }),
-  changePassword: (newPassword: string) =>
-    api.post('/auth/change-password', { newPassword }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/auth/change-password', { currentPassword, newPassword }),
+  manualResetPassword: (userId: string) =>
+    api.post('/auth/manual-reset-password', { userId }),
 };
 
 // Instituciones API

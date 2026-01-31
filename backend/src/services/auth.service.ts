@@ -2,7 +2,7 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
-import { LoginInput, CrearUsuarioInput } from '../utils/zod.schemas';
+import { LoginInput, CrearUsuarioInput, ChangePasswordInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 import { sendPasswordResetEmail } from './email.service';
 
@@ -96,6 +96,7 @@ export const login = async (input: LoginInput) => {
       username: user.username,
       role: user.role,
       institucionId: user.institucionId,
+      fotoUrl: user.fotoUrl,
     },
   };
 };
@@ -181,4 +182,70 @@ export const resetPassword = async (token: string, newPassword: string) => {
     }
     throw new Error('Token inválido o expirado');
   }
+};
+
+export const changePassword = async (userId: string, input: ChangePasswordInput) => {
+  const { currentPassword, newPassword } = input;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  // Verificar que el usuario esté activo
+  if (!user.activo) {
+    throw new Error('Usuario desactivado. Contacte al administrador.');
+  }
+
+  // Verificar contraseña actual
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isPasswordValid) {
+    throw new Error('Contraseña actual incorrecta');
+  }
+
+  // Hash de la nueva contraseña
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  // Actualizar contraseña y marcar que ya no debe cambiarla
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+      debeCambiarPassword: false,
+    },
+  });
+
+  return { message: 'Contraseña actualizada correctamente' };
+};
+
+export const manualResetPassword = async (adminUserId: string, targetUserId: string) => {
+  // Verificar que el admin tenga permisos
+  const adminUser = await prisma.user.findUnique({ where: { id: adminUserId } });
+  if (!adminUser || (adminUser.role !== Role.ADMIN && adminUser.role !== Role.DIRECTOR)) {
+    throw new Error('No tiene permisos para realizar esta acción');
+  }
+
+  const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!targetUser) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  // Si es DIRECTOR, solo puede resetear usuarios de su institución
+  if (adminUser.role === Role.DIRECTOR && adminUser.institucionId !== targetUser.institucionId) {
+    throw new Error('Solo puede resetear contraseñas de usuarios de su institución');
+  }
+
+  // Generar nueva contraseña temporal
+  const tempPassword = generateSecurePassword();
+  const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+  await prisma.user.update({
+    where: { id: targetUserId },
+    data: {
+      password: hashedPassword,
+      debeCambiarPassword: true,
+    },
+  });
+
+  return { tempPassword };
 };

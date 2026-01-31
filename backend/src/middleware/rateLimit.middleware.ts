@@ -70,3 +70,17 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/**
+ * Rate limiter para cambio de contraseña
+ * Limita a 5 intentos por hora por IP
+ */
+export const changePasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 5, // máximo 5 solicitudes
+  message: {
+    message: 'Demasiados intentos de cambio de contraseña. Por favor, intente de nuevo más tarde.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

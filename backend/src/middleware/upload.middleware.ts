@@ -15,10 +15,21 @@ const logosDir = path.join(uploadDir, 'logos');
   }
 });
 
+// Directorio para fotos de perfil
+const fotosDir = path.join(uploadDir, 'fotos');
+
+[fotosDir].forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
 // Configuración de almacenamiento
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (file.fieldname === 'imagen' || file.mimetype.startsWith('image/')) {
+    if (file.fieldname === 'foto') {
+      cb(null, fotosDir);
+    } else if (file.fieldname === 'imagen' || file.mimetype.startsWith('image/')) {
       cb(null, imagesDir);
     } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
       cb(null, videosDir);
@@ -44,7 +55,7 @@ const fileFilter = (
   const allowedImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const allowedVideos = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
-  if (file.fieldname === 'imagen' || file.fieldname === 'logo') {
+  if (file.fieldname === 'imagen' || file.fieldname === 'logo' || file.fieldname === 'foto') {
     if (allowedImages.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -85,8 +96,12 @@ export const uploadLogo = upload.single('logo');
 
 // Función helper para obtener URL del archivo
 export const getFileUrl = (file: Express.Multer.File): string => {
-  return `/uploads/${path.basename(path.dirname(file.path))}/${file.filename}`;
+  const subdir = path.basename(path.dirname(file.path));
+  return `/uploads/${subdir}/${file.filename}`;
 };
+
+// Middleware para subir foto de perfil
+export const uploadFoto = upload.single('foto');
 
 // Función para eliminar archivo
 export const deleteFile = (filePath: string): void => {

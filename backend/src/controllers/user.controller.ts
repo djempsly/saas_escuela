@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
-import { createUser, resetUserPasswordManual } from '../services/user.service';
+import { createUser, resetUserPasswordManual, findUsersByInstitucion, findUserById, updateUserProfile, updateUserById } from '../services/user.service';
 import { crearUsuarioSchema } from '../utils/zod.schemas';
 import { ROLES } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getFileUrl } from '../middleware/upload.middleware';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
@@ -75,6 +76,135 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
         error.message.includes('desactivado')) {
       return res.status(403).json({ message: error.message });
     }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getAllUsersHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.user.institucionId) {
+      return res.status(403).json({ message: 'Acción no permitida' });
+    }
+
+    const { role } = req.query as { role?: string };
+    const users = await findUsersByInstitucion(req.user.institucionId, role);
+
+    return res.status(200).json({ data: users });
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getUserByIdHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    const user = await findUserById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Verificar permisos multi-tenant
+    if (req.user.rol !== ROLES.ADMIN && user.institucionId !== req.user.institucionId) {
+      return res.status(403).json({ message: 'No tienes permisos para ver este usuario' });
+    }
+
+    return res.status(200).json({ data: user });
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const updateProfileHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    const { nombre, apellido, email } = req.body;
+    let fotoUrl: string | undefined = undefined;
+
+    // Si hay archivo subido
+    if (req.file) {
+      fotoUrl = getFileUrl(req.file);
+    }
+
+    const updatedUser = await updateUserProfile(req.user.usuarioId, {
+      nombre,
+      apellido,
+      email,
+      fotoUrl,
+    });
+
+    return res.status(200).json({
+      message: 'Perfil actualizado correctamente',
+      data: updatedUser,
+      fotoUrl: updatedUser.fotoUrl,
+    });
+  } catch (error: any) {
+    if (error.message.includes('correo electrónico ya está en uso')) {
+      return res.status(409).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const updateUserHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    const { nombre, apellido, email, activo } = req.body;
+
+    const updatedUser = await updateUserById(
+      id,
+      { nombre, apellido, email, activo },
+      req.user.institucionId || null,
+      req.user.rol
+    );
+
+    return res.status(200).json({
+      message: 'Usuario actualizado correctamente',
+      data: updatedUser,
+    });
+  } catch (error: any) {
+    if (error.message.includes('correo electrónico ya está en uso')) {
+      return res.status(409).json({ message: error.message });
+    }
+    if (error.message.includes('No tienes permisos') || error.message.includes('no encontrado')) {
+      return res.status(403).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const uploadPhotoHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se proporcionó ninguna imagen' });
+    }
+
+    const fotoUrl = getFileUrl(req.file);
+
+    const updatedUser = await updateUserProfile(req.user.usuarioId, { fotoUrl });
+
+    return res.status(200).json({
+      message: 'Foto actualizada correctamente',
+      fotoUrl: updatedUser.fotoUrl,
+    });
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
