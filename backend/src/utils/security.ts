@@ -1,20 +1,15 @@
 import crypto from 'crypto';
 
 /**
- * Genera una contraseña temporal segura usando crypto.randomBytes
- * @param length Longitud de la contraseña (default: 12)
- * @returns Contraseña alfanumérica segura
+ * Genera una contraseña temporal numérica simple
+ * @param length Longitud de la contraseña (default: 6)
+ * @returns Contraseña numérica de 6 dígitos
  */
-export const generateSecurePassword = (length: number = 12): string => {
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const randomBytes = crypto.randomBytes(length);
-  let password = '';
-
-  for (let i = 0; i < length; i++) {
-    password += charset[randomBytes[i] % charset.length];
-  }
-
-  return password;
+export const generateSecurePassword = (length: number = 6): string => {
+  // Generar un número aleatorio de 6 dígitos (entre 100000 y 999999)
+  const min = Math.pow(10, length - 1);
+  const max = Math.pow(10, length) - 1;
+  return crypto.randomInt(min, max).toString();
 };
 
 /**

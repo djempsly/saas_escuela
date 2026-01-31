@@ -30,10 +30,10 @@ export default function LoginPage() {
 
     try {
       const response = await authApi.login(formData.identificador, formData.password);
-      const { token, user, institucion } = response.data;
+      const { token, user, debeCambiarPassword } = response.data;
 
-      // Guardar usuario y token
-      login(user, token);
+      // Guardar usuario y token (incluyendo debeCambiarPassword)
+      login({ ...user, debeCambiarPassword }, token);
 
       // Si el usuario tiene institución, cargar branding
       if (user.institucionId) {
@@ -45,8 +45,10 @@ export default function LoginPage() {
         }
       }
 
-      // Redirigir según rol
-      if (user.role === 'ADMIN') {
+      // Redirigir según estado y rol
+      if (debeCambiarPassword) {
+        router.push('/dashboard/cambiar-password');
+      } else if (user.role === 'ADMIN') {
         router.push('/dashboard/admin');
       } else {
         router.push('/dashboard');
