@@ -80,9 +80,9 @@ export default function NuevoCobroPage() {
           ciclosApi.getAll(),
           cobrosApi.getConceptos(),
         ]);
-        setEstudiantes(estRes.data || []);
-        setCiclos(ciclosRes.data || []);
-        setConceptos(conceptosRes.data || []);
+        setEstudiantes(estRes.data?.data || estRes.data || []);
+        setCiclos(ciclosRes.data?.data || ciclosRes.data || []);
+        setConceptos(conceptosRes.data?.data || conceptosRes.data || []);
 
         // Set default ciclo to activo
         const cicloActivo = (ciclosRes.data || []).find((c: Ciclo) => c.activo);

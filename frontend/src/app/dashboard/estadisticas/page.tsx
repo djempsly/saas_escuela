@@ -71,10 +71,10 @@ export default function EstadisticasPage() {
           clasesApi.getAll(),
         ]);
 
-        const ciclosData = ciclosRes.data || [];
+        const ciclosData = ciclosRes.data?.data || ciclosRes.data || [];
         setCiclos(ciclosData);
-        setUsuarios(usersRes.data || []);
-        setClases(clasesRes.data || []);
+        setUsuarios(usersRes.data?.data || usersRes.data || []);
+        setClases(clasesRes.data?.data || clasesRes.data || []);
 
         const cicloActivo = ciclosData.find((c: Ciclo) => c.activo);
         if (cicloActivo) {
