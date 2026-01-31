@@ -2,11 +2,17 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/db';
-import { LoginInput, CrearUsuarioInput, ChangePasswordInput } from '../utils/zod.schemas';
+import { LoginInput, ChangePasswordInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 import { sendPasswordResetEmail } from './email.service';
 
-export const registerSuperAdmin = async (input: CrearUsuarioInput) => {
+interface RegisterSuperAdminInput {
+  nombre: string;
+  apellido: string;
+  email: string;
+}
+
+export const registerSuperAdmin = async (input: RegisterSuperAdminInput) => {
   const { email, nombre, apellido } = input;
 
   // SEGURIDAD: Verificar que no existan ADMINs previos

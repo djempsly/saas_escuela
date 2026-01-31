@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { registerSuperAdmin, login, forgotPassword, resetPassword, changePassword, manualResetPassword } from '../services/auth.service';
-import { loginSchema, crearUsuarioSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from '../utils/zod.schemas';
+import { loginSchema, registerSuperAdminSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
   try {
-    const validatedData = crearUsuarioSchema.parse({ body: req.body });
+    const validatedData = registerSuperAdminSchema.parse({ body: req.body });
     const result = await registerSuperAdmin(validatedData.body);
     return res.status(201).json({
       status: 'success',

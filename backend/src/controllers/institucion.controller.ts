@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Idioma } from '@prisma/client';
 import {
   createInstitucion,
   findInstituciones,
@@ -20,7 +21,9 @@ import { z } from 'zod';
 
 export const createInstitucionHandler = async (req: Request, res: Response) => {
   try {
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     const validatedData = institucionSchema.parse({ body: req.body });
+    console.log('Validated data:', JSON.stringify(validatedData.body, null, 2));
     const result = await createInstitucion(validatedData.body);
     return res.status(201).json({
       status: 'success',
@@ -30,14 +33,23 @@ export const createInstitucionHandler = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
+    console.error('Error creating institucion:', error);
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Errores de duplicado son seguros para mostrar
-    if (error.message.includes('ya está en uso') || error.message.includes('Sistema educativo')) {
+    if (error.message?.includes('ya está en uso') || error.message?.includes('Sistema educativo')) {
       return res.status(409).json({ message: error.message });
     }
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+    // Errores de Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ message: 'Ya existe un registro con estos datos únicos' });
+    }
+    // Mostrar el error real para debugging
+    return res.status(500).json({
+      message: error.message || sanitizeErrorMessage(error),
+      code: error.code,
+    });
   }
 };
 
@@ -93,16 +105,21 @@ export const deleteInstitucionHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params as { id: string };
 
-    // Validar que la institución existe
-    const existing = await findInstitucionById(id);
-    if (!existing) {
-      return res.status(404).json({ message: 'Institución no encontrada' });
-    }
-
     await deleteInstitucion(id);
     return res.status(204).send();
   } catch (error: any) {
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+    console.error('Error deleting institucion:', error);
+    // Errores de validación/negocio son seguros para mostrar
+    if (error.message?.includes('No se puede eliminar') || error.message?.includes('no encontrada')) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Errores de Prisma por foreign key
+    if (error.code === 'P2003' || error.code === 'P2014') {
+      return res.status(400).json({
+        message: 'No se puede eliminar la institución porque tiene registros asociados. Desactívela en lugar de eliminarla.',
+      });
+    }
+    return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
   }
 };
 
@@ -200,6 +217,7 @@ export const updateSensitiveConfigHandler = async (req: Request, res: Response) 
       nombre: z.string().min(3).optional(),
       slug: z.string().min(3).optional(),
       dominioPersonalizado: z.string().nullable().optional(),
+      idiomaPrincipal: z.nativeEnum(Idioma).optional(),
       activo: z.boolean().optional(),
       autogestionActividades: z.boolean().optional(),
     });

@@ -6,14 +6,14 @@ import { generateSecurePassword, generateUsername } from '../utils/security';
 interface CreateDirectorInput {
   nombre: string;
   apellido: string;
-  email: string;
+  email?: string;
 }
 
 // Crear director con contraseña temporal
 export const createDirector = async (input: CreateDirectorInput, institucionId?: string) => {
   const { nombre, apellido, email } = input;
 
-  // Verificar si el email ya existe
+  // Verificar si el email ya existe (solo si se proporcionó)
   if (email) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -32,7 +32,7 @@ export const createDirector = async (input: CreateDirectorInput, institucionId?:
         nombre,
         apellido,
         username,
-        email,
+        email: email || null,
         password: hashedPassword,
         role: Role.DIRECTOR,
         institucionId: institucionId || null,

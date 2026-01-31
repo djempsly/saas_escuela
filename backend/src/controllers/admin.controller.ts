@@ -16,7 +16,7 @@ const createDirectorSchema = z.object({
   body: z.object({
     nombre: z.string().min(1, 'Nombre requerido'),
     apellido: z.string().min(1, 'Apellido requerido'),
-    email: z.string().email('Email inválido'),
+    email: z.string().email('Email inválido').optional().or(z.literal('')),
     institucionId: z.string().optional(),
   }),
 });
@@ -164,10 +164,13 @@ export const createDirectorHandler = async (req: Request, res: Response) => {
 // GET /api/v1/admin/directores - Listar todos los directores
 export const getAllDirectoresHandler = async (req: Request, res: Response) => {
   try {
+    console.log('Fetching all directors...');
     const directores = await findAllDirectores();
+    console.log(`Found ${directores.length} directors`);
     return res.status(200).json({ data: directores });
   } catch (error: any) {
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+    console.error('Error fetching directors:', error);
+    return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
   }
 };
 

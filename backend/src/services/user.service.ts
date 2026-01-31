@@ -4,7 +4,7 @@ import prisma from '../config/db';
 import { CrearUsuarioInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 
-export const createUser = async (input: CrearUsuarioInput, institucionId: string) => {
+export const createUser = async (input: CrearUsuarioInput, institucionId: string | null) => {
   const { email, nombre, apellido, rol } = input;
 
   if (email) {
@@ -26,7 +26,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
       email: email || null,
       password: hashedPassword,
       role: rol as Role,
-      institucionId,
+      institucionId: institucionId || null,
       debeCambiarPassword: true,
     },
   });

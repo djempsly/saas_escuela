@@ -1,4 +1,4 @@
-import { Role, SistemaEducativo } from '@prisma/client';
+import { Role, SistemaEducativo, Idioma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { generateSecurePassword, generateUsername } from '../utils/security';
@@ -30,7 +30,7 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
 };
 
 export const createInstitucion = async (input: any) => {
-  const { director, colores, sistemaEducativo, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
+  const { director, directorId, colores, sistemaEducativo, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
 
   // Validate SistemaEducativo
   if (!sistemaEducativo || !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)) {
@@ -56,7 +56,59 @@ export const createInstitucion = async (input: any) => {
     }
   }
 
-  // Verificar si el email del director ya existe
+  // Caso 1: Usar director existente
+  if (directorId) {
+    const existingDirector = await prisma.user.findUnique({ where: { id: directorId } });
+    if (!existingDirector) {
+      throw new Error('Director no encontrado');
+    }
+    if (existingDirector.role !== Role.DIRECTOR) {
+      throw new Error('El usuario seleccionado no tiene rol de Director');
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Crear institución con director existente
+      const newInstitucion = await tx.institucion.create({
+        data: {
+          ...rest,
+          slug,
+          dominioPersonalizado: dominioPersonalizado || null,
+          autogestionActividades: autogestionActividades || false,
+          sistema: sistemaEducativo as SistemaEducativo,
+          idiomaPrincipal: idiomaPrincipal as Idioma || Idioma.ESPANOL,
+          colorPrimario: colores?.primario || '#000000',
+          colorSecundario: colores?.secundario || '#ffffff',
+          directorId: existingDirector.id,
+        },
+      });
+
+      // Actualizar director con nueva institucionId
+      await tx.user.update({
+        where: { id: existingDirector.id },
+        data: { institucionId: newInstitucion.id },
+      });
+
+      // Crear historial de director
+      await tx.historialDirector.create({
+        data: {
+          institucionId: newInstitucion.id,
+          directorId: existingDirector.id,
+          fechaInicio: new Date(),
+        },
+      });
+
+      return { institucion: newInstitucion, tempPassword: null };
+    });
+
+    return result;
+  }
+
+  // Caso 2: Crear nuevo director
+  if (!director) {
+    throw new Error('Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)');
+  }
+
+  // Verificar si el email del director ya existe (solo si se proporcionó)
   if (director.email) {
     const existingUser = await prisma.user.findUnique({
       where: { email: director.email }
@@ -77,7 +129,7 @@ export const createInstitucion = async (input: any) => {
         nombre: director.nombre,
         apellido: director.apellido,
         username,
-        email: director.email,
+        email: director.email || null,
         password: hashedPassword,
         role: Role.DIRECTOR,
         debeCambiarPassword: true,
@@ -92,6 +144,7 @@ export const createInstitucion = async (input: any) => {
         dominioPersonalizado: dominioPersonalizado || null,
         autogestionActividades: autogestionActividades || false,
         sistema: sistemaEducativo as SistemaEducativo,
+        idiomaPrincipal: idiomaPrincipal as Idioma || Idioma.ESPANOL,
         colorPrimario: colores?.primario || '#000000',
         colorSecundario: colores?.secundario || '#ffffff',
         directorId: newDirector.id,
@@ -165,8 +218,55 @@ export const updateInstitucion = async (id: string, input: any) => {
 };
 
 export const deleteInstitucion = async (id: string) => {
-  return prisma.institucion.delete({
+  // Verificar que la institución existe
+  const institucion = await prisma.institucion.findUnique({
     where: { id },
+    include: {
+      usuarios: { select: { id: true } },
+      niveles: { select: { id: true } },
+      clases: { select: { id: true } },
+    },
+  });
+
+  if (!institucion) {
+    throw new Error('Institución no encontrada');
+  }
+
+  // Verificar si tiene registros relacionados críticos
+  if (institucion.usuarios.length > 0 || institucion.niveles.length > 0 || institucion.clases.length > 0) {
+    throw new Error(
+      `No se puede eliminar la institución porque tiene registros asociados: ` +
+      `${institucion.usuarios.length} usuarios, ` +
+      `${institucion.niveles.length} niveles, ` +
+      `${institucion.clases.length} clases. ` +
+      `Desactive la institución en lugar de eliminarla.`
+    );
+  }
+
+  // Eliminar en transacción
+  return prisma.$transaction(async (tx) => {
+    // 1. Eliminar historial de directores
+    await tx.historialDirector.deleteMany({
+      where: { institucionId: id },
+    });
+
+    // 2. Desasociar el director de la institución
+    if (institucion.directorId) {
+      await tx.user.update({
+        where: { id: institucion.directorId },
+        data: { institucionId: null },
+      });
+    }
+
+    // 3. Eliminar actividades de la institución
+    await tx.actividad.deleteMany({
+      where: { institucionId: id },
+    });
+
+    // 4. Finalmente eliminar la institución
+    return tx.institucion.delete({
+      where: { id },
+    });
   });
 };
 
@@ -308,6 +408,7 @@ export const updateSensitiveConfig = async (
     nombre?: string;
     slug?: string;
     dominioPersonalizado?: string | null;
+    idiomaPrincipal?: Idioma;
     activo?: boolean;
     autogestionActividades?: boolean;
   }
@@ -346,6 +447,7 @@ export const updateSensitiveConfig = async (
       ...(input.nombre && { nombre: input.nombre }),
       ...(input.slug && { slug: generateSlug(input.slug) }),
       ...(input.dominioPersonalizado !== undefined && { dominioPersonalizado: input.dominioPersonalizado }),
+      ...(input.idiomaPrincipal && { idiomaPrincipal: input.idiomaPrincipal }),
       ...(input.activo !== undefined && { activo: input.activo }),
       ...(input.autogestionActividades !== undefined && { autogestionActividades: input.autogestionActividades }),
     },

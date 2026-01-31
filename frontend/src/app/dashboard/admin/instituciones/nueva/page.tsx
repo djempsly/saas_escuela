@@ -7,9 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { institucionesApi } from '@/lib/api';
-import { ArrowLeft, Building2, Loader2, Save, Globe, Check, X } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { institucionesApi, adminApi } from '@/lib/api';
+import { ArrowLeft, Building2, Loader2, Save, Globe, Check, X, UserPlus, Users } from 'lucide-react';
 import Link from 'next/link';
+
+interface Director {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email?: string;
+  institucionId?: string | null;
+}
 
 interface ApiError {
   response?: {
@@ -38,6 +53,18 @@ const SISTEMAS_EDUCATIVOS = {
   ],
 };
 
+const IDIOMAS_POR_PAIS = {
+  DO: [
+    { value: 'ESPANOL', label: 'Español' },
+    { value: 'INGLES', label: 'Inglés' },
+  ],
+  HT: [
+    { value: 'KREYOL', label: 'Kreyòl' },
+    { value: 'FRANCES', label: 'Français' },
+    { value: 'INGLES', label: 'English' },
+  ],
+};
+
 // Funcion para generar slug desde nombre
 const generateSlug = (nombre: string): string => {
   return nombre
@@ -57,6 +84,12 @@ export default function NuevaInstitucionPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  // Director selection state
+  const [directores, setDirectores] = useState<Director[]>([]);
+  const [loadingDirectores, setLoadingDirectores] = useState(false);
+  const [directorMode, setDirectorMode] = useState<'existing' | 'new'>('new');
+  const [selectedDirectorId, setSelectedDirectorId] = useState<string>('');
+
   // Validacion de slug y dominio
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [dominioStatus, setDominioStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -68,6 +101,7 @@ export default function NuevaInstitucionPage() {
     autogestionActividades: false,
     pais: 'DO' as 'DO' | 'HT',
     sistemaEducativo: 'SECUNDARIA_GENERAL_DO',
+    idiomaPrincipal: 'ESPANOL',
     colorPrimario: '#1a365d',
     colorSecundario: '#3182ce',
     director: {
@@ -76,6 +110,25 @@ export default function NuevaInstitucionPage() {
       email: '',
     },
   });
+
+  // Cargar directores disponibles (sin institucion asignada)
+  useEffect(() => {
+    const fetchDirectores = async () => {
+      setLoadingDirectores(true);
+      try {
+        const response = await adminApi.getAllDirectores();
+        const data = response.data?.data || [];
+        // Filtrar solo directores sin institucion asignada
+        const disponibles = data.filter((d: Director) => !d.institucionId);
+        setDirectores(disponibles);
+      } catch (err) {
+        console.error('Error cargando directores:', err);
+      } finally {
+        setLoadingDirectores(false);
+      }
+    };
+    fetchDirectores();
+  }, []);
 
   // Auto-generar slug cuando cambia el nombre
   const handleNombreChange = (nombre: string) => {
@@ -136,10 +189,11 @@ export default function NuevaInstitucionPage() {
     return () => clearTimeout(timer);
   }, [formData.dominioPersonalizado, checkDominioAvailability]);
 
-  // Actualizar sistema educativo cuando cambia el país
+  // Actualizar sistema educativo e idioma cuando cambia el país
   const handlePaisChange = (pais: 'DO' | 'HT') => {
     const defaultSistema = pais === 'DO' ? 'SECUNDARIA_GENERAL_DO' : 'PRIMARIA_HT';
-    setFormData({ ...formData, pais, sistemaEducativo: defaultSistema });
+    const defaultIdioma = pais === 'DO' ? 'ESPANOL' : 'KREYOL';
+    setFormData({ ...formData, pais, sistemaEducativo: defaultSistema, idiomaPrincipal: defaultIdioma });
   };
 
   const handleLogoChange = (file: File | null, previewUrl: string | null) => {
@@ -166,43 +220,91 @@ export default function NuevaInstitucionPage() {
       return;
     }
 
+    // Validar que se haya seleccionado o ingresado un director
+    if (directorMode === 'existing' && !selectedDirectorId) {
+      setError('Debe seleccionar un director existente');
+      setIsLoading(false);
+      return;
+    }
+
+    if (directorMode === 'new' && (!formData.director.nombre || !formData.director.apellido)) {
+      setError('Debe ingresar nombre y apellido del nuevo director');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Enviar JSON directamente (el logo se sube por separado después)
-      const payload = {
+      // Construir payload segun el modo de director
+      const payload: Record<string, unknown> = {
         nombre: formData.nombre,
-        slug: formData.slug,
-        dominioPersonalizado: formData.dominioPersonalizado || null,
-        autogestionActividades: formData.autogestionActividades,
         pais: formData.pais,
         sistemaEducativo: formData.sistemaEducativo,
+        idiomaPrincipal: formData.idiomaPrincipal,
+        autogestionActividades: formData.autogestionActividades,
         colores: {
           primario: formData.colorPrimario,
           secundario: formData.colorSecundario,
         },
-        director: formData.director,
       };
+
+      // Solo agregar slug si tiene valor
+      if (formData.slug) {
+        payload.slug = formData.slug;
+      }
+
+      // Solo agregar dominio si tiene valor
+      if (formData.dominioPersonalizado) {
+        payload.dominioPersonalizado = formData.dominioPersonalizado;
+      }
+
+      if (directorMode === 'existing') {
+        payload.directorId = selectedDirectorId;
+      } else {
+        const directorData: Record<string, string> = {
+          nombre: formData.director.nombre,
+          apellido: formData.director.apellido,
+        };
+        // Solo agregar email si tiene valor
+        if (formData.director.email) {
+          directorData.email = formData.director.email;
+        }
+        payload.director = directorData;
+      }
 
       const response = await institucionesApi.createJson(payload);
 
-      // Si hay logo, subirlo después de crear la institución
+      // Si hay logo, subirlo despues de crear la institucion
       if (logoFile && response.data?.data?.institucion?.id) {
         const logoData = new FormData();
         logoData.append('logo', logoFile);
         await institucionesApi.updateConfig(response.data.data.institucion.id, logoData);
       }
 
-      // Mostrar contraseña temporal del director
+      // Mostrar contrasena temporal del director (solo si se creo uno nuevo)
       if (response.data?.data?.tempPassword) {
         alert(`Institucion creada exitosamente.\n\nContrasena temporal del director: ${response.data.data.tempPassword}\n\nGuardela en un lugar seguro.`);
+      } else {
+        alert('Institucion creada exitosamente.');
       }
 
       router.push('/dashboard/admin/instituciones');
     } catch (err) {
       const apiError = err as ApiError;
-      console.error('Error completo:', apiError.response?.data);
-      const errorMsg = apiError.response?.data?.errors
-        ? apiError.response.data.errors.map((e) => e.message).join(', ')
-        : apiError.response?.data?.message || 'Error al crear la institucion';
+      console.error('Error completo:', apiError);
+
+      // Mejorar extraccion del mensaje de error
+      let errorMsg = 'Error al crear la institucion';
+
+      if (apiError.response?.data) {
+        if (apiError.response.data.errors && Array.isArray(apiError.response.data.errors)) {
+          errorMsg = apiError.response.data.errors.map((e) => e.message).join(', ');
+        } else if (apiError.response.data.message) {
+          errorMsg = apiError.response.data.message;
+        }
+      } else if (apiError.message) {
+        errorMsg = apiError.message;
+      }
+
       setError(errorMsg);
     } finally {
       setIsLoading(false);
@@ -365,8 +467,8 @@ export default function NuevaInstitucionPage() {
               </div>
             </div>
 
-            {/* País y Sistema */}
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* País, Sistema e Idioma */}
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="pais">País *</Label>
                 <select
@@ -399,6 +501,26 @@ export default function NuevaInstitucionPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="idioma">Idioma Principal *</Label>
+                <select
+                  id="idioma"
+                  value={formData.idiomaPrincipal}
+                  onChange={(e) => setFormData({ ...formData, idiomaPrincipal: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                >
+                  {IDIOMAS_POR_PAIS[formData.pais].map((i) => (
+                    <option key={i.value} value={i.value}>
+                      {i.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Idioma por defecto de la landing page
+                </p>
               </div>
             </div>
 
@@ -450,61 +572,137 @@ export default function NuevaInstitucionPage() {
           <CardHeader>
             <CardTitle>Director/a de la Institución</CardTitle>
             <CardDescription>
-              Se creará una cuenta automáticamente para el director
+              Selecciona un director existente o crea uno nuevo
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="directorNombre">Nombre *</Label>
-                <Input
-                  id="directorNombre"
-                  value={formData.director.nombre}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      director: { ...formData.director, nombre: e.target.value },
-                    })
-                  }
-                  placeholder="Nombre del director"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="directorApellido">Apellido *</Label>
-                <Input
-                  id="directorApellido"
-                  value={formData.director.apellido}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      director: { ...formData.director, apellido: e.target.value },
-                    })
-                  }
-                  placeholder="Apellido del director"
-                  required
-                />
-              </div>
+            {/* Selector de modo */}
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+              <Button
+                type="button"
+                variant={directorMode === 'existing' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1"
+                onClick={() => setDirectorMode('existing')}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Director Existente
+              </Button>
+              <Button
+                type="button"
+                variant={directorMode === 'new' ? 'default' : 'ghost'}
+                size="sm"
+                className="flex-1"
+                onClick={() => setDirectorMode('new')}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Crear Nuevo
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="directorEmail">Correo Electrónico *</Label>
-              <Input
-                id="directorEmail"
-                type="email"
-                value={formData.director.email}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    director: { ...formData.director, email: e.target.value },
-                  })
-                }
-                placeholder="director@escuela.com"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Se enviará la contraseña temporal a este correo
-              </p>
-            </div>
+
+            {directorMode === 'existing' ? (
+              <div className="space-y-2">
+                <Label>Seleccionar Director *</Label>
+                {loadingDirectores ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Cargando directores...
+                  </div>
+                ) : directores.length === 0 ? (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-sm">
+                    No hay directores disponibles. Todos los directores ya tienen institucion asignada.
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="text-amber-700 underline ml-2 p-0"
+                      onClick={() => setDirectorMode('new')}
+                    >
+                      Crear uno nuevo
+                    </Button>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedDirectorId}
+                    onValueChange={setSelectedDirectorId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar un director..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {directores.map((director) => (
+                        <SelectItem key={director.id} value={director.id}>
+                          {director.nombre} {director.apellido}
+                          {director.email && (
+                            <span className="text-muted-foreground ml-2">
+                              ({director.email})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Solo se muestran directores que no tienen institucion asignada
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="directorNombre">Nombre *</Label>
+                    <Input
+                      id="directorNombre"
+                      value={formData.director.nombre}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          director: { ...formData.director, nombre: e.target.value },
+                        })
+                      }
+                      placeholder="Nombre del director"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="directorApellido">Apellido *</Label>
+                    <Input
+                      id="directorApellido"
+                      value={formData.director.apellido}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          director: { ...formData.director, apellido: e.target.value },
+                        })
+                      }
+                      placeholder="Apellido del director"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="directorEmail">
+                    Correo Electronico
+                    <span className="text-xs text-muted-foreground ml-2">(opcional)</span>
+                  </Label>
+                  <Input
+                    id="directorEmail"
+                    type="email"
+                    value={formData.director.email}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        director: { ...formData.director, email: e.target.value },
+                      })
+                    }
+                    placeholder="director@escuela.com"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si se proporciona, se enviara la contrasena temporal a este correo.
+                    Si no, debera compartir la contrasena manualmente.
+                  </p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

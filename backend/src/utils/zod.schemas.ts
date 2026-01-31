@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Role, Pais, SistemaEducativo, TipoMateria, EstadoAsistencia } from '@prisma/client';
+import { Role, Pais, SistemaEducativo, TipoMateria, EstadoAsistencia, Idioma } from '@prisma/client';
 
 // Re-export Enums as objects to ensure they are available as values and types
 export const ROLES = {
@@ -46,22 +46,41 @@ export const changePasswordSchema = z.object({
   }),
 });
 
+// Schema específico para registro de Super Admin (setup inicial)
+export const registerSuperAdminSchema = z.object({
+  body: z.object({
+    nombre: z.string().min(1, 'Nombre requerido'),
+    apellido: z.string().min(1, 'Apellido requerido'),
+    email: z.string().email('Email inválido'),
+  }),
+});
+
 export const institucionSchema = z.object({
   body: z.object({
     nombre: z.string().min(3, 'Nombre requerido'),
     pais: z.nativeEnum(Pais),
     sistemaEducativo: z.nativeEnum(SistemaEducativo),
-    logo: z.string().optional(),
+    idiomaPrincipal: z.nativeEnum(Idioma).optional(),
+    logo: z.string().optional().nullable(),
+    slug: z.string().min(3).optional().nullable(),
+    dominioPersonalizado: z.string().optional().nullable(),
+    autogestionActividades: z.boolean().optional(),
     colores: z.object({
         primario: z.string(),
         secundario: z.string()
     }).optional(),
+    // Opción 1: Usar director existente
+    directorId: z.string().optional().nullable(),
+    // Opción 2: Crear nuevo director (email ahora es opcional)
     director: z.object({
       nombre: z.string().min(1),
       apellido: z.string().min(1),
-      email: z.string().email()
-    })
-  }),
+      email: z.string().email().optional().nullable().or(z.literal(''))
+    }).optional().nullable()
+  }).refine(
+    (data) => data.directorId || data.director,
+    { message: 'Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)' }
+  ),
 });
 
 // --- USER MANAGEMENT ---

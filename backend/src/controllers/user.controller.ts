@@ -114,11 +114,22 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
 
 export const getAllUsersHandler = async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.institucionId) {
+    if (!req.user) {
       return res.status(403).json({ message: 'Acción no permitida' });
     }
 
     const { role } = req.query as { role?: string };
+
+    // ADMIN puede ver usuarios globalmente (usa admin routes para eso)
+    // Para esta ruta, ADMIN sin institucionId retorna array vacío
+    if (!req.user.institucionId) {
+      if (req.user.rol === ROLES.ADMIN) {
+        // SuperAdmin should use /admin/usuarios for global users
+        return res.status(200).json({ data: [] });
+      }
+      return res.status(403).json({ message: 'Acción no permitida' });
+    }
+
     const users = await findUsersByInstitucion(req.user.institucionId, role);
 
     return res.status(200).json({ data: users });

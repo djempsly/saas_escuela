@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { institucionesApi } from '@/lib/api';
@@ -14,9 +14,20 @@ import {
   Loader2,
   Eye,
   Users,
+  Power,
+  PowerOff,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
 
 interface Institucion {
   id: string;
@@ -26,6 +37,7 @@ interface Institucion {
   logoUrl?: string;
   colorPrimario?: string;
   activo: boolean;
+  slug?: string;
   _count?: {
     users: number;
   };
@@ -35,6 +47,7 @@ export default function AdminInstitucionesPage() {
   const [instituciones, setInstituciones] = useState<Institucion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     fetchInstituciones();
@@ -51,16 +64,49 @@ export default function AdminInstitucionesPage() {
     }
   };
 
+  const handleToggleActivo = async (inst: Institucion) => {
+    try {
+      setMessage(null);
+      await institucionesApi.updateSensitive(inst.id, { activo: !inst.activo });
+      setInstituciones(
+        instituciones.map((i) =>
+          i.id === inst.id ? { ...i, activo: !inst.activo } : i
+        )
+      );
+      setMessage({
+        type: 'success',
+        text: `Institucion ${!inst.activo ? 'activada' : 'desactivada'} correctamente`,
+      });
+    } catch (error) {
+      const apiError = error as ApiError;
+      setMessage({
+        type: 'error',
+        text: apiError.response?.data?.message || 'Error al cambiar el estado',
+      });
+    }
+  };
+
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta institución? Esta acción no se puede deshacer.')) {
+    const inst = instituciones.find((i) => i.id === id);
+    if (!confirm(
+      `¿Estas seguro de eliminar "${inst?.nombre}"?\n\n` +
+      `Esta accion no se puede deshacer. Si la institucion tiene usuarios u otros datos, ` +
+      `considera desactivarla en lugar de eliminarla.`
+    )) {
       return;
     }
     try {
+      setMessage(null);
       await institucionesApi.delete(id);
       setInstituciones(instituciones.filter((i) => i.id !== id));
+      setMessage({ type: 'success', text: 'Institucion eliminada correctamente' });
     } catch (error) {
+      const apiError = error as ApiError;
       console.error('Error eliminando:', error);
-      alert('Error al eliminar la institución');
+      setMessage({
+        type: 'error',
+        text: apiError.response?.data?.message || 'Error al eliminar la institucion',
+      });
     }
   };
 
@@ -99,13 +145,26 @@ export default function AdminInstitucionesPage() {
         </Link>
       </div>
 
-      {/* Búsqueda */}
+      {/* Mensaje */}
+      {message && (
+        <div
+          className={`p-4 rounded-md text-sm ${
+            message.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      {/* Busqueda */}
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre o país..."
+              placeholder="Buscar por nombre o pais..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -179,20 +238,30 @@ export default function AdminInstitucionesPage() {
                   {/* Acciones */}
                   <div className="flex gap-2">
                     <Link href={`/dashboard/admin/instituciones/${inst.id}`}>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" title="Ver detalles">
                         <Eye className="w-4 h-4" />
                       </Button>
                     </Link>
                     <Link href={`/dashboard/admin/instituciones/${inst.id}/editar`}>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" title="Editar">
                         <Edit className="w-4 h-4" />
                       </Button>
                     </Link>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className={inst.activo ? 'text-amber-500 hover:text-amber-600' : 'text-green-500 hover:text-green-600'}
+                      onClick={() => handleToggleActivo(inst)}
+                      title={inst.activo ? 'Desactivar' : 'Activar'}
+                    >
+                      {inst.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="text-red-500 hover:text-red-600"
                       onClick={() => handleDelete(inst.id)}
+                      title="Eliminar"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
