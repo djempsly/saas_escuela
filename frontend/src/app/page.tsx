@@ -35,8 +35,9 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchActividades = async () => {
       try {
+        // Solo cargar actividades globales (sin institucionId)
         const response = await actividadesApi.getAll(6);
-        setActividades(response.data);
+        setActividades(response.data || []);
       } catch (error) {
         console.error('Error cargando actividades:', error);
       } finally {

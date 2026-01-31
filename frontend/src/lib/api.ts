@@ -49,10 +49,41 @@ export const authApi = {
     api.post('/auth/manual-reset-password', { userId }),
 };
 
+// Admin API (Super Admin)
+export const adminApi = {
+  // Usuarios
+  getAllUsers: (filters?: { institucionId?: string; role?: string; activo?: string; page?: number; limit?: number }) =>
+    api.get('/admin/usuarios', { params: filters }),
+  getUserStats: () =>
+    api.get('/admin/usuarios/stats'),
+  forceResetPassword: (userId: string) =>
+    api.post(`/admin/usuarios/${userId}/force-reset`),
+
+  // Directores
+  getAllDirectores: () =>
+    api.get('/admin/directores'),
+  createDirector: (data: { nombre: string; apellido: string; email: string; institucionId?: string }) =>
+    api.post('/admin/directores', data),
+  reassignDirector: (id: string, data: { newInstitucionId: string; motivo?: string }) =>
+    api.put(`/admin/directores/${id}/reasignar`, data),
+
+  // Historial
+  getDirectorHistory: (institucionId: string) =>
+    api.get(`/admin/instituciones/${institucionId}/historial`),
+};
+
 // Instituciones API
 export const institucionesApi = {
   getBranding: (id: string) =>
     api.get(`/instituciones/${id}/branding`),
+  getBrandingBySlug: (slug: string) =>
+    api.get(`/instituciones/slug/${slug}/branding`),
+  getBrandingByDominio: (dominio: string) =>
+    api.get(`/instituciones/dominio/${dominio}/branding`),
+  checkSlug: (slug: string, excludeId?: string) =>
+    api.get(`/instituciones/check-slug/${slug}`, { params: { excludeId } }),
+  checkDominio: (dominio: string, excludeId?: string) =>
+    api.get(`/instituciones/check-dominio/${dominio}`, { params: { excludeId } }),
   getAll: () =>
     api.get('/instituciones'),
   getById: (id: string) =>
@@ -73,6 +104,8 @@ export const institucionesApi = {
     api.patch(`/instituciones/${id}/config`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  updateSensitive: (id: string, data: any) =>
+    api.patch(`/instituciones/${id}/sensitive`, data),
   delete: (id: string) =>
     api.delete(`/instituciones/${id}`),
 };
@@ -83,8 +116,22 @@ export const actividadesApi = {
     api.get('/actividades', { params: { limit } }),
   getById: (id: string) =>
     api.get(`/actividades/${id}`),
-  search: (q: string) =>
-    api.get('/actividades/search', { params: { q } }),
+  search: (q: string, institucionId?: string) =>
+    api.get('/actividades/search', { params: { q, institucionId } }),
+  getBySlug: (slug: string, limit?: number) =>
+    api.get(`/actividades/institucion/${slug}`, { params: { limit } }),
+  getByInstitucionId: (id: string, limit?: number) =>
+    api.get(`/actividades/institucion-id/${id}`, { params: { limit } }),
+  create: (data: FormData) =>
+    api.post('/actividades', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  update: (id: string, data: FormData) =>
+    api.put(`/actividades/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  delete: (id: string) =>
+    api.delete(`/actividades/${id}`),
 };
 
 // Clases API

@@ -7,6 +7,11 @@ import {
   deleteInstitucion,
   getInstitucionBranding,
   updateInstitucionConfig,
+  getInstitucionBrandingBySlug,
+  getInstitucionBrandingByDominio,
+  updateSensitiveConfig,
+  checkSlugAvailability,
+  checkDominioAvailability,
 } from '../services/institucion.service';
 import { getFileUrl } from '../middleware/upload.middleware';
 import { institucionSchema } from '../utils/zod.schemas';
@@ -148,6 +153,96 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
     if (error.message.includes('no encontrada')) {
       return res.status(404).json({ message: error.message });
     }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// ===== NUEVOS HANDLERS PARA SUPER ADMIN =====
+
+// GET /api/v1/instituciones/slug/:slug/branding - Obtener branding por slug (público)
+export const getBrandingBySlugHandler = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params as { slug: string };
+    const branding = await getInstitucionBrandingBySlug(slug);
+
+    if (!branding) {
+      return res.status(404).json({ message: 'Institución no encontrada' });
+    }
+
+    return res.status(200).json(branding);
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// GET /api/v1/instituciones/dominio/:dominio/branding - Obtener branding por dominio (público)
+export const getBrandingByDominioHandler = async (req: Request, res: Response) => {
+  try {
+    const { dominio } = req.params as { dominio: string };
+    const branding = await getInstitucionBrandingByDominio(dominio);
+
+    if (!branding) {
+      return res.status(404).json({ message: 'Institución no encontrada' });
+    }
+
+    return res.status(200).json(branding);
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// PATCH /api/v1/instituciones/:id/sensitive - Actualizar configuración sensible (Solo ADMIN)
+export const updateSensitiveConfigHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    const sensitiveSchema = z.object({
+      nombre: z.string().min(3).optional(),
+      slug: z.string().min(3).optional(),
+      dominioPersonalizado: z.string().nullable().optional(),
+      activo: z.boolean().optional(),
+      autogestionActividades: z.boolean().optional(),
+    });
+
+    const validated = sensitiveSchema.parse(req.body);
+    const result = await updateSensitiveConfig(id, validated);
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (error.message.includes('no encontrada') || error.message.includes('ya está en uso')) {
+      return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// GET /api/v1/instituciones/check-slug/:slug - Verificar disponibilidad de slug
+export const checkSlugHandler = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params as { slug: string };
+    const { excludeId } = req.query as { excludeId?: string };
+
+    const available = await checkSlugAvailability(slug, excludeId);
+
+    return res.status(200).json({ available, slug });
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// GET /api/v1/instituciones/check-dominio/:dominio - Verificar disponibilidad de dominio
+export const checkDominioHandler = async (req: Request, res: Response) => {
+  try {
+    const { dominio } = req.params as { dominio: string };
+    const { excludeId } = req.query as { excludeId?: string };
+
+    const available = await checkDominioAvailability(dominio, excludeId);
+
+    return res.status(200).json({ available, dominio });
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

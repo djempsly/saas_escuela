@@ -14,11 +14,15 @@ import tareaRoutes from './tarea.routes';
 import eventoRoutes from './evento.routes';
 import mensajeRoutes from './mensaje.routes';
 import cobroRoutes from './cobro.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router();
 
 // Rutas de autenticación
 router.use('/auth', authRoutes);
+
+// Rutas de administrador (Super Admin)
+router.use('/admin', adminRoutes);
 
 // Rutas de instituciones
 router.use('/instituciones', institucionRoutes);

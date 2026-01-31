@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { institucionesApi } from '@/lib/api';
-import { ArrowLeft, Building2, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Building2, Loader2, Save, Globe, Check, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface ApiError {
@@ -22,20 +22,32 @@ interface ApiError {
 }
 
 const PAISES = [
-  { value: 'DO', label: 'República Dominicana' },
-  { value: 'HT', label: 'Haití' },
+  { value: 'DO', label: 'Republica Dominicana' },
+  { value: 'HT', label: 'Haiti' },
 ];
 
 const SISTEMAS_EDUCATIVOS = {
   DO: [
     { value: 'PRIMARIA_DO', label: 'Primaria' },
     { value: 'SECUNDARIA_GENERAL_DO', label: 'Secundaria General' },
-    { value: 'POLITECNICO_DO', label: 'Politécnico' },
+    { value: 'POLITECNICO_DO', label: 'Politecnico' },
   ],
   HT: [
     { value: 'PRIMARIA_HT', label: 'Primaria' },
     { value: 'SECUNDARIA_HT', label: 'Secundaria' },
   ],
+};
+
+// Funcion para generar slug desde nombre
+const generateSlug = (nombre: string): string => {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 };
 
 export default function NuevaInstitucionPage() {
@@ -45,8 +57,15 @@ export default function NuevaInstitucionPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  // Validacion de slug y dominio
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [dominioStatus, setDominioStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
   const [formData, setFormData] = useState({
     nombre: '',
+    slug: '',
+    dominioPersonalizado: '',
+    autogestionActividades: false,
     pais: 'DO' as 'DO' | 'HT',
     sistemaEducativo: 'SECUNDARIA_GENERAL_DO',
     colorPrimario: '#1a365d',
@@ -57,6 +76,65 @@ export default function NuevaInstitucionPage() {
       email: '',
     },
   });
+
+  // Auto-generar slug cuando cambia el nombre
+  const handleNombreChange = (nombre: string) => {
+    const newSlug = generateSlug(nombre);
+    setFormData({ ...formData, nombre, slug: newSlug });
+    setSlugStatus('idle');
+  };
+
+  // Verificar disponibilidad de slug
+  const checkSlugAvailability = useCallback(async (slug: string) => {
+    if (!slug || slug.length < 3) {
+      setSlugStatus('idle');
+      return;
+    }
+
+    setSlugStatus('checking');
+    try {
+      const response = await institucionesApi.checkSlug(slug);
+      setSlugStatus(response.data.available ? 'available' : 'taken');
+    } catch {
+      setSlugStatus('idle');
+    }
+  }, []);
+
+  // Verificar disponibilidad de dominio
+  const checkDominioAvailability = useCallback(async (dominio: string) => {
+    if (!dominio) {
+      setDominioStatus('idle');
+      return;
+    }
+
+    setDominioStatus('checking');
+    try {
+      const response = await institucionesApi.checkDominio(dominio);
+      setDominioStatus(response.data.available ? 'available' : 'taken');
+    } catch {
+      setDominioStatus('idle');
+    }
+  }, []);
+
+  // Debounce para verificar slug
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.slug) {
+        checkSlugAvailability(formData.slug);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.slug, checkSlugAvailability]);
+
+  // Debounce para verificar dominio
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.dominioPersonalizado) {
+        checkDominioAvailability(formData.dominioPersonalizado);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.dominioPersonalizado, checkDominioAvailability]);
 
   // Actualizar sistema educativo cuando cambia el país
   const handlePaisChange = (pais: 'DO' | 'HT') => {
@@ -74,10 +152,27 @@ export default function NuevaInstitucionPage() {
     setIsLoading(true);
     setError('');
 
+    // Validar slug disponible
+    if (slugStatus === 'taken') {
+      setError('El slug ya esta en uso por otra institucion');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validar dominio disponible si se proporciono
+    if (formData.dominioPersonalizado && dominioStatus === 'taken') {
+      setError('El dominio personalizado ya esta en uso');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Enviar JSON directamente (el logo se sube por separado después)
       const payload = {
         nombre: formData.nombre,
+        slug: formData.slug,
+        dominioPersonalizado: formData.dominioPersonalizado || null,
+        autogestionActividades: formData.autogestionActividades,
         pais: formData.pais,
         sistemaEducativo: formData.sistemaEducativo,
         colores: {
@@ -98,7 +193,7 @@ export default function NuevaInstitucionPage() {
 
       // Mostrar contraseña temporal del director
       if (response.data?.data?.tempPassword) {
-        alert(`Institución creada exitosamente.\n\nContraseña temporal del director: ${response.data.data.tempPassword}\n\nGuárdela en un lugar seguro.`);
+        alert(`Institucion creada exitosamente.\n\nContrasena temporal del director: ${response.data.data.tempPassword}\n\nGuardela en un lugar seguro.`);
       }
 
       router.push('/dashboard/admin/instituciones');
@@ -107,7 +202,7 @@ export default function NuevaInstitucionPage() {
       console.error('Error completo:', apiError.response?.data);
       const errorMsg = apiError.response?.data?.errors
         ? apiError.response.data.errors.map((e) => e.message).join(', ')
-        : apiError.response?.data?.message || 'Error al crear la institución';
+        : apiError.response?.data?.message || 'Error al crear la institucion';
       setError(errorMsg);
     } finally {
       setIsLoading(false);
@@ -163,14 +258,111 @@ export default function NuevaInstitucionPage() {
 
             {/* Nombre */}
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre de la Institución *</Label>
+              <Label htmlFor="nombre">Nombre de la Institucion *</Label>
               <Input
                 id="nombre"
                 value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                placeholder="Ej: Colegio San José"
+                onChange={(e) => handleNombreChange(e.target.value)}
+                placeholder="Ej: Colegio San Jose"
                 required
               />
+            </div>
+
+            {/* Slug */}
+            <div className="space-y-2">
+              <Label htmlFor="slug">
+                URL Amigable (Slug) *
+                <span className="text-xs text-muted-foreground ml-2">
+                  Se usa para acceder a la landing: /slug
+                </span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => {
+                    setFormData({ ...formData, slug: generateSlug(e.target.value) });
+                    setSlugStatus('idle');
+                  }}
+                  placeholder="colegio-san-jose"
+                  required
+                  className="pr-10"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {slugStatus === 'checking' && (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
+                  {slugStatus === 'available' && (
+                    <Check className="w-4 h-4 text-green-600" />
+                  )}
+                  {slugStatus === 'taken' && (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                </div>
+              </div>
+              {slugStatus === 'taken' && (
+                <p className="text-xs text-red-600">Este slug ya esta en uso</p>
+              )}
+              {slugStatus === 'available' && (
+                <p className="text-xs text-green-600">Slug disponible</p>
+              )}
+            </div>
+
+            {/* Dominio Personalizado */}
+            <div className="space-y-2">
+              <Label htmlFor="dominio">
+                <Globe className="w-4 h-4 inline mr-1" />
+                Dominio Personalizado (opcional)
+              </Label>
+              <div className="relative">
+                <Input
+                  id="dominio"
+                  value={formData.dominioPersonalizado}
+                  onChange={(e) => {
+                    setFormData({ ...formData, dominioPersonalizado: e.target.value });
+                    setDominioStatus('idle');
+                  }}
+                  placeholder="miescuela.edu.do"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {dominioStatus === 'checking' && (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
+                  {dominioStatus === 'available' && formData.dominioPersonalizado && (
+                    <Check className="w-4 h-4 text-green-600" />
+                  )}
+                  {dominioStatus === 'taken' && (
+                    <X className="w-4 h-4 text-red-600" />
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Si configura un dominio, los usuarios podran acceder directamente desde ese dominio
+              </p>
+              {dominioStatus === 'taken' && (
+                <p className="text-xs text-red-600">Este dominio ya esta en uso</p>
+              )}
+            </div>
+
+            {/* Autogestion de Actividades */}
+            <div className="flex items-center space-x-3 p-4 bg-slate-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="autogestion"
+                checked={formData.autogestionActividades}
+                onChange={(e) =>
+                  setFormData({ ...formData, autogestionActividades: e.target.checked })
+                }
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <div>
+                <Label htmlFor="autogestion" className="cursor-pointer">
+                  Permitir autogestion de actividades
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Si se activa, el director podra crear y gestionar actividades para su landing page
+                </p>
+              </div>
             </div>
 
             {/* País y Sistema */}

@@ -20,6 +20,7 @@ import {
   MessageSquare,
   DollarSign,
   PieChart,
+  UserCog,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -33,6 +34,8 @@ interface SidebarProps {
 const menuItems = {
   ADMIN: [
     { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/admin/usuarios', label: 'Usuarios', icon: Users },
+    { href: '/dashboard/admin/directores', label: 'Directores', icon: UserCog },
     { href: '/dashboard/admin/instituciones', label: 'Instituciones', icon: Building2 },
     { href: '/dashboard/admin/actividades', label: 'Actividades', icon: BookOpen },
     { href: '/dashboard/admin/configuracion', label: 'Configuración', icon: Settings },

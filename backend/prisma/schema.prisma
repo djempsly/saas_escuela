@@ -135,7 +135,7 @@ model User {
   // Roles Jerárquicos
   directorDe              Institucion?              @relation("DirectorInstitucion")
   coordinadorDe           Nivel[]                   @relation("CoordinadorNivel")
-  
+
   // Relaciones Académicas
   clasesDictadas          Clase[]                   @relation("DocenteClase")
   inscripciones           Inscripcion[]
@@ -155,6 +155,9 @@ model User {
   cobros                  Cobro[]                   @relation("CobrosEstudiante")
   pagosRegistrados        Pago[]                    @relation("PagosRegistrados")
 
+  // ✅ Super Admin - Historial de directores
+  historialDirector       HistorialDirector[]       @relation("HistorialDirectores")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -164,17 +167,23 @@ model Institucion {
   nombre            String
   lema              String?
   direccion         String?
-  
+
+  // ✅ Super Admin - URL y dominio personalizado
+  slug                    String    @unique  // URL amigable interno (ej: "politecnico-olga")
+  dominioPersonalizado    String?   @unique  // Dominio externo (ej: "politecnicoolgamodestamartinez.com")
+  activo                  Boolean   @default(true)
+  autogestionActividades  Boolean   @default(false)  // Permite al director subir actividades
+
   // ✅ Branding / Marca (Personalización desde Dashboard)
   logoUrl           String?
   colorPrimario     String           @default("#000000") // Para el header/botones
   colorSecundario   String           @default("#ffffff") // Para fondos/textos
-  
+
   // ✅ Configuración Regional
   pais              Pais             @default(DO)
   sistema           SistemaEducativo
   idiomaPrincipal   Idioma           @default(ESPANOL)
-  
+
   // Datos Ministeriales
   codigoCentro      String?
   distritoEducativo String?
@@ -190,9 +199,26 @@ model Institucion {
   clases   Clase[]
 
   // Relaciones de nuevos módulos
-  eventos         Evento[]
-  conversaciones  Conversacion[]
-  cobros          Cobro[]
+  eventos             Evento[]
+  conversaciones      Conversacion[]
+  cobros              Cobro[]
+  historialDirectores HistorialDirector[]
+  actividades         Actividad[]
+}
+
+// ✅ Super Admin - Historial de directores por institución
+model HistorialDirector {
+  id              String      @id @default(cuid())
+  institucionId   String
+  institucion     Institucion @relation(fields: [institucionId], references: [id])
+  directorId      String
+  director        User        @relation("HistorialDirectores", fields: [directorId], references: [id])
+  fechaInicio     DateTime    @default(now())
+  fechaFin        DateTime?
+  motivo          String?
+
+  @@index([institucionId])
+  @@index([directorId])
 }
 
 model Nivel {
@@ -334,13 +360,21 @@ model Asistencia {
 }
 
 model Actividad {
-  id        String   @id @default(cuid())
-  titulo    String
-  contenido String   @db.Text
-  urlArchivo String?
-  autorId   String
-  autor     User     @relation(fields: [autorId], references: [id])
-  createdAt DateTime @default(now())
+  id              String       @id @default(cuid())
+  titulo          String
+  contenido       String       @db.Text
+  urlArchivo      String?
+  autorId         String
+  autor           User         @relation(fields: [autorId], references: [id])
+
+  // ✅ Super Admin - Actividades por institución
+  institucionId   String?       // NULL = actividad global (landing pública)
+  institucion     Institucion?  @relation(fields: [institucionId], references: [id])
+  publicado       Boolean       @default(true)
+
+  createdAt       DateTime      @default(now())
+
+  @@index([institucionId])
 }
 
 model Notificacion {

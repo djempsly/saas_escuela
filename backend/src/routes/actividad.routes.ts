@@ -6,6 +6,8 @@ import {
   updateActividadHandler,
   deleteActividadHandler,
   searchActividadesHandler,
+  getActividadesBySlugHandler,
+  getActividadesByInstitucionHandler,
 } from '../controllers/actividad.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -14,13 +16,27 @@ import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
 
-// Rutas públicas (para landing page)
+// ===== RUTAS PÚBLICAS (para landing pages) =====
+
+// Obtener actividades globales (landing principal)
 router.get('/', getActividadesHandler);
+
+// Buscar actividades
 router.get('/search', searchActividadesHandler);
+
+// Obtener actividades por slug de institución (landing dinámica)
+router.get('/institucion/:slug', getActividadesBySlugHandler);
+
+// Obtener actividades por ID de institución
+router.get('/institucion-id/:id', getActividadesByInstitucionHandler);
+
+// Obtener actividad por ID
 router.get('/:id', getActividadByIdHandler);
 
-// Rutas protegidas - Solo ADMIN puede crear/editar/eliminar actividades
-router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));
+// ===== RUTAS PROTEGIDAS =====
+// ADMIN puede crear/editar/eliminar cualquier actividad
+// DIRECTOR puede crear actividades SI su institución tiene autogestionActividades = true
+router.use(authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]));
 
 // Crear actividad con archivos opcionales
 router.post('/', uploadActividad, createActividadHandler);

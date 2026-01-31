@@ -7,18 +7,50 @@ import { getFileUrl } from '../middleware/upload.middleware';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.institucionId) {
+    if (!req.user) {
       return res.status(403).json({ message: 'Acción no permitida' });
-    }
-
-    // Only DIRECTORS can create users
-    if (req.user.rol !== ROLES.DIRECTOR) {
-      return res.status(403).json({ message: 'No tienes permisos para crear usuarios' });
     }
 
     const validatedData = crearUsuarioSchema.parse({ body: req.body });
 
-    // Cannot create ADMIN or DIRECTOR
+    // ADMIN puede crear DIRECTOR (con o sin institución)
+    if (req.user.rol === ROLES.ADMIN) {
+      // ADMIN puede crear cualquier rol excepto otro ADMIN
+      if (validatedData.body.rol === ROLES.ADMIN) {
+        return res.status(403).json({ message: 'No puedes crear usuarios con rol ADMIN' });
+      }
+
+      // Para DIRECTOR, no se requiere institucionId
+      const institucionId = validatedData.body.institucionId || null;
+      const result = await createUser(validatedData.body, institucionId as string);
+
+      return res.status(201).json({
+        status: 'success',
+        data: {
+          user: {
+            id: result.user.id,
+            nombre: result.user.nombre,
+            apellido: result.user.apellido,
+            email: result.user.email,
+            username: result.user.username,
+            role: result.user.role,
+          },
+          tempPassword: result.tempPassword,
+        },
+      });
+    }
+
+    // DIRECTOR solo puede crear usuarios de su institución
+    if (!req.user.institucionId) {
+      return res.status(403).json({ message: 'Acción no permitida' });
+    }
+
+    // Only DIRECTORS can create users (además del ADMIN ya manejado arriba)
+    if (req.user.rol !== ROLES.DIRECTOR) {
+      return res.status(403).json({ message: 'No tienes permisos para crear usuarios' });
+    }
+
+    // DIRECTOR cannot create ADMIN or DIRECTOR
     if (validatedData.body.rol === ROLES.ADMIN || validatedData.body.rol === ROLES.DIRECTOR) {
       return res.status(403).json({ message: 'No puedes crear usuarios con este rol' });
     }

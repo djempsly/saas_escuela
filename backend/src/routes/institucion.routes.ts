@@ -7,6 +7,11 @@ import {
   deleteInstitucionHandler,
   getBrandingHandler,
   updateConfigHandler,
+  getBrandingBySlugHandler,
+  getBrandingByDominioHandler,
+  updateSensitiveConfigHandler,
+  checkSlugHandler,
+  checkDominioHandler,
 } from '../controllers/institucion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -15,10 +20,24 @@ import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
 
-// Ruta pública para obtener branding de institución (para login y landing)
+// ===== RUTAS PÚBLICAS (sin autenticación) =====
+
+// Obtener branding por ID (para login y landing)
 router.get('/:id/branding', getBrandingHandler);
 
-// Proteger rutas de instituciones - Solo ADMIN
+// Obtener branding por slug (para landing dinámica por URL interna)
+router.get('/slug/:slug/branding', getBrandingBySlugHandler);
+
+// Obtener branding por dominio personalizado (para landing dinámica por dominio externo)
+router.get('/dominio/:dominio/branding', getBrandingByDominioHandler);
+
+// Verificar disponibilidad de slug (para formulario de creación)
+router.get('/check-slug/:slug', checkSlugHandler);
+
+// Verificar disponibilidad de dominio (para formulario de creación)
+router.get('/check-dominio/:dominio', checkDominioHandler);
+
+// ===== RUTAS PROTEGIDAS - Solo ADMIN =====
 router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));
 
 router.post('/', createInstitucionHandler);
@@ -29,5 +48,8 @@ router.delete('/:id', deleteInstitucionHandler);
 
 // Actualizar configuración de branding (con upload de logo opcional)
 router.patch('/:id/config', uploadLogo, updateConfigHandler);
+
+// Actualizar configuración sensible (nombre, slug, dominio, activo, autogestion)
+router.patch('/:id/sensitive', updateSensitiveConfigHandler);
 
 export default router;

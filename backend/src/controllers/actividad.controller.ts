@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Role } from '@prisma/client';
 import {
   createActividad,
   findAllActividades,
@@ -6,6 +7,9 @@ import {
   updateActividad,
   deleteActividad,
   searchActividades,
+  findActividadesBySlug,
+  findActividadesByInstitucion,
+  canDirectorCreateActividad,
 } from '../services/actividad.service';
 import { actividadSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
@@ -18,6 +22,31 @@ export const createActividadHandler = async (req: Request, res: Response) => {
     }
 
     const validated = actividadSchema.parse({ body: req.body });
+
+    // Determinar institucionId basado en el rol
+    let institucionId: string | null = null;
+
+    if (req.user.rol === Role.ADMIN) {
+      // ADMIN puede crear actividades globales (sin institucionId)
+      // o especificar una institución
+      institucionId = req.body.institucionId || null;
+    } else if (req.user.rol === Role.DIRECTOR) {
+      // DIRECTOR solo puede crear para su institución si tiene autogestion
+      if (!req.user.institucionId) {
+        return res.status(403).json({ message: 'No tienes institución asignada' });
+      }
+
+      const canCreate = await canDirectorCreateActividad(req.user.institucionId);
+      if (!canCreate) {
+        return res.status(403).json({
+          message: 'Tu institución no tiene habilitada la autogestión de actividades',
+        });
+      }
+
+      institucionId = req.user.institucionId;
+    } else {
+      return res.status(403).json({ message: 'No tienes permisos para crear actividades' });
+    }
 
     // Procesar archivos subidos
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
@@ -38,8 +67,10 @@ export const createActividadHandler = async (req: Request, res: Response) => {
         ...validated.body,
         urlImagen,
         urlVideo,
+        publicado: req.body.publicado !== undefined ? req.body.publicado : true,
       },
-      req.user.usuarioId.toString()
+      req.user.usuarioId.toString(),
+      institucionId
     );
 
     return res.status(201).json(actividad);
@@ -128,11 +159,43 @@ export const deleteActividadHandler = async (req: Request, res: Response) => {
 
 export const searchActividadesHandler = async (req: Request, res: Response) => {
   try {
-    const { q, limit } = req.query as { q?: string; limit?: string };
+    const { q, limit, institucionId } = req.query as { q?: string; limit?: string; institucionId?: string };
     if (!q) {
       return res.status(400).json({ message: 'Parámetro de búsqueda (q) requerido' });
     }
-    const actividades = await searchActividades(q, limit ? parseInt(limit) : undefined);
+    const actividades = await searchActividades(
+      q,
+      limit ? parseInt(limit) : undefined,
+      institucionId || null
+    );
+    return res.status(200).json(actividades);
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// GET /api/v1/actividades/institucion/:slug - Obtener actividades por slug de institución (público)
+export const getActividadesBySlugHandler = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params as { slug: string };
+    const { limit } = req.query as { limit?: string };
+
+    const actividades = await findActividadesBySlug(slug, limit ? parseInt(limit) : undefined);
+
+    return res.status(200).json(actividades);
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// GET /api/v1/actividades/institucion-id/:id - Obtener actividades por ID de institución
+export const getActividadesByInstitucionHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { limit } = req.query as { limit?: string };
+
+    const actividades = await findActividadesByInstitucion(id, limit ? parseInt(limit) : undefined);
+
     return res.status(200).json(actividades);
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
