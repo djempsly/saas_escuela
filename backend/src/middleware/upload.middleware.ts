@@ -29,12 +29,12 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'foto') {
       cb(null, fotosDir);
+    } else if (file.fieldname === 'logo' || file.fieldname === 'fondoLogin') {
+      cb(null, logosDir); // Guardamos fondoLogin junto con logos
     } else if (file.fieldname === 'imagen' || file.mimetype.startsWith('image/')) {
       cb(null, imagesDir);
     } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
       cb(null, videosDir);
-    } else if (file.fieldname === 'logo') {
-      cb(null, logosDir);
     } else {
       cb(null, uploadDir);
     }
@@ -55,7 +55,7 @@ const fileFilter = (
   const allowedImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const allowedVideos = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
-  if (file.fieldname === 'imagen' || file.fieldname === 'logo' || file.fieldname === 'foto') {
+  if (file.fieldname === 'imagen' || file.fieldname === 'logo' || file.fieldname === 'foto' || file.fieldname === 'fondoLogin') {
     if (allowedImages.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -93,6 +93,12 @@ export const uploadActividad = upload.fields([
 
 // Middleware para subir logo de institución
 export const uploadLogo = upload.single('logo');
+
+// Middleware para subir logo y fondo de login de institución
+export const uploadInstitucionMedia = upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'fondoLogin', maxCount: 1 },
+]);
 
 // Función helper para obtener URL del archivo
 export const getFileUrl = (file: Express.Multer.File): string => {

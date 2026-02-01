@@ -21,6 +21,9 @@ import {
   DollarSign,
   PieChart,
   UserCog,
+  Layers,
+  BookMarked,
+  UserPlus,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -43,7 +46,11 @@ const menuItems = {
   DIRECTOR: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/usuarios', label: 'Usuarios', icon: Users },
-    { href: '/dashboard/clases', label: 'Clases', icon: GraduationCap },
+    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
+    { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
+    { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
+    { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
     { href: '/dashboard/ciclos', label: 'Ciclos Lectivos', icon: Calendar },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
@@ -100,7 +107,16 @@ const menuItems = {
 export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
   const pathname = usePathname();
   const role = (user?.role || 'ESTUDIANTE') as keyof typeof menuItems;
-  const items = menuItems[role] || menuItems.ESTUDIANTE;
+  const baseItems = menuItems[role] || menuItems.ESTUDIANTE;
+
+  // Filtrar items según configuración de la institución
+  const items = baseItems.filter((item) => {
+    // Para DIRECTOR: ocultar Actividades si autogestionActividades está deshabilitado
+    if (role === 'DIRECTOR' && item.label === 'Actividades') {
+      return branding?.autogestionActividades === true;
+    }
+    return true;
+  });
 
   const primaryColor = branding?.colorPrimario || '#1a365d';
 

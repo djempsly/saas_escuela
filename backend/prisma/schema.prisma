@@ -177,6 +177,7 @@ model Institucion {
   // ✅ Branding / Marca (Personalización desde Dashboard)
   logoUrl           String?
   logoPosicion      String           @default("center") // center, left, right - posición del logo en landing
+  fondoLoginUrl     String?          // Imagen de fondo para la página de login
   colorPrimario     String           @default("#000000") // Para el header/botones
   colorSecundario   String           @default("#ffffff") // Para fondos/textos
 
@@ -205,6 +206,9 @@ model Institucion {
   cobros              Cobro[]
   historialDirectores HistorialDirector[]
   actividades         Actividad[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ✅ Super Admin - Historial de directores por institución

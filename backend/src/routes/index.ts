@@ -15,6 +15,7 @@ import eventoRoutes from './evento.routes';
 import mensajeRoutes from './mensaje.routes';
 import cobroRoutes from './cobro.routes';
 import adminRoutes from './admin.routes';
+import boletinRoutes from './boletin.routes';
 
 const router = Router();
 
@@ -47,5 +48,8 @@ router.use('/tareas', tareaRoutes);
 router.use('/eventos', eventoRoutes);
 router.use('/mensajes', mensajeRoutes);
 router.use('/cobros', cobroRoutes);
+
+// Rutas de boletines/reportes
+router.use('/boletines', boletinRoutes);
 
 export default router;

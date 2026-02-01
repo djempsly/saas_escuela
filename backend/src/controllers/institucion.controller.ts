@@ -142,35 +142,57 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params as { id: string };
 
-    // Schema de validación para config
+    // Schema de validación para config (todos opcionales para multipart)
     const configSchema = z.object({
       colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
       colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-      lema: z.string().max(200).optional(),
+      lema: z.string().max(200).optional().nullable(),
     });
 
     const validated = configSchema.parse(req.body);
 
-    // Si se subió un logo, obtener la URL
+    // Obtener URLs de archivos subidos
     let logoUrl: string | undefined;
+    let fondoLoginUrl: string | undefined;
+
+    // Manejar múltiples archivos (cuando se usa upload.fields())
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    if (files && typeof files === 'object') {
+      if (files.logo && files.logo[0]) {
+        logoUrl = getFileUrl(files.logo[0]);
+      }
+      if (files.fondoLogin && files.fondoLogin[0]) {
+        fondoLoginUrl = getFileUrl(files.fondoLogin[0]);
+      }
+    }
+
+    // También manejar archivo único (backwards compatibility con upload.single())
     if (req.file) {
       logoUrl = getFileUrl(req.file);
     }
 
     const config = await updateInstitucionConfig(id, {
-      ...validated,
+      colorPrimario: validated.colorPrimario,
+      colorSecundario: validated.colorSecundario,
+      lema: validated.lema ?? undefined,
       logoUrl,
+      fondoLoginUrl,
     });
 
     return res.status(200).json(config);
   } catch (error: any) {
+    console.error('Error updating config:', error?.message || error);
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada')) {
+    if (error.message?.includes('no encontrada')) {
       return res.status(404).json({ message: error.message });
     }
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+    // Return actual error message for debugging
+    return res.status(500).json({
+      message: error.message || 'Error interno del servidor',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

@@ -6,12 +6,16 @@ export interface InstitutionBranding {
   nombre: string;
   lema?: string;
   logoUrl?: string;
+  logoPosicion?: string;
+  fondoLoginUrl?: string;
   colorPrimario: string;
   colorSecundario: string;
   pais?: string;
   sistema?: string;
   sistemaEducativo?: string;
   idiomaPrincipal?: string;
+  slug?: string;
+  autogestionActividades?: boolean;
 }
 
 interface InstitutionState {

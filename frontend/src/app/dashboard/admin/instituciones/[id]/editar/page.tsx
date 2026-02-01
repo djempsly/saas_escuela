@@ -40,6 +40,7 @@ interface Institucion {
   idiomaPrincipal?: string;
   logoUrl?: string;
   logoPosicion?: string;
+  fondoLoginUrl?: string;
   colorPrimario: string;
   colorSecundario: string;
   activo: boolean;
@@ -90,6 +91,8 @@ export default function EditarInstitucionPage() {
   const [success, setSuccess] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [fondoLoginFile, setFondoLoginFile] = useState<File | null>(null);
+  const [fondoLoginPreview, setFondoLoginPreview] = useState<string | null>(null);
 
   // Validacion de slug y dominio
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -145,6 +148,7 @@ export default function EditarInstitucionPage() {
       });
 
       setLogoPreview(inst.logoUrl || null);
+      setFondoLoginPreview(inst.fondoLoginUrl || null);
       setOriginalSlug(inst.slug || '');
       setOriginalDominio(inst.dominioPersonalizado || '');
     } catch (err) {
@@ -212,6 +216,11 @@ export default function EditarInstitucionPage() {
     setLogoPreview(previewUrl);
   };
 
+  const handleFondoLoginChange = (file: File | null, previewUrl: string | null) => {
+    setFondoLoginFile(file);
+    setFondoLoginPreview(previewUrl);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -244,7 +253,7 @@ export default function EditarInstitucionPage() {
         autogestionActividades: formData.autogestionActividades,
       });
 
-      // Actualizar configuracion visual (colores, logo)
+      // Actualizar configuracion visual (colores, logo, fondo login)
       const configData = new FormData();
       configData.append('colorPrimario', formData.colorPrimario);
       configData.append('colorSecundario', formData.colorSecundario);
@@ -253,6 +262,9 @@ export default function EditarInstitucionPage() {
       }
       if (logoFile) {
         configData.append('logo', logoFile);
+      }
+      if (fondoLoginFile) {
+        configData.append('fondoLogin', fondoLoginFile);
       }
       await institucionesApi.updateConfig(id, configData);
 
@@ -357,6 +369,24 @@ export default function EditarInstitucionPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Define donde se mostrara el logo y nombre en la seccion principal del landing
+              </p>
+            </div>
+
+            {/* Imagen de fondo para Login */}
+            <div className="space-y-4">
+              <Label>Imagen de Fondo para Pagina de Login</Label>
+              <div className="w-full h-40">
+                <ImageUpload
+                  value={fondoLoginPreview || undefined}
+                  onChange={handleFondoLoginChange}
+                  placeholder="Subir imagen de fondo"
+                  aspectRatio="banner"
+                  maxSizeMB={5}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Esta imagen se mostrara como fondo en la pagina de login de la institucion.
+                Recomendamos una imagen de al menos 1920x1080 pixeles.
               </p>
             </div>
 

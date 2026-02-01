@@ -15,7 +15,7 @@ import {
 } from '../controllers/institucion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
-import { uploadLogo } from '../middleware/upload.middleware';
+import { uploadInstitucionMedia } from '../middleware/upload.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -46,8 +46,8 @@ router.get('/:id', findInstitucionByIdHandler);
 router.put('/:id', updateInstitucionHandler);
 router.delete('/:id', deleteInstitucionHandler);
 
-// Actualizar configuración de branding (con upload de logo opcional)
-router.patch('/:id/config', uploadLogo, updateConfigHandler);
+// Actualizar configuración de branding (con upload de logo y fondo de login opcional)
+router.patch('/:id/config', uploadInstitucionMedia, updateConfigHandler);
 
 // Actualizar configuración sensible (nombre, slug, dominio, activo, autogestion)
 router.patch('/:id/sensitive', updateSensitiveConfigHandler);

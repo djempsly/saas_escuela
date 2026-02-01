@@ -101,9 +101,7 @@ export const institucionesApi = {
   updateJson: (id: string, data: any) =>
     api.put(`/instituciones/${id}`, data),
   updateConfig: (id: string, data: FormData) =>
-    api.patch(`/instituciones/${id}/config`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    api.patch(`/instituciones/${id}/config`, data),
   updateSensitive: (id: string, data: any) =>
     api.patch(`/instituciones/${id}/sensitive`, data),
   delete: (id: string) =>

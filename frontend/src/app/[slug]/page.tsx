@@ -311,7 +311,7 @@ export default function InstitucionLandingPage() {
               onLocaleChange={setLocale}
             />
 
-            <Link href={`/login?institucion=${branding.id}`}>
+            <Link href={`/${slug}/login`}>
               <Button
                 variant="secondary"
                 style={{ backgroundColor: secondaryColor, color: 'white' }}
@@ -344,7 +344,7 @@ export default function InstitucionLandingPage() {
             <p className="text-xl text-muted-foreground mb-8 italic">&ldquo;{branding.lema}&rdquo;</p>
           )}
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link href={`/login?institucion=${branding.id}`}>
+            <Link href={`/${slug}/login`}>
               <Button
                 size="lg"
                 className="w-full sm:w-auto"
@@ -501,7 +501,7 @@ export default function InstitucionLandingPage() {
           <p className="text-white/80 mb-8">
             {t.landing.accessEducationalPortal}
           </p>
-          <Link href={`/login?institucion=${branding.id}`}>
+          <Link href={`/${slug}/login`}>
             <Button
               size="lg"
               variant="secondary"

@@ -32,10 +32,25 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
 export const createInstitucion = async (input: any) => {
   const { director, directorId, colores, sistemaEducativo, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
 
+  // Debug: Log received values
+  console.log('Creating institution with:', {
+    idiomaPrincipal,
+    sistemaEducativo,
+    pais: rest.pais,
+    nombre: rest.nombre
+  });
+
   // Validate SistemaEducativo
   if (!sistemaEducativo || !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)) {
     throw new Error(`Sistema educativo inválido o no proporcionado: ${sistemaEducativo}`);
   }
+
+  // Validate and resolve idiomaPrincipal
+  let resolvedIdioma: Idioma = Idioma.ESPANOL;
+  if (idiomaPrincipal && Object.values(Idioma).includes(idiomaPrincipal as Idioma)) {
+    resolvedIdioma = idiomaPrincipal as Idioma;
+  }
+  console.log('Resolved idioma:', resolvedIdioma);
 
   // Generar slug único
   const slug = inputSlug ? generateSlug(inputSlug) : await generateUniqueSlug(rest.nombre);
@@ -75,7 +90,7 @@ export const createInstitucion = async (input: any) => {
           dominioPersonalizado: dominioPersonalizado || null,
           autogestionActividades: autogestionActividades || false,
           sistema: sistemaEducativo as SistemaEducativo,
-          idiomaPrincipal: idiomaPrincipal as Idioma || Idioma.ESPANOL,
+          idiomaPrincipal: resolvedIdioma,
           colorPrimario: colores?.primario || '#000000',
           colorSecundario: colores?.secundario || '#ffffff',
           directorId: existingDirector.id,
@@ -144,7 +159,7 @@ export const createInstitucion = async (input: any) => {
         dominioPersonalizado: dominioPersonalizado || null,
         autogestionActividades: autogestionActividades || false,
         sistema: sistemaEducativo as SistemaEducativo,
-        idiomaPrincipal: idiomaPrincipal as Idioma || Idioma.ESPANOL,
+        idiomaPrincipal: resolvedIdioma,
         colorPrimario: colores?.primario || '#000000',
         colorSecundario: colores?.secundario || '#ffffff',
         directorId: newDirector.id,
@@ -279,11 +294,14 @@ export const getInstitucionBranding = async (id: string) => {
       nombre: true,
       lema: true,
       logoUrl: true,
+      logoPosicion: true,
+      fondoLoginUrl: true,
       colorPrimario: true,
       colorSecundario: true,
       pais: true,
       sistema: true,
       idiomaPrincipal: true,
+      slug: true,
     },
   });
 };
@@ -295,6 +313,7 @@ export const updateInstitucionConfig = async (
     colorPrimario?: string;
     colorSecundario?: string;
     logoUrl?: string;
+    fondoLoginUrl?: string;
     lema?: string;
   }
 ) => {
@@ -306,19 +325,56 @@ export const updateInstitucionConfig = async (
     throw new Error('Institución no encontrada');
   }
 
+  // Construir objeto de actualización solo con campos que tienen valor
+  const updateData: Partial<{
+    colorPrimario: string;
+    colorSecundario: string;
+    logoUrl: string;
+    fondoLoginUrl: string;
+    lema: string | null;
+  }> = {};
+
+  if (input.colorPrimario) {
+    updateData.colorPrimario = input.colorPrimario;
+  }
+  if (input.colorSecundario) {
+    updateData.colorSecundario = input.colorSecundario;
+  }
+  if (input.logoUrl) {
+    updateData.logoUrl = input.logoUrl;
+  }
+  if (input.fondoLoginUrl) {
+    updateData.fondoLoginUrl = input.fondoLoginUrl;
+  }
+  if (input.lema !== undefined) {
+    updateData.lema = input.lema || null;
+  }
+
+  // Si no hay nada que actualizar, retornar la institución actual
+  if (Object.keys(updateData).length === 0) {
+    return prisma.institucion.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nombre: true,
+        lema: true,
+        logoUrl: true,
+        fondoLoginUrl: true,
+        colorPrimario: true,
+        colorSecundario: true,
+      },
+    });
+  }
+
   return prisma.institucion.update({
     where: { id },
-    data: {
-      colorPrimario: input.colorPrimario,
-      colorSecundario: input.colorSecundario,
-      logoUrl: input.logoUrl,
-      lema: input.lema,
-    },
+    data: updateData,
     select: {
       id: true,
       nombre: true,
       lema: true,
       logoUrl: true,
+      fondoLoginUrl: true,
       colorPrimario: true,
       colorSecundario: true,
     },
@@ -371,6 +427,7 @@ export const getInstitucionBrandingBySlug = async (slug: string) => {
       lema: true,
       logoUrl: true,
       logoPosicion: true,
+      fondoLoginUrl: true,
       colorPrimario: true,
       colorSecundario: true,
       pais: true,
@@ -392,6 +449,7 @@ export const getInstitucionBrandingByDominio = async (dominio: string) => {
       lema: true,
       logoUrl: true,
       logoPosicion: true,
+      fondoLoginUrl: true,
       colorPrimario: true,
       colorSecundario: true,
       pais: true,
@@ -412,6 +470,7 @@ export const updateSensitiveConfig = async (
     dominioPersonalizado?: string | null;
     idiomaPrincipal?: Idioma;
     logoPosicion?: string;
+    fondoLoginUrl?: string | null;
     activo?: boolean;
     autogestionActividades?: boolean;
   }
@@ -452,6 +511,7 @@ export const updateSensitiveConfig = async (
       ...(input.dominioPersonalizado !== undefined && { dominioPersonalizado: input.dominioPersonalizado }),
       ...(input.idiomaPrincipal && { idiomaPrincipal: input.idiomaPrincipal }),
       ...(input.logoPosicion && { logoPosicion: input.logoPosicion }),
+      ...(input.fondoLoginUrl !== undefined && { fondoLoginUrl: input.fondoLoginUrl }),
       ...(input.activo !== undefined && { activo: input.activo }),
       ...(input.autogestionActividades !== undefined && { autogestionActividades: input.autogestionActividades }),
     },

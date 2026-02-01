@@ -72,6 +72,7 @@ export default function UsuariosPage() {
   });
   const [isCreating, setIsCreating] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
+  const [createdUsername, setCreatedUsername] = useState('');
 
   useEffect(() => {
     fetchUsuarios();
@@ -94,9 +95,12 @@ export default function UsuariosPage() {
 
     try {
       const response = await usersApi.create(newUser);
+      const createdUser = response.data.data?.user;
       setTempPassword(response.data.data?.tempPassword || '');
-      setUsuarios([response.data.data?.user, ...usuarios]);
+      setCreatedUsername(createdUser?.username || '');
+      setUsuarios([createdUser, ...usuarios]);
       setNewUser({ nombre: '', apellido: '', email: '', rol: 'ESTUDIANTE' });
+      setShowModal(false);
     } catch (error) {
       const apiError = error as ApiError;
       alert(apiError.response?.data?.message || 'Error al crear usuario');
@@ -172,18 +176,26 @@ export default function UsuariosPage() {
         </CardContent>
       </Card>
 
-      {/* Contraseña temporal */}
+      {/* Credenciales del usuario creado */}
       {tempPassword && (
         <Card className="bg-green-50 border-green-200">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="space-y-2">
                 <p className="font-medium text-green-800">Usuario creado exitosamente</p>
-                <p className="text-sm text-green-700">
-                  Contraseña temporal: <strong className="font-mono">{tempPassword}</strong>
+                <div className="text-sm text-green-700 space-y-1">
+                  <p>
+                    Usuario: <strong className="font-mono bg-green-100 px-2 py-0.5 rounded">{createdUsername}</strong>
+                  </p>
+                  <p>
+                    Contraseña temporal: <strong className="font-mono bg-green-100 px-2 py-0.5 rounded">{tempPassword}</strong>
+                  </p>
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  Guarda estas credenciales. El usuario deberá cambiar su contraseña en el primer inicio de sesión.
                 </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setTempPassword('')}>
+              <Button variant="ghost" size="sm" onClick={() => { setTempPassword(''); setCreatedUsername(''); }}>
                 Cerrar
               </Button>
             </div>
@@ -311,6 +323,12 @@ export default function UsuariosPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
+                  <p className="font-medium">Formato del usuario generado:</p>
+                  <p className="text-xs mt-1">
+                    nombre.apellido + 4 dígitos (ej: {newUser.nombre.toLowerCase() || 'juan'}.{newUser.apellido.toLowerCase() || 'perez'}1234)
+                  </p>
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button
