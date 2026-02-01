@@ -4,8 +4,8 @@ import { deleteFile } from '../middleware/upload.middleware';
 interface ActividadInput {
   titulo: string;
   contenido: string;
-  urlImagen?: string;
-  urlVideo?: string;
+  fotos?: string[];
+  videos?: string[];
   institucionId?: string;
   publicado?: boolean;
 }
@@ -16,11 +16,22 @@ export const createActividad = async (
   autorId: string,
   institucionId?: string | null
 ) => {
+  // Determinar tipoMedia basado en lo que se proporcione
+  let tipoMedia = 'mixed';
+  if (input.fotos?.length && !input.videos?.length) {
+    tipoMedia = 'foto';
+  } else if (!input.fotos?.length && input.videos?.length) {
+    tipoMedia = 'video';
+  }
+
   return prisma.actividad.create({
     data: {
       titulo: input.titulo,
       contenido: input.contenido,
-      urlArchivo: input.urlImagen || input.urlVideo || null,
+      urlArchivo: input.fotos?.[0] || null, // Compatibilidad con legacy
+      fotos: input.fotos || [],
+      videos: input.videos || [],
+      tipoMedia,
       autorId,
       institucionId: institucionId || input.institucionId || null,
       publicado: input.publicado !== undefined ? input.publicado : true,
@@ -138,20 +149,49 @@ export const updateActividad = async (id: string, input: Partial<ActividadInput>
     throw new Error('Actividad no encontrada');
   }
 
-  // Si se está actualizando el archivo y había uno anterior, eliminarlo
-  if ((input.urlImagen || input.urlVideo) && existing.urlArchivo) {
-    deleteFile(existing.urlArchivo);
+  // Determinar tipoMedia basado en lo que se proporcione
+  let tipoMedia = existing.tipoMedia;
+  if (input.fotos !== undefined || input.videos !== undefined) {
+    const hasFotos = input.fotos?.length || (existing.fotos as string[] || []).length > 0;
+    const hasVideos = input.videos?.length || (existing.videos as string[] || []).length > 0;
+
+    if (hasFotos && !hasVideos) {
+      tipoMedia = 'foto';
+    } else if (!hasFotos && hasVideos) {
+      tipoMedia = 'video';
+    } else {
+      tipoMedia = 'mixed';
+    }
+  }
+
+  const updateData: any = {
+    titulo: input.titulo,
+    contenido: input.contenido,
+    tipoMedia,
+  };
+
+  // Actualizar fotos si se proporcionan
+  if (input.fotos !== undefined) {
+    updateData.fotos = input.fotos;
+    updateData.urlArchivo = input.fotos[0] || null; // Compatibilidad legacy
+  }
+
+  // Actualizar videos si se proporcionan
+  if (input.videos !== undefined) {
+    updateData.videos = input.videos;
+  }
+
+  // Actualizar publicado si se proporciona
+  if (input.publicado !== undefined) {
+    updateData.publicado = input.publicado;
   }
 
   return prisma.actividad.update({
     where: { id },
-    data: {
-      titulo: input.titulo,
-      contenido: input.contenido,
-      urlArchivo: input.urlImagen || input.urlVideo || existing.urlArchivo,
-    },
+    data: updateData,
     include: {
       autor: { select: { id: true, nombre: true, apellido: true } },
+      institucion: { select: { id: true, nombre: true, slug: true } },
     },
   });
 };

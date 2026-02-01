@@ -14,6 +14,11 @@ import {
   ArrowRight,
   Calendar,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface Actividad {
@@ -21,6 +26,9 @@ interface Actividad {
   titulo: string;
   contenido: string;
   urlArchivo?: string;
+  fotos?: string[];
+  videos?: string[];
+  tipoMedia?: string;
   createdAt: string;
   autor: {
     nombre: string;
@@ -28,9 +36,145 @@ interface Actividad {
   };
 }
 
+// Componente de card de actividad con slider
+function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpenVideo: (url: string) => void }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Obtener todas las fotos (compatibilidad con urlArchivo legacy)
+  const fotos = actividad.fotos?.length
+    ? actividad.fotos
+    : actividad.urlArchivo
+      ? [actividad.urlArchivo]
+      : [];
+
+  const hasVideo = actividad.videos && actividad.videos.length > 0;
+
+  const nextSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev + 1) % fotos.length);
+  };
+
+  const prevSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev - 1 + fotos.length) % fotos.length);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      {fotos.length > 0 && (
+        <div className="aspect-video relative bg-slate-100 group">
+          <Image
+            src={fotos[currentSlide]}
+            alt={actividad.titulo}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+
+          {/* Navegación del slider */}
+          {fotos.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Indicadores */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                {fotos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentSlide(index);
+                    }}
+                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                      index === currentSlide ? 'bg-white' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Contador de imágenes */}
+              <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded text-xs flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" />
+                {currentSlide + 1}/{fotos.length}
+              </div>
+            </>
+          )}
+
+          {/* Botón de video */}
+          {hasVideo && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVideo(actividad.videos![0]);
+              }}
+              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors"
+            >
+              <Play className="w-3 h-3" />
+              Ver Video
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Si no hay fotos pero hay video */}
+      {fotos.length === 0 && hasVideo && (
+        <div className="aspect-video relative bg-slate-900 flex items-center justify-center">
+          <button
+            onClick={() => onOpenVideo(actividad.videos![0])}
+            className="flex flex-col items-center gap-2 text-white hover:scale-105 transition-transform"
+          >
+            <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center">
+              <Play className="w-8 h-8 ml-1" />
+            </div>
+            <span className="text-sm">Ver Video</span>
+          </button>
+        </div>
+      )}
+
+      <CardHeader>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+          <Calendar className="w-3 h-3" />
+          {formatDate(actividad.createdAt)}
+        </div>
+        <CardTitle className="text-lg line-clamp-2">
+          {actividad.titulo}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground line-clamp-3">
+          {actividad.contenido}
+        </p>
+        <p className="text-xs text-muted-foreground mt-4">
+          Por: {actividad.autor.nombre} {actividad.autor.apellido}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function LandingPage() {
   const [actividades, setActividades] = useState<Actividad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [videoModal, setVideoModal] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchActividades = async () => {
@@ -47,6 +191,26 @@ export default function LandingPage() {
 
     fetchActividades();
   }, []);
+
+  // Función para detectar tipo de video
+  const getVideoEmbedUrl = (url: string) => {
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+    if (youtubeMatch) {
+      return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    }
+    // URL directa de video
+    return url;
+  };
+
+  const isDirectVideo = (url: string) => {
+    return url.match(/\.(mp4|webm|ogg|mov)$/i) || url.startsWith('/uploads/');
+  };
 
   const features = [
     {
@@ -71,16 +235,42 @@ export default function LandingPage() {
     },
   ];
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* Modal de Video */}
+      {videoModal && (
+        <div
+          className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4"
+          onClick={() => setVideoModal(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl aspect-video bg-black rounded-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setVideoModal(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            {isDirectVideo(videoModal) ? (
+              <video
+                src={videoModal}
+                className="w-full h-full"
+                controls
+                autoPlay
+              />
+            ) : (
+              <iframe
+                src={getVideoEmbedUrl(videoModal)}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -182,35 +372,11 @@ export default function LandingPage() {
           ) : actividades.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {actividades.map((actividad) => (
-                <Card key={actividad.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  {actividad.urlArchivo && (
-                    <div className="aspect-video relative bg-slate-100">
-                      <Image
-                        src={actividad.urlArchivo}
-                        alt={actividad.titulo}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(actividad.createdAt)}
-                    </div>
-                    <CardTitle className="text-lg line-clamp-2">
-                      {actividad.titulo}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {actividad.contenido}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-4">
-                      Por: {actividad.autor.nombre} {actividad.autor.apellido}
-                    </p>
-                  </CardContent>
-                </Card>
+                <ActividadCard
+                  key={actividad.id}
+                  actividad={actividad}
+                  onOpenVideo={setVideoModal}
+                />
               ))}
             </div>
           ) : (

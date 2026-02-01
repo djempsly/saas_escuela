@@ -50,23 +50,48 @@ export const createActividadHandler = async (req: Request, res: Response) => {
 
     // Procesar archivos subidos
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-    let urlImagen: string | undefined;
-    let urlVideo: string | undefined;
+    const fotos: string[] = [];
+    const videos: string[] = [];
 
     if (files) {
-      if (files.imagen && files.imagen[0]) {
-        urlImagen = getFileUrl(files.imagen[0]);
+      // Procesar múltiples imágenes subidas
+      if (files.imagenes) {
+        files.imagenes.forEach((file) => {
+          fotos.push(getFileUrl(file));
+        });
       }
+      // Procesar video subido
       if (files.video && files.video[0]) {
-        urlVideo = getFileUrl(files.video[0]);
+        videos.push(getFileUrl(files.video[0]));
       }
+    }
+
+    // Procesar URLs de imágenes proporcionadas
+    if (req.body.fotosUrls) {
+      try {
+        const urls = JSON.parse(req.body.fotosUrls);
+        if (Array.isArray(urls)) {
+          fotos.push(...urls.filter((url: string) => url && url.trim()));
+        }
+      } catch {
+        // Si no es JSON válido, intentar como string separado por comas
+        if (typeof req.body.fotosUrls === 'string') {
+          const urls = req.body.fotosUrls.split(',').map((u: string) => u.trim()).filter(Boolean);
+          fotos.push(...urls);
+        }
+      }
+    }
+
+    // Procesar URL de video proporcionada
+    if (req.body.videoUrl && req.body.videoUrl.trim()) {
+      videos.push(req.body.videoUrl.trim());
     }
 
     const actividad = await createActividad(
       {
         ...validated.body,
-        urlImagen,
-        urlVideo,
+        fotos: fotos.length > 0 ? fotos : undefined,
+        videos: videos.length > 0 ? videos : undefined,
         publicado: req.body.publicado !== undefined ? req.body.publicado : true,
       },
       req.user.usuarioId.toString(),
@@ -114,22 +139,65 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
 
     // Procesar archivos subidos
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-    let urlImagen: string | undefined;
-    let urlVideo: string | undefined;
+    const fotos: string[] = [];
+    const videos: string[] = [];
 
     if (files) {
-      if (files.imagen && files.imagen[0]) {
-        urlImagen = getFileUrl(files.imagen[0]);
+      // Procesar múltiples imágenes subidas
+      if (files.imagenes) {
+        files.imagenes.forEach((file) => {
+          fotos.push(getFileUrl(file));
+        });
       }
+      // Procesar video subido
       if (files.video && files.video[0]) {
-        urlVideo = getFileUrl(files.video[0]);
+        videos.push(getFileUrl(files.video[0]));
       }
+    }
+
+    // Procesar URLs de imágenes proporcionadas
+    if (req.body.fotosUrls) {
+      try {
+        const urls = JSON.parse(req.body.fotosUrls);
+        if (Array.isArray(urls)) {
+          fotos.push(...urls.filter((url: string) => url && url.trim()));
+        }
+      } catch {
+        if (typeof req.body.fotosUrls === 'string') {
+          const urls = req.body.fotosUrls.split(',').map((u: string) => u.trim()).filter(Boolean);
+          fotos.push(...urls);
+        }
+      }
+    }
+
+    // Procesar URL de video proporcionada
+    if (req.body.videoUrl && req.body.videoUrl.trim()) {
+      videos.push(req.body.videoUrl.trim());
+    }
+
+    // Mantener fotos/videos existentes si se proporcionan
+    if (req.body.fotosExistentes) {
+      try {
+        const existentes = JSON.parse(req.body.fotosExistentes);
+        if (Array.isArray(existentes)) {
+          fotos.unshift(...existentes);
+        }
+      } catch { /* ignorar */ }
+    }
+
+    if (req.body.videosExistentes) {
+      try {
+        const existentes = JSON.parse(req.body.videosExistentes);
+        if (Array.isArray(existentes)) {
+          videos.unshift(...existentes);
+        }
+      } catch { /* ignorar */ }
     }
 
     const actividad = await updateActividad(id, {
       ...validated,
-      urlImagen,
-      urlVideo,
+      fotos: fotos.length > 0 ? fotos : undefined,
+      videos: videos.length > 0 ? videos : undefined,
     });
 
     return res.status(200).json(actividad);

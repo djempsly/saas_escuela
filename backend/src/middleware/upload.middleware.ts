@@ -75,7 +75,7 @@ const fileFilter = (
 // Límites de tamaño
 const limits = {
   fileSize: 50 * 1024 * 1024, // 50MB máximo
-  files: 2, // máximo 2 archivos (imagen + video)
+  files: 12, // máximo 12 archivos (10 imágenes + 2 videos)
 };
 
 // Configuración de multer
@@ -85,9 +85,9 @@ export const upload = multer({
   limits,
 });
 
-// Middleware específico para actividades (imagen + video opcional)
+// Middleware específico para actividades (múltiples imágenes + video opcional)
 export const uploadActividad = upload.fields([
-  { name: 'imagen', maxCount: 1 },
+  { name: 'imagenes', maxCount: 10 },
   { name: 'video', maxCount: 1 },
 ]);
 
