@@ -2,6 +2,31 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
+// URL base del backend (sin /api/v1) para archivos estáticos
+export const BACKEND_URL = API_BASE_URL.replace('/api/v1', '');
+
+/**
+ * Convierte una URL relativa de uploads a una URL absoluta del backend
+ * @param url - URL que puede ser relativa (/uploads/...) o absoluta (https://...)
+ * @returns URL absoluta
+ */
+export const getMediaUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+
+  // Si ya es una URL absoluta (http, https, blob, data), retornarla tal cual
+  if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+
+  // Si es una URL relativa de uploads, prefijar con la URL del backend
+  if (url.startsWith('/uploads/')) {
+    return `${BACKEND_URL}${url}`;
+  }
+
+  // Para cualquier otra URL relativa
+  return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {

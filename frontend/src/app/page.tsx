@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { actividadesApi } from '@/lib/api';
+import { actividadesApi, institucionesApi, getMediaUrl } from '@/lib/api';
 import {
   GraduationCap,
   Users,
@@ -36,16 +36,23 @@ interface Actividad {
   };
 }
 
-// Componente de card de actividad con slider
+interface Institucion {
+  id: string;
+  nombre: string;
+  slug: string;
+  logoUrl?: string;
+}
+
+// Componente de card de actividad con slider grande y título prominente
 function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpenVideo: (url: string) => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Obtener todas las fotos (compatibilidad con urlArchivo legacy)
-  const fotos = actividad.fotos?.length
+  // Obtener todas las fotos (compatibilidad con urlArchivo legacy) y convertir a URLs absolutas
+  const fotos = (actividad.fotos?.length
     ? actividad.fotos
     : actividad.urlArchivo
       ? [actividad.urlArchivo]
-      : [];
+      : []).map(url => getMediaUrl(url));
 
   const hasVideo = actividad.videos && actividad.videos.length > 0;
 
@@ -68,15 +75,28 @@ function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpe
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="group rounded-xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-300">
+      {/* Título prominente encima */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 px-4 py-3">
+        <h3 className="text-white font-bold text-lg md:text-xl line-clamp-2">
+          {actividad.titulo}
+        </h3>
+        <div className="flex items-center gap-2 text-white/80 text-xs mt-1">
+          <Calendar className="w-3 h-3" />
+          {formatDate(actividad.createdAt)}
+        </div>
+      </div>
+
+      {/* Slider de imágenes - más grande y centrado */}
       {fotos.length > 0 && (
-        <div className="aspect-video relative bg-slate-100 group">
+        <div className="relative bg-slate-900" style={{ aspectRatio: '16/10' }}>
           <Image
             src={fotos[currentSlide]}
             alt={actividad.titulo}
             fill
-            className="object-cover"
+            className="object-contain"
             unoptimized
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
 
           {/* Navegación del slider */}
@@ -84,19 +104,19 @@ function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpe
             <>
               <button
                 onClick={prevSlide}
-                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={nextSlide}
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
 
-              {/* Indicadores */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {/* Indicadores más visibles */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 px-3 py-1.5 rounded-full">
                 {fotos.map((_, index) => (
                   <button
                     key={index}
@@ -104,17 +124,19 @@ function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpe
                       e.stopPropagation();
                       setCurrentSlide(index);
                     }}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      index === currentSlide ? 'bg-white' : 'bg-white/50'
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                      index === currentSlide
+                        ? 'bg-white scale-110'
+                        : 'bg-white/50 hover:bg-white/70'
                     }`}
                   />
                 ))}
               </div>
 
               {/* Contador de imágenes */}
-              <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded text-xs flex items-center gap-1">
-                <ImageIcon className="w-3 h-3" />
-                {currentSlide + 1}/{fotos.length}
+              <div className="absolute top-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4" />
+                {currentSlide + 1} / {fotos.length}
               </div>
             </>
           )}
@@ -124,11 +146,11 @@ function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpe
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenVideo(actividad.videos![0]);
+                onOpenVideo(getMediaUrl(actividad.videos![0]));
               }}
-              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors"
+              className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 transition-colors shadow-lg"
             >
-              <Play className="w-3 h-3" />
+              <Play className="w-4 h-4" />
               Ver Video
             </button>
           )}
@@ -137,59 +159,58 @@ function ActividadCard({ actividad, onOpenVideo }: { actividad: Actividad; onOpe
 
       {/* Si no hay fotos pero hay video */}
       {fotos.length === 0 && hasVideo && (
-        <div className="aspect-video relative bg-slate-900 flex items-center justify-center">
+        <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center" style={{ aspectRatio: '16/10' }}>
           <button
-            onClick={() => onOpenVideo(actividad.videos![0])}
-            className="flex flex-col items-center gap-2 text-white hover:scale-105 transition-transform"
+            onClick={() => onOpenVideo(getMediaUrl(actividad.videos![0]))}
+            className="flex flex-col items-center gap-3 text-white hover:scale-105 transition-transform"
           >
-            <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center">
-              <Play className="w-8 h-8 ml-1" />
+            <div className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-xl transition-colors">
+              <Play className="w-10 h-10 ml-1" />
             </div>
-            <span className="text-sm">Ver Video</span>
+            <span className="font-medium">Ver Video</span>
           </button>
         </div>
       )}
 
-      <CardHeader>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-          <Calendar className="w-3 h-3" />
-          {formatDate(actividad.createdAt)}
-        </div>
-        <CardTitle className="text-lg line-clamp-2">
-          {actividad.titulo}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-3">
+      {/* Descripción */}
+      <div className="p-4">
+        <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-line">
           {actividad.contenido}
         </p>
-        <p className="text-xs text-muted-foreground mt-4">
-          Por: {actividad.autor.nombre} {actividad.autor.apellido}
+        <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100">
+          Por: <span className="font-medium text-slate-500">{actividad.autor.nombre} {actividad.autor.apellido}</span>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 export default function LandingPage() {
   const [actividades, setActividades] = useState<Actividad[]>([]);
+  const [instituciones, setInstituciones] = useState<Institucion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [videoModal, setVideoModal] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchActividades = async () => {
+    const fetchData = async () => {
       try {
-        // Solo cargar actividades globales (sin institucionId)
-        const response = await actividadesApi.getAll(6);
-        setActividades(response.data || []);
+        // Cargar actividades e instituciones en paralelo
+        const [actividadesRes, institucionesRes] = await Promise.all([
+          actividadesApi.getAll(5),
+          institucionesApi.getAll(),
+        ]);
+        setActividades(actividadesRes.data || []);
+        const instData = institucionesRes.data?.data || institucionesRes.data || [];
+        // Filtrar solo instituciones con logo
+        setInstituciones(instData.filter((i: Institucion) => i.logoUrl));
       } catch (error) {
-        console.error('Error cargando actividades:', error);
+        console.error('Error cargando datos:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchActividades();
+    fetchData();
   }, []);
 
   // Función para detectar tipo de video
@@ -370,7 +391,7 @@ export default function LandingPage() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : actividades.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {actividades.map((actividad) => (
                 <ActividadCard
                   key={actividad.id}
@@ -389,6 +410,45 @@ export default function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* Instituciones Section */}
+      {instituciones.length > 0 && (
+        <section className="py-16 px-4 bg-slate-50">
+          <div className="container mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                Instituciones que confían en nosotros
+              </h2>
+              <p className="text-muted-foreground">
+                Conoce las instituciones que forman parte de nuestra plataforma
+              </p>
+            </div>
+
+            <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
+              {instituciones.map((institucion) => (
+                <Link
+                  key={institucion.id}
+                  href={`/${institucion.slug}`}
+                  className="group flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-white hover:shadow-md transition-all duration-200"
+                >
+                  <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden bg-white shadow-sm border border-slate-200 group-hover:shadow-lg transition-shadow">
+                    <Image
+                      src={getMediaUrl(institucion.logoUrl)}
+                      alt={institucion.nombre}
+                      fill
+                      className="object-contain p-2"
+                      unoptimized
+                    />
+                  </div>
+                  <span className="text-sm text-slate-600 font-medium text-center max-w-[120px] line-clamp-2 group-hover:text-primary transition-colors">
+                    {institucion.nombre}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-primary text-white">

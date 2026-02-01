@@ -31,7 +31,7 @@ const storage = multer.diskStorage({
       cb(null, fotosDir);
     } else if (file.fieldname === 'logo' || file.fieldname === 'fondoLogin') {
       cb(null, logosDir); // Guardamos fondoLogin junto con logos
-    } else if (file.fieldname === 'imagen' || file.mimetype.startsWith('image/')) {
+    } else if (file.fieldname === 'imagen' || file.fieldname === 'imagenes' || file.mimetype.startsWith('image/')) {
       cb(null, imagesDir);
     } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
       cb(null, videosDir);
@@ -55,7 +55,7 @@ const fileFilter = (
   const allowedImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const allowedVideos = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
-  if (file.fieldname === 'imagen' || file.fieldname === 'logo' || file.fieldname === 'foto' || file.fieldname === 'fondoLogin') {
+  if (file.fieldname === 'imagen' || file.fieldname === 'imagenes' || file.fieldname === 'logo' || file.fieldname === 'foto' || file.fieldname === 'fondoLogin') {
     if (allowedImages.includes(file.mimetype)) {
       cb(null, true);
     } else {

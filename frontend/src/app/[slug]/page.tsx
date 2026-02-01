@@ -5,11 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PhotoSlider } from '@/components/landing/PhotoSlider';
-import { MediaViewer } from '@/components/landing/MediaViewer';
 import { LanguageSelector } from '@/components/landing/LanguageSelector';
-import { institucionesApi, actividadesApi } from '@/lib/api';
+import { institucionesApi, actividadesApi, getMediaUrl } from '@/lib/api';
 import { translations, type Locale } from '@/lib/i18n/translations';
 import {
   GraduationCap,
@@ -18,9 +15,12 @@ import {
   ArrowRight,
   Loader2,
   Building2,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  X,
   Image as ImageIcon,
   Video,
-  Play,
 } from 'lucide-react';
 
 interface Branding {
@@ -66,6 +66,369 @@ const LOCALES_BY_COUNTRY: Record<string, Locale[]> = {
   HT: ['ht', 'fr', 'en'],
 };
 
+// Helper para detectar si es YouTube
+const getYouTubeId = (url: string): string | null => {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/);
+  return match ? match[1] : null;
+};
+
+// Componente de Card de Actividad con su propio slider
+function ActividadCard({
+  actividad,
+  onClick,
+  primaryColor,
+  formatDate,
+}: {
+  actividad: Actividad;
+  onClick: () => void;
+  primaryColor: string;
+  formatDate: (date: string) => string;
+}) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Obtener fotos de la actividad
+  const fotos = useMemo(() => {
+    const urls: string[] = [];
+    if (actividad.fotos && actividad.fotos.length > 0) {
+      urls.push(...actividad.fotos.map(url => getMediaUrl(url)));
+    } else if (actividad.urlArchivo) {
+      urls.push(getMediaUrl(actividad.urlArchivo));
+    }
+    return urls;
+  }, [actividad]);
+
+  const hasVideo = actividad.videos && actividad.videos.length > 0;
+
+  const nextSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev + 1) % fotos.length);
+  };
+
+  const prevSlide = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentSlide((prev) => (prev - 1 + fotos.length) % fotos.length);
+  };
+
+  return (
+    <div
+      className="group rounded-xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer"
+      onClick={onClick}
+    >
+      {/* Slider de imagenes de esta actividad */}
+      {fotos.length > 0 && (
+        <div className="relative bg-slate-900" style={{ aspectRatio: '16/10' }}>
+          <Image
+            src={fotos[currentSlide]}
+            alt={actividad.titulo}
+            fill
+            className="object-contain"
+            unoptimized
+          />
+
+          {/* Navegacion del slider */}
+          {fotos.length > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Indicadores */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 px-3 py-1.5 rounded-full">
+                {fotos.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentSlide(index);
+                    }}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentSlide ? 'bg-white scale-125' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Contador */}
+              <div className="absolute top-3 left-3 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                <ImageIcon className="w-3 h-3" />
+                {currentSlide + 1}/{fotos.length}
+              </div>
+            </>
+          )}
+
+          {/* Badge de video */}
+          {hasVideo && (
+            <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+              <Play className="w-3 h-3" />
+              Video
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Si no hay fotos pero hay video */}
+      {fotos.length === 0 && hasVideo && (
+        <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center" style={{ aspectRatio: '16/10' }}>
+          <div className="flex flex-col items-center gap-2 text-white">
+            <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center">
+              <Play className="w-8 h-8 ml-1" />
+            </div>
+            <span className="text-sm">Ver Video</span>
+          </div>
+        </div>
+      )}
+
+      {/* Informacion de la actividad */}
+      <div className="p-4">
+        <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+          <Calendar className="w-3 h-3" />
+          {formatDate(actividad.createdAt)}
+        </div>
+        <h3 className="font-bold text-lg mb-2 line-clamp-2" style={{ color: primaryColor }}>
+          {actividad.titulo}
+        </h3>
+        <p className="text-sm text-slate-600 line-clamp-2 whitespace-pre-line">
+          {actividad.contenido}
+        </p>
+        <p className="text-xs text-slate-400 mt-3">
+          Por: {actividad.autor.nombre} {actividad.autor.apellido}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Modal de Actividad en pantalla completa
+function ActividadModal({
+  actividad,
+  isOpen,
+  onClose,
+  primaryColor,
+  formatDate,
+}: {
+  actividad: Actividad | null;
+  isOpen: boolean;
+  onClose: () => void;
+  primaryColor: string;
+  formatDate: (date: string) => string;
+}) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [showVideo, setShowVideo] = useState(false);
+
+  // Reset al abrir
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentSlide(0);
+      setShowVideo(false);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prevSlide();
+      if (e.key === 'ArrowRight') nextSlide();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentSlide]);
+
+  if (!isOpen || !actividad) return null;
+
+  // Obtener fotos
+  const fotos = actividad.fotos?.length
+    ? actividad.fotos.map(url => getMediaUrl(url))
+    : actividad.urlArchivo
+      ? [getMediaUrl(actividad.urlArchivo)]
+      : [];
+
+  // Obtener videos
+  const videos = actividad.videos?.map(url => getMediaUrl(url)) || [];
+  const hasVideo = videos.length > 0;
+
+  const nextSlide = () => {
+    if (fotos.length > 1) {
+      setCurrentSlide((prev) => (prev + 1) % fotos.length);
+    }
+  };
+
+  const prevSlide = () => {
+    if (fotos.length > 1) {
+      setCurrentSlide((prev) => (prev - 1 + fotos.length) % fotos.length);
+    }
+  };
+
+  // Renderizar video (YouTube o directo)
+  const renderVideo = (url: string) => {
+    const youtubeId = getYouTubeId(url);
+    if (youtubeId) {
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      );
+    }
+    return (
+      <video
+        src={url}
+        className="w-full h-full"
+        controls
+        autoPlay
+      />
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+      {/* Boton cerrar */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-50 text-white hover:text-gray-300 transition-colors"
+      >
+        <X className="w-8 h-8" />
+      </button>
+
+      {/* Seccion superior: Slider/Video */}
+      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+        <div className="relative w-full max-w-5xl h-full max-h-[60vh]">
+          {showVideo && hasVideo ? (
+            // Mostrar video
+            <div className="w-full h-full bg-black rounded-lg overflow-hidden">
+              {renderVideo(videos[0])}
+            </div>
+          ) : fotos.length > 0 ? (
+            // Mostrar slider de fotos
+            <div className="relative w-full h-full bg-slate-900 rounded-lg overflow-hidden">
+              <Image
+                src={fotos[currentSlide]}
+                alt={actividad.titulo}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+
+              {/* Navegacion */}
+              {fotos.length > 1 && (
+                <>
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+
+                  {/* Indicadores */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 px-4 py-2 rounded-full">
+                    {fotos.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentSlide(index)}
+                        className={`w-3 h-3 rounded-full transition-all ${
+                          index === currentSlide ? 'bg-white scale-110' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Contador */}
+                  <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    {currentSlide + 1} / {fotos.length}
+                  </div>
+                </>
+              )}
+
+              {/* Boton ver video */}
+              {hasVideo && (
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Ver Video
+                </button>
+              )}
+            </div>
+          ) : hasVideo ? (
+            // Solo video, sin fotos
+            <div className="w-full h-full bg-black rounded-lg overflow-hidden">
+              {renderVideo(videos[0])}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Seccion inferior: Titulo y descripcion */}
+      <div className="bg-white/10 backdrop-blur-sm border-t border-white/20">
+        <div className="max-w-5xl mx-auto p-6">
+          <div className="flex items-center gap-3 text-white/60 text-sm mb-3">
+            <Calendar className="w-4 h-4" />
+            {formatDate(actividad.createdAt)}
+            <span className="mx-2">|</span>
+            Por: {actividad.autor.nombre} {actividad.autor.apellido}
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            {actividad.titulo}
+          </h2>
+          <p className="text-white/80 text-base md:text-lg leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
+            {actividad.contenido}
+          </p>
+
+          {/* Botones de navegacion entre fotos y video */}
+          {hasVideo && fotos.length > 0 && (
+            <div className="flex gap-3 mt-4 pt-4 border-t border-white/20">
+              <button
+                onClick={() => setShowVideo(false)}
+                className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
+                  !showVideo ? 'bg-white text-slate-900' : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                Fotos ({fotos.length})
+              </button>
+              <button
+                onClick={() => setShowVideo(true)}
+                className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
+                  showVideo ? 'bg-white text-slate-900' : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                <Video className="w-4 h-4" />
+                Video
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstitucionLandingPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -76,16 +439,8 @@ export default function InstitucionLandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [locale, setLocale] = useState<Locale>('es');
 
-  // Media viewer state
-  const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
-  const [currentMedia, setCurrentMedia] = useState<{
-    type: 'photo' | 'video';
-    url: string;
-    title?: string;
-    description?: string;
-  } | null>(null);
-  const [allMedia, setAllMedia] = useState<Array<{ type: 'photo' | 'video'; url: string }>>([]);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  // Modal state
+  const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
 
   // Get translations
   const t = useMemo(() => translations[locale], [locale]);
@@ -99,12 +454,10 @@ export default function InstitucionLandingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Obtener branding por slug
         const brandingResponse = await institucionesApi.getBrandingBySlug(slug);
         const brandingData = brandingResponse.data;
         setBranding(brandingData);
 
-        // Set initial locale based on institution's idiomaPrincipal
         if (brandingData.idiomaPrincipal) {
           const mappedLocale = IDIOMA_TO_LOCALE[brandingData.idiomaPrincipal];
           if (mappedLocale) {
@@ -112,11 +465,9 @@ export default function InstitucionLandingPage() {
           }
         }
 
-        // Obtener actividades de la institucion
         const actividadesResponse = await actividadesApi.getBySlug(slug, 10);
         const actividadesData = actividadesResponse.data || [];
 
-        // Process actividades to extract media
         const processedActividades = actividadesData.map((act: any) => ({
           ...act,
           fotos: Array.isArray(act.fotos) ? act.fotos : (act.fotos ? JSON.parse(act.fotos) : []),
@@ -141,36 +492,6 @@ export default function InstitucionLandingPage() {
     }
   }, [slug]);
 
-  // Collect all photos and videos from activities
-  const allPhotos = useMemo(() => {
-    const photos: { url: string; actividad: Actividad }[] = [];
-    actividades.forEach((act) => {
-      // Add urlArchivo if exists
-      if (act.urlArchivo) {
-        photos.push({ url: act.urlArchivo, actividad: act });
-      }
-      // Add fotos array
-      if (act.fotos && act.fotos.length > 0) {
-        act.fotos.forEach((url) => {
-          photos.push({ url, actividad: act });
-        });
-      }
-    });
-    return photos;
-  }, [actividades]);
-
-  const allVideos = useMemo(() => {
-    const videos: { url: string; actividad: Actividad }[] = [];
-    actividades.forEach((act) => {
-      if (act.videos && act.videos.length > 0) {
-        act.videos.forEach((url) => {
-          videos.push({ url, actividad: act });
-        });
-      }
-    });
-    return videos;
-  }, [actividades]);
-
   const formatDate = (dateString: string) => {
     const localeMap: Record<Locale, string> = {
       es: 'es-ES',
@@ -183,60 +504,6 @@ export default function InstitucionLandingPage() {
       month: 'long',
       day: 'numeric',
     });
-  };
-
-  const openPhotoViewer = (photoIndex: number) => {
-    if (allPhotos.length === 0) return;
-    const photo = allPhotos[photoIndex];
-    const mediaList = allPhotos.map((p) => ({ type: 'photo' as const, url: p.url }));
-    setAllMedia(mediaList);
-    setCurrentMediaIndex(photoIndex);
-    setCurrentMedia({
-      type: 'photo',
-      url: photo.url,
-      title: photo.actividad.titulo,
-      description: photo.actividad.contenido,
-    });
-    setMediaViewerOpen(true);
-  };
-
-  const openVideoViewer = (videoIndex: number) => {
-    if (allVideos.length === 0) return;
-    const video = allVideos[videoIndex];
-    const mediaList = allVideos.map((v) => ({ type: 'video' as const, url: v.url }));
-    setAllMedia(mediaList);
-    setCurrentMediaIndex(videoIndex);
-    setCurrentMedia({
-      type: 'video',
-      url: video.url,
-      title: video.actividad.titulo,
-      description: video.actividad.contenido,
-    });
-    setMediaViewerOpen(true);
-  };
-
-  const handleMediaNavigate = (index: number) => {
-    if (index < 0 || index >= allMedia.length) return;
-    const media = allMedia[index];
-
-    if (media.type === 'photo') {
-      const photo = allPhotos[index];
-      setCurrentMedia({
-        type: 'photo',
-        url: photo.url,
-        title: photo.actividad.titulo,
-        description: photo.actividad.contenido,
-      });
-    } else {
-      const video = allVideos[index];
-      setCurrentMedia({
-        type: 'video',
-        url: video.url,
-        title: video.actividad.titulo,
-        description: video.actividad.contenido,
-      });
-    }
-    setCurrentMediaIndex(index);
   };
 
   if (isLoading) {
@@ -268,7 +535,6 @@ export default function InstitucionLandingPage() {
   const secondaryColor = branding.colorSecundario || '#3182ce';
   const logoPosicion = branding.logoPosicion || 'center';
 
-  // Logo position classes
   const logoPositionClasses: Record<string, string> = {
     left: 'items-start text-left',
     center: 'items-center text-center',
@@ -286,11 +552,12 @@ export default function InstitucionLandingPage() {
           <div className="flex items-center gap-3">
             {branding.logoUrl ? (
               <Image
-                src={branding.logoUrl}
+                src={getMediaUrl(branding.logoUrl)}
                 alt={branding.nombre}
                 width={40}
                 height={40}
                 className="rounded"
+                unoptimized
               />
             ) : (
               <div
@@ -304,7 +571,6 @@ export default function InstitucionLandingPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Language Selector */}
             <LanguageSelector
               currentLocale={locale}
               availableLocales={availableLocales}
@@ -323,17 +589,18 @@ export default function InstitucionLandingPage() {
         </div>
       </header>
 
-      {/* Hero Section with Logo Position */}
-      <section className="pt-32 pb-20 px-4" style={{ backgroundColor: `${primaryColor}10` }}>
+      {/* Hero Section */}
+      <section className="pt-32 pb-16 px-4" style={{ backgroundColor: `${primaryColor}10` }}>
         <div className={`container mx-auto max-w-4xl flex flex-col ${logoPositionClasses[logoPosicion]}`}>
           {branding.logoUrl && (
             <div className="mb-6">
               <Image
-                src={branding.logoUrl}
+                src={getMediaUrl(branding.logoUrl)}
                 alt={branding.nombre}
                 width={120}
                 height={120}
                 className="rounded-lg shadow-lg"
+                unoptimized
               />
             </div>
           )}
@@ -358,81 +625,9 @@ export default function InstitucionLandingPage() {
         </div>
       </section>
 
-      {/* Photo Slider Section */}
-      {allPhotos.length > 0 && (
-        <section className="py-12 px-4 bg-slate-100">
-          <div className="container mx-auto max-w-5xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: primaryColor }}>
-                <ImageIcon className="w-6 h-6" />
-                {t.landing.photos}
-              </h2>
-              {allPhotos.length > 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openPhotoViewer(0)}
-                >
-                  {t.landing.viewGallery} ({allPhotos.length})
-                </Button>
-              )}
-            </div>
-            <PhotoSlider
-              photos={allPhotos.map((p) => p.url)}
-              onPhotoClick={openPhotoViewer}
-              className="shadow-xl"
-            />
-          </div>
-        </section>
-      )}
-
-      {/* Videos Section */}
-      {allVideos.length > 0 && (
-        <section className="py-12 px-4">
-          <div className="container mx-auto max-w-5xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: primaryColor }}>
-                <Video className="w-6 h-6" />
-                {t.landing.videos}
-              </h2>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allVideos.slice(0, 6).map((video, idx) => (
-                <Card
-                  key={idx}
-                  className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
-                  onClick={() => openVideoViewer(idx)}
-                >
-                  <div className="aspect-video bg-slate-900 relative flex items-center justify-center">
-                    <video
-                      src={video.url}
-                      className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
-                      muted
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div
-                        className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"
-                        style={{ backgroundColor: primaryColor }}
-                      >
-                        <Play className="w-8 h-8 text-white ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                  <CardContent className="p-3">
-                    <p className="text-sm font-medium line-clamp-1">
-                      {video.actividad.titulo}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Actividades Section */}
       {actividades.length > 0 && (
-        <section className="py-20 px-4">
+        <section className="py-16 px-4">
           <div className="container mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold mb-4" style={{ color: primaryColor }}>
@@ -443,38 +638,15 @@ export default function InstitucionLandingPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {actividades.map((actividad) => (
-                <Card
+                <ActividadCard
                   key={actividad.id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  {actividad.urlArchivo && (
-                    <div className="aspect-video relative bg-slate-100">
-                      <Image
-                        src={actividad.urlArchivo}
-                        alt={actividad.titulo}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <CardHeader>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(actividad.createdAt)}
-                    </div>
-                    <CardTitle className="text-lg line-clamp-2">{actividad.titulo}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {actividad.contenido}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-4">
-                      {t.landing.by}: {actividad.autor.nombre} {actividad.autor.apellido}
-                    </p>
-                  </CardContent>
-                </Card>
+                  actividad={actividad}
+                  onClick={() => setSelectedActividad(actividad)}
+                  primaryColor={primaryColor}
+                  formatDate={formatDate}
+                />
               ))}
             </div>
           </div>
@@ -520,11 +692,12 @@ export default function InstitucionLandingPage() {
           <div className="flex items-center gap-2">
             {branding.logoUrl ? (
               <Image
-                src={branding.logoUrl}
+                src={getMediaUrl(branding.logoUrl)}
                 alt={branding.nombre}
                 width={24}
                 height={24}
                 className="rounded"
+                unoptimized
               />
             ) : (
               <GraduationCap className="w-6 h-6" style={{ color: primaryColor }} />
@@ -537,30 +710,14 @@ export default function InstitucionLandingPage() {
         </div>
       </footer>
 
-      {/* Media Viewer */}
-      {currentMedia && branding && (
-        <MediaViewer
-          isOpen={mediaViewerOpen}
-          onClose={() => {
-            setMediaViewerOpen(false);
-            setCurrentMedia(null);
-          }}
-          media={currentMedia}
-          branding={{
-            logoUrl: branding.logoUrl,
-            nombre: branding.nombre,
-            colorPrimario: primaryColor,
-          }}
-          translations={{
-            close: t.landing.close,
-            previous: t.landing.previous,
-            next: t.landing.next,
-          }}
-          allMedia={allMedia}
-          currentIndex={currentMediaIndex}
-          onNavigate={handleMediaNavigate}
-        />
-      )}
+      {/* Modal de Actividad */}
+      <ActividadModal
+        actividad={selectedActividad}
+        isOpen={!!selectedActividad}
+        onClose={() => setSelectedActividad(null)}
+        primaryColor={primaryColor}
+        formatDate={formatDate}
+      />
     </div>
   );
 }

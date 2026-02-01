@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { actividadesApi, institucionesApi } from '@/lib/api';
+import { actividadesApi, institucionesApi, getMediaUrl } from '@/lib/api';
 import {
   ArrowLeft,
   Loader2,
@@ -118,13 +118,13 @@ export default function EditarActividadPage() {
       setInstitucionId(actividad.institucion?.id || 'global');
       setPublicado(actividad.publicado);
 
-      // Cargar imágenes existentes
+      // Cargar imágenes existentes (convertir a URLs absolutas para visualización)
       const existingImages: ImagePreview[] = [];
       if (actividad.fotos && actividad.fotos.length > 0) {
         actividad.fotos.forEach((url, index) => {
           existingImages.push({
             id: `existing-${index}`,
-            url,
+            url: getMediaUrl(url),
             isExisting: true,
             isUrl: true,
           });
@@ -132,7 +132,7 @@ export default function EditarActividadPage() {
       } else if (actividad.urlArchivo) {
         existingImages.push({
           id: 'existing-0',
-          url: actividad.urlArchivo,
+          url: getMediaUrl(actividad.urlArchivo),
           isExisting: true,
           isUrl: true,
         });
@@ -142,7 +142,7 @@ export default function EditarActividadPage() {
       // Cargar videos existentes
       if (actividad.videos && actividad.videos.length > 0) {
         setExistingVideos(actividad.videos);
-        setVideoUrl(actividad.videos[0]);
+        setVideoUrl(getMediaUrl(actividad.videos[0]));
       }
     } catch (error) {
       console.error('Error cargando datos:', error);

@@ -57,6 +57,7 @@ export function PhotoSlider({
           fill
           className="object-cover transition-opacity duration-500"
           priority={currentIndex === 0}
+          unoptimized
         />
 
         {/* Gradient overlay */}

@@ -87,12 +87,18 @@ export const createActividadHandler = async (req: Request, res: Response) => {
       videos.push(req.body.videoUrl.trim());
     }
 
+    // Convertir publicado a booleano (viene como string desde FormData)
+    let publicado = true;
+    if (req.body.publicado !== undefined) {
+      publicado = req.body.publicado === 'true' || req.body.publicado === true;
+    }
+
     const actividad = await createActividad(
       {
         ...validated.body,
         fotos: fotos.length > 0 ? fotos : undefined,
         videos: videos.length > 0 ? videos : undefined,
-        publicado: req.body.publicado !== undefined ? req.body.publicado : true,
+        publicado,
       },
       req.user.usuarioId.toString(),
       institucionId

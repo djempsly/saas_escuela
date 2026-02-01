@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { actividadesApi, institucionesApi } from '@/lib/api';
+import { actividadesApi, institucionesApi, getMediaUrl } from '@/lib/api';
 import {
   Plus,
   Loader2,
@@ -248,7 +248,7 @@ export default function AdminActividadesPage() {
                     {(actividad.fotos?.[0] || actividad.urlArchivo) && (
                       <div className="relative w-24 h-24 flex-shrink-0 rounded-md overflow-hidden bg-slate-200">
                         <Image
-                          src={actividad.fotos?.[0] || actividad.urlArchivo || ''}
+                          src={getMediaUrl(actividad.fotos?.[0] || actividad.urlArchivo)}
                           alt={actividad.titulo}
                           fill
                           className="object-cover"

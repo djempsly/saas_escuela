@@ -110,6 +110,7 @@ export function MediaViewer({
                   alt={branding.nombre}
                   fill
                   className="object-contain rounded-lg"
+                  unoptimized
                 />
               </div>
             ) : (
@@ -186,6 +187,7 @@ export function MediaViewer({
                 alt={media.title || 'Photo'}
                 fill
                 className="object-contain rounded-lg"
+                unoptimized
               />
             </div>
           </div>
@@ -199,6 +201,7 @@ export function MediaViewer({
                   alt={branding.nombre}
                   fill
                   className="object-contain rounded-lg"
+                  unoptimized
                 />
               </div>
             ) : (
