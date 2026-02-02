@@ -51,19 +51,34 @@ export default function AdminConfiguracionPage() {
   });
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await adminApi.getUserStats();
-      setStats(response.data);
+      const [statsRes, settingsRes] = await Promise.all([
+        adminApi.getUserStats(),
+        adminApi.getSettings(),
+      ]);
+      setStats(statsRes.data);
+      if (settingsRes.data?.data) {
+        setSettings({
+          allowPublicRegistration: settingsRes.data.data.allowPublicRegistration ?? false,
+          maintenanceMode: settingsRes.data.data.maintenanceMode ?? false,
+          maxInstitutionsPerPlan: settingsRes.data.data.maxInstitutionsPerPlan ?? 10,
+          defaultSessionTimeout: settingsRes.data.data.defaultSessionTimeout ?? 24,
+        });
+      }
     } catch (error) {
-      console.error('Error cargando estadisticas:', error);
+      console.error('Error cargando datos:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchStats = async () => {
+    fetchData();
   };
 
   const handleSave = async () => {
@@ -71,9 +86,7 @@ export default function AdminConfiguracionPage() {
     setMessage(null);
 
     try {
-      // TODO: Implement settings API endpoint
-      // await api.put('/admin/settings', settings);
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated save
+      await adminApi.updateSettings(settings);
       setMessage({ type: 'success', text: 'Configuracion guardada correctamente' });
     } catch (error) {
       const apiError = error as ApiError;

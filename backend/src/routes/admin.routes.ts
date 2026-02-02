@@ -8,6 +8,10 @@ import {
   getDirectorHistoryHandler,
   forceResetPasswordHandler,
 } from '../controllers/admin.controller';
+import {
+  getSystemSettingsHandler,
+  updateSystemSettingsHandler,
+} from '../controllers/settings.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { ROLES } from '../utils/zod.schemas';
@@ -40,5 +44,12 @@ router.put('/directores/:id/reasignar', reassignDirectorHandler);
 // ===== INSTITUCIONES (historial) =====
 // GET /api/v1/admin/instituciones/:id/historial - Ver historial de directores
 router.get('/instituciones/:id/historial', getDirectorHistoryHandler);
+
+// ===== CONFIGURACION DEL SISTEMA =====
+// GET /api/v1/admin/settings - Obtener configuración
+router.get('/settings', getSystemSettingsHandler);
+
+// PUT /api/v1/admin/settings - Actualizar configuración
+router.put('/settings', updateSystemSettingsHandler);
 
 export default router;

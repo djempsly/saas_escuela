@@ -50,6 +50,8 @@ export interface DatosEstudiante {
   telefonoCentro?: string;
   provincia?: string;
   municipio?: string;
+  distritoEducativo?: string;
+  regionalEducacion?: string;
 }
 
 export interface Calificacion {

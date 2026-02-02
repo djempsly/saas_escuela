@@ -46,6 +46,14 @@ enum Idioma {
   KREYOL
 }
 
+enum Tanda {
+  MATUTINA
+  VESPERTINA
+  NOCTURNA
+  SABATINA
+  EXTENDIDA
+}
+
 enum EstadoAsistencia {
   PRESENTE
   AUSENTE
@@ -190,10 +198,13 @@ model Institucion {
   sistema           SistemaEducativo
   idiomaPrincipal   Idioma           @default(ESPANOL)
 
-  // Datos Ministeriales
+  // Datos Ministeriales y Ubicación
   codigoCentro      String?
   distritoEducativo String?
   regionalEducacion String?
+  provincia         String?
+  municipio         String?
+  sector            String?
 
   directorId String @unique
   director   User   @relation("DirectorInstitucion", fields: [directorId], references: [id])
@@ -296,6 +307,8 @@ model Materia {
 model Clase {
   id             String       @id @default(cuid())
   codigo         String       @unique // Código único para inscribirse
+  tanda          Tanda        @default(MATUTINA) // Turno de la clase
+  seccion        String?      // Sección (A, B, C, etc.)
   materiaId      String
   materia        Materia      @relation(fields: [materiaId], references: [id])
   nivelId        String
@@ -642,4 +655,16 @@ model DiasLaborables {
   updatedAt       DateTime     @updatedAt
 
   @@unique([claseId, cicloLectivoId])
+}
+
+// ========== SYSTEM CONFIGURATION ==========
+
+model SystemSettings {
+  id                      String   @id @default("system")
+  maintenanceMode         Boolean  @default(false)
+  allowPublicRegistration Boolean  @default(false)
+  maxInstitutionsPerPlan  Int      @default(10)
+  defaultSessionTimeout   Int      @default(24) // horas
+
+  updatedAt               DateTime @updatedAt
 }

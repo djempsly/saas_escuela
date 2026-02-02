@@ -95,6 +95,16 @@ export const adminApi = {
   // Historial
   getDirectorHistory: (institucionId: string) =>
     api.get(`/admin/instituciones/${institucionId}/historial`),
+
+  // Configuración del sistema
+  getSettings: () =>
+    api.get('/admin/settings'),
+  updateSettings: (data: {
+    maintenanceMode?: boolean;
+    allowPublicRegistration?: boolean;
+    maxInstitutionsPerPlan?: number;
+    defaultSessionTimeout?: number;
+  }) => api.put('/admin/settings', data),
 };
 
 // Instituciones API

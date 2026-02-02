@@ -34,6 +34,8 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
   return prisma.clase.create({
     data: {
       codigo,
+      tanda: input.tanda || 'MATUTINA',
+      seccion: input.seccion || null,
       materiaId: input.materiaId,
       nivelId: input.nivelId,
       docenteId: input.docenteId,
