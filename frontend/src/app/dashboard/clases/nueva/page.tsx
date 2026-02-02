@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -52,6 +53,7 @@ export default function NuevaClasePage() {
 
   // Form data
   const [formData, setFormData] = useState({
+    codigo: '',
     materiaId: '',
     nivelId: '',
     docenteId: '',
@@ -105,7 +107,11 @@ export default function NuevaClasePage() {
     }
 
     try {
-      await clasesApi.create(formData);
+      const dataToSend = {
+        ...formData,
+        codigo: formData.codigo || undefined, // Si esta vacio, el backend genera uno
+      };
+      await clasesApi.create(dataToSend);
       router.push('/dashboard/clases');
     } catch (err: any) {
       console.error('Error creando clase:', err);
@@ -150,6 +156,20 @@ export default function NuevaClasePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Codigo */}
+            <div className="space-y-2">
+              <Label htmlFor="codigo">Codigo de la Clase (opcional)</Label>
+              <Input
+                id="codigo"
+                placeholder="Ej: MAT-101, 7mo-A, etc. (se genera automaticamente si se deja vacio)"
+                value={formData.codigo}
+                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Este codigo se usara para que los estudiantes se inscriban a la clase
+              </p>
+            </div>
+
             {/* Materia */}
             <div className="space-y-2">
               <Label htmlFor="materia">Materia *</Label>

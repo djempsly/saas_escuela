@@ -274,16 +274,50 @@ export const guardarCalificacionTecnica = async (
   });
 };
 
-// Obtener calificaciones de una clase
+// Obtener calificaciones de una clase (incluye TODOS los estudiantes inscritos)
 export const getCalificacionesByClase = async (claseId: string, institucionId: string) => {
   const clase = await validarAccesoClase(claseId, institucionId);
 
-  const calificaciones = await prisma.calificacion.findMany({
+  // Obtener TODOS los estudiantes inscritos en la clase
+  const inscripciones = await prisma.inscripcion.findMany({
     where: { claseId },
     include: {
       estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
     },
     orderBy: { estudiante: { apellido: 'asc' } },
+  });
+
+  // Obtener calificaciones existentes
+  const calificacionesExistentes = await prisma.calificacion.findMany({
+    where: { claseId },
+  });
+
+  // Crear mapa de calificaciones por estudianteId
+  const calificacionesMap = new Map(
+    calificacionesExistentes.map((c) => [c.estudianteId, c])
+  );
+
+  // Combinar: todos los estudiantes inscritos con sus calificaciones (o vacías)
+  const calificaciones = inscripciones.map((insc) => {
+    const cal = calificacionesMap.get(insc.estudianteId);
+    return {
+      id: cal?.id || null,
+      estudianteId: insc.estudianteId,
+      claseId: claseId,
+      estudiante: insc.estudiante,
+      p1: cal?.p1 ?? null,
+      p2: cal?.p2 ?? null,
+      p3: cal?.p3 ?? null,
+      p4: cal?.p4 ?? null,
+      rp1: cal?.rp1 ?? null,
+      rp2: cal?.rp2 ?? null,
+      rp3: cal?.rp3 ?? null,
+      rp4: cal?.rp4 ?? null,
+      cpc_30: cal?.cpc_30 ?? null,
+      cpex_70: cal?.cpex_70 ?? null,
+      promedioFinal: cal?.promedioFinal ?? null,
+      situacion: cal?.situacion ?? null,
+    };
   });
 
   // Si es Politécnico y materia técnica, incluir también las calificaciones técnicas
@@ -309,6 +343,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
       tipoMateria: clase.materia.tipo,
     },
     calificaciones,
+    totalEstudiantes: inscripciones.length,
     calificacionesTecnicas:
       calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
   };

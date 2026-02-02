@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { dashboardApi } from '@/lib/api';
 import {
   Users,
   GraduationCap,
@@ -10,45 +12,190 @@ import {
   TrendingUp,
   Calendar,
   ClipboardCheck,
+  Loader2,
+  Building2,
+  Layers,
+  FileText,
+  UserCheck,
 } from 'lucide-react';
+
+interface DashboardStats {
+  cicloActivo: { id: string; nombre: string } | null;
+  estadisticas: {
+    totalEstudiantes?: number;
+    totalDocentes?: number;
+    totalPersonal?: number;
+    totalClases?: number;
+    totalNiveles?: number;
+    totalMaterias?: number;
+    totalInscripciones?: number;
+    promedioAsistencia?: number;
+    tareasPendientes?: number;
+    promedioGeneral?: number;
+  };
+  proximosEventos?: Array<{
+    id: string;
+    titulo: string;
+    fechaInicio: string;
+    tipo: string;
+  }>;
+  clases?: Array<{
+    id: string;
+    materia: string;
+    nivel: string;
+    estudiantes?: number;
+    docente?: string;
+  }>;
+}
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { branding } = useInstitutionStore();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const primaryColor = branding?.colorPrimario || '#1a365d';
 
-  // Estadísticas de ejemplo (en producción vendrían del API)
-  const stats = [
-    {
-      title: 'Total Estudiantes',
-      value: '1,234',
-      change: '+12%',
-      icon: Users,
-      description: 'Este ciclo lectivo',
-    },
-    {
-      title: 'Clases Activas',
-      value: '48',
-      change: '+3',
-      icon: GraduationCap,
-      description: 'En curso',
-    },
-    {
-      title: 'Asistencia Promedio',
-      value: '94.5%',
-      change: '+2.3%',
-      icon: ClipboardCheck,
-      description: 'Últimos 30 días',
-    },
-    {
-      title: 'Promedio General',
-      value: '78.2',
-      change: '+5.1',
-      icon: TrendingUp,
-      description: 'Sobre 100 puntos',
-    },
-  ];
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await dashboardApi.getStats();
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Stats cards based on role
+  const getStatsCards = () => {
+    if (!stats) return [];
+
+    const role = user?.role;
+    const est = stats.estadisticas;
+
+    // Admin/Director/Coordinador stats
+    if (role === 'DIRECTOR' || role === 'COORDINADOR' || role === 'COORDINADOR_ACADEMICO' || role === 'SECRETARIA' || role === 'ADMIN') {
+      return [
+        {
+          title: 'Total Estudiantes',
+          value: est.totalEstudiantes?.toLocaleString() || '0',
+          icon: Users,
+          description: 'Activos en la institución',
+        },
+        {
+          title: 'Total Docentes',
+          value: est.totalDocentes?.toLocaleString() || '0',
+          icon: UserCheck,
+          description: 'Activos en la institución',
+        },
+        {
+          title: 'Clases Activas',
+          value: est.totalClases?.toLocaleString() || '0',
+          icon: GraduationCap,
+          description: stats.cicloActivo ? stats.cicloActivo.nombre : 'Sin ciclo activo',
+        },
+        {
+          title: 'Asistencia Promedio',
+          value: est.promedioAsistencia ? `${est.promedioAsistencia}%` : '0%',
+          icon: ClipboardCheck,
+          description: 'Últimos 30 días',
+        },
+      ];
+    }
+
+    // Docente stats
+    if (role === 'DOCENTE') {
+      return [
+        {
+          title: 'Mis Clases',
+          value: est.totalClases?.toLocaleString() || '0',
+          icon: GraduationCap,
+          description: stats.cicloActivo ? stats.cicloActivo.nombre : 'Sin ciclo activo',
+        },
+        {
+          title: 'Total Estudiantes',
+          value: est.totalEstudiantes?.toLocaleString() || '0',
+          icon: Users,
+          description: 'En mis clases',
+        },
+        {
+          title: 'Tareas Pendientes',
+          value: est.tareasPendientes?.toLocaleString() || '0',
+          icon: FileText,
+          description: 'Por calificar',
+        },
+        {
+          title: 'Clases Asignadas',
+          value: stats.clases?.length?.toLocaleString() || '0',
+          icon: Building2,
+          description: 'Este ciclo',
+        },
+      ];
+    }
+
+    // Estudiante stats
+    if (role === 'ESTUDIANTE') {
+      return [
+        {
+          title: 'Mis Clases',
+          value: est.totalClases?.toLocaleString() || '0',
+          icon: GraduationCap,
+          description: 'Inscrito actualmente',
+        },
+        {
+          title: 'Tareas Pendientes',
+          value: est.tareasPendientes?.toLocaleString() || '0',
+          icon: FileText,
+          description: 'Por entregar',
+        },
+        {
+          title: 'Promedio General',
+          value: est.promedioGeneral?.toFixed(1) || '0.0',
+          icon: TrendingUp,
+          description: 'Este ciclo',
+        },
+        {
+          title: 'Materias',
+          value: stats.clases?.length?.toLocaleString() || '0',
+          icon: BookOpen,
+          description: 'Activas',
+        },
+      ];
+    }
+
+    return [];
+  };
+
+  // Additional stats for directors
+  const getAdditionalStats = () => {
+    if (!stats || !['DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'SECRETARIA'].includes(user?.role || '')) {
+      return null;
+    }
+
+    const est = stats.estadisticas;
+    return [
+      { label: 'Personal', value: est.totalPersonal || 0, icon: UserCheck },
+      { label: 'Niveles', value: est.totalNiveles || 0, icon: Layers },
+      { label: 'Materias', value: est.totalMaterias || 0, icon: BookOpen },
+      { label: 'Inscripciones', value: est.totalInscripciones || 0, icon: FileText },
+    ];
+  };
+
+  const statsCards = getStatsCards();
+  const additionalStats = getAdditionalStats();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -59,13 +206,13 @@ export default function DashboardPage() {
         </h1>
         <p className="text-muted-foreground">
           {branding?.nombre ? `${branding.nombre} - ` : ''}
-          Aquí tienes un resumen de tu actividad
+          {stats?.cicloActivo ? `Ciclo: ${stats.cicloActivo.nombre}` : 'Aquí tienes un resumen de tu actividad'}
         </p>
       </div>
 
-      {/* Estadísticas */}
+      {/* Estadísticas principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
+        {statsCards.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.title}>
@@ -86,7 +233,6 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  <span className="text-green-600">{stat.change}</span>{' '}
                   {stat.description}
                 </p>
               </CardContent>
@@ -95,86 +241,155 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {/* Estadísticas adicionales para directores */}
+      {additionalStats && (
+        <div className="grid gap-4 md:grid-cols-4">
+          {additionalStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label} className="bg-slate-50">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                      <p className="text-xl font-semibold">{stat.value}</p>
+                    </div>
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {/* Contenido adicional según rol */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Próximas actividades */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Próximas Actividades
-            </CardTitle>
-            <CardDescription>
-              Eventos y tareas pendientes
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { title: 'Entrega de calificaciones P1', date: '15 Feb 2024', type: 'deadline' },
-                { title: 'Reunión de padres', date: '20 Feb 2024', type: 'meeting' },
-                { title: 'Inicio de evaluaciones P2', date: '1 Mar 2024', type: 'exam' },
-              ].map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{activity.title}</p>
-                    <p className="text-xs text-muted-foreground">{activity.date}</p>
-                  </div>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full"
-                    style={{
-                      backgroundColor: `${primaryColor}15`,
-                      color: primaryColor,
-                    }}
-                  >
-                    {activity.type === 'deadline' ? 'Fecha límite' :
-                     activity.type === 'meeting' ? 'Reunión' : 'Evaluación'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actividad reciente */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              Actividad Reciente
-            </CardTitle>
-            <CardDescription>
-              Últimas acciones en el sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { action: 'Calificación registrada', detail: 'Matemáticas - 3ro Secundaria', time: 'Hace 2 horas' },
-                { action: 'Asistencia tomada', detail: 'Física - 4to Secundaria', time: 'Hace 4 horas' },
-                { action: 'Nuevo estudiante inscrito', detail: 'Juan Pérez - 1ro Secundaria', time: 'Ayer' },
-              ].map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg"
-                >
+        {/* Próximos eventos */}
+        {stats?.proximosEventos && stats.proximosEventos.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Próximos Eventos
+              </CardTitle>
+              <CardDescription>
+                Eventos programados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.proximosEventos.map((evento) => (
                   <div
-                    className="w-2 h-2 mt-2 rounded-full"
-                    style={{ backgroundColor: primaryColor }}
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">{activity.detail}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                    key={evento.id}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{evento.titulo}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(evento.fechaInicio).toLocaleDateString('es-ES', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                    </div>
+                    <span
+                      className="text-xs px-2 py-1 rounded-full"
+                      style={{
+                        backgroundColor: `${primaryColor}15`,
+                        color: primaryColor,
+                      }}
+                    >
+                      {evento.tipo}
+                    </span>
                   </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mis clases (para docentes y estudiantes) */}
+        {stats?.clases && stats.clases.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                {user?.role === 'DOCENTE' ? 'Mis Clases' : 'Mis Materias'}
+              </CardTitle>
+              <CardDescription>
+                {user?.role === 'DOCENTE' ? 'Clases que imparto' : 'Materias inscritas'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {stats.clases.slice(0, 5).map((clase) => (
+                  <div
+                    key={clase.id}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{clase.materia}</p>
+                      <p className="text-xs text-muted-foreground">{clase.nivel}</p>
+                    </div>
+                    {clase.estudiantes !== undefined && (
+                      <span className="text-xs text-muted-foreground">
+                        {clase.estudiantes} estudiantes
+                      </span>
+                    )}
+                    {clase.docente && (
+                      <span className="text-xs text-muted-foreground">
+                        {clase.docente}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Placeholder si no hay eventos ni clases */}
+        {(!stats?.proximosEventos || stats.proximosEventos.length === 0) && (!stats?.clases || stats.clases.length === 0) && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Próximas Actividades
+                </CardTitle>
+                <CardDescription>
+                  Eventos y tareas pendientes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay eventos próximos</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Actividad Reciente
+                </CardTitle>
+                <CardDescription>
+                  Últimas acciones en el sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay actividad reciente</p>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

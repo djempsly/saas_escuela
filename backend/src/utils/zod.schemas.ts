@@ -129,6 +129,7 @@ export const materiaSchema = z.object({
 
 export const claseSchema = z.object({
   body: z.object({
+    codigo: z.string().min(3, 'Codigo debe tener al menos 3 caracteres').optional(),
     materiaId: z.string().min(1, 'Materia requerida'),
     nivelId: z.string().min(1, 'Nivel requerido'),
     docenteId: z.string().min(1, 'Docente requerido'),

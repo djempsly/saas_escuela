@@ -91,6 +91,7 @@ export const getAsistenciaByClaseYFecha = async (
 ) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },
+    include: { materia: true, nivel: true },
   });
 
   if (!clase) {
@@ -100,7 +101,17 @@ export const getAsistenciaByClaseYFecha = async (
   const fechaNormalizada = new Date(fecha);
   fechaNormalizada.setHours(0, 0, 0, 0);
 
-  return prisma.asistencia.findMany({
+  // Obtener TODOS los estudiantes inscritos
+  const inscripciones = await prisma.inscripcion.findMany({
+    where: { claseId },
+    include: {
+      estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
+    },
+    orderBy: { estudiante: { apellido: 'asc' } },
+  });
+
+  // Obtener asistencias registradas para esa fecha
+  const asistenciasExistentes = await prisma.asistencia.findMany({
     where: {
       claseId,
       fecha: {
@@ -108,11 +119,36 @@ export const getAsistenciaByClaseYFecha = async (
         lt: new Date(fechaNormalizada.getTime() + 24 * 60 * 60 * 1000),
       },
     },
-    include: {
-      estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
-    },
-    orderBy: { estudiante: { apellido: 'asc' } },
   });
+
+  // Crear mapa de asistencias por estudianteId
+  const asistenciasMap = new Map(
+    asistenciasExistentes.map((a) => [a.estudianteId, a])
+  );
+
+  // Combinar: todos los estudiantes con su asistencia (o null si no hay registro)
+  const asistencias = inscripciones.map((insc) => {
+    const asist = asistenciasMap.get(insc.estudianteId);
+    return {
+      id: asist?.id || null,
+      estudianteId: insc.estudianteId,
+      claseId,
+      fecha: fechaNormalizada,
+      estudiante: insc.estudiante,
+      estado: asist?.estado || null,
+    };
+  });
+
+  return {
+    clase: {
+      id: clase.id,
+      materia: clase.materia.nombre,
+      nivel: clase.nivel.nombre,
+    },
+    fecha: fechaNormalizada,
+    totalEstudiantes: inscripciones.length,
+    asistencias,
+  };
 };
 
 export const getReporteAsistenciaByClase = async (

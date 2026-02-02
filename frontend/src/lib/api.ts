@@ -208,6 +208,11 @@ export const calificacionesApi = {
     api.get(`/calificaciones/boletin/${estudianteId}/${cicloLectivoId}`),
 };
 
+// Dashboard API
+export const dashboardApi = {
+  getStats: () => api.get('/dashboard/stats'),
+};
+
 // Boletines API (datos estructurados para PDF en frontend)
 export const boletinesApi = {
   // Obtener datos de boletín para un estudiante (genera JSON para PDF en frontend)
