@@ -277,6 +277,46 @@ export const nivelesApi = {
   delete: (id: string) => api.delete(`/levels/${id}`),
 };
 
+// Ciclos Educativos API (Educational Cycles - different from CicloLectivo/academic year)
+export const ciclosEducativosApi = {
+  getAll: () => api.get('/ciclos-educativos'),
+  getById: (id: string) => api.get(`/ciclos-educativos/${id}`),
+  create: (data: { nombre: string; descripcion?: string; orden?: number }) =>
+    api.post('/ciclos-educativos', data),
+  update: (id: string, data: { nombre?: string; descripcion?: string; orden?: number }) =>
+    api.put(`/ciclos-educativos/${id}`, data),
+  delete: (id: string) => api.delete(`/ciclos-educativos/${id}`),
+  assignNiveles: (id: string, nivelIds: string[]) =>
+    api.post(`/ciclos-educativos/${id}/niveles`, { nivelIds }),
+  assignCoordinadores: (id: string, coordinadorIds: string[]) =>
+    api.post(`/ciclos-educativos/${id}/coordinadores`, { coordinadorIds }),
+};
+
+// Import API (bulk student import)
+export const importApi = {
+  downloadPlantilla: () =>
+    api.get('/import/estudiantes/plantilla', { responseType: 'blob' }),
+  importEstudiantes: (file: File, nivelId?: string, autoEnroll?: boolean) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (nivelId) formData.append('nivelId', nivelId);
+    if (autoEnroll) formData.append('autoEnroll', 'true');
+    return api.post('/import/estudiantes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// Coordinadores API
+export const coordinadoresApi = {
+  getAll: () => api.get('/users/coordinadores'),
+  getInfo: (id: string) => api.get(`/users/coordinadores/${id}/info`),
+  assignCiclos: (id: string, cicloIds: string[]) =>
+    api.post(`/users/coordinadores/${id}/ciclos`, { cicloIds }),
+  assignNiveles: (id: string, nivelIds: string[]) =>
+    api.post(`/users/coordinadores/${id}/niveles`, { nivelIds }),
+};
+
 // Materias API
 export const materiasApi = {
   getAll: () => api.get('/subjects'),

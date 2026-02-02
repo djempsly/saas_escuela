@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { nivelesApi } from '@/lib/api';
+import { nivelesApi, ciclosEducativosApi } from '@/lib/api';
 import {
   Layers,
   Plus,
@@ -17,11 +17,17 @@ import {
   X,
 } from 'lucide-react';
 
+interface CicloEducativo {
+  id: string;
+  nombre: string;
+}
+
 interface Nivel {
   id: string;
   nombre: string;
   orden?: number;
   descripcion?: string;
+  cicloEducativo?: CicloEducativo | null;
   createdAt: string;
 }
 
@@ -36,6 +42,7 @@ interface ApiError {
 
 export default function NivelesPage() {
   const [niveles, setNiveles] = useState<Nivel[]>([]);
+  const [ciclosEducativos, setCiclosEducativos] = useState<CicloEducativo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -44,21 +51,25 @@ export default function NivelesPage() {
     nombre: '',
     orden: 0,
     descripcion: '',
+    cicloEducativoId: '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchNiveles();
+    fetchData();
   }, []);
 
-  const fetchNiveles = async () => {
+  const fetchData = async () => {
     try {
-      const response = await nivelesApi.getAll();
-      const data = response.data.data || response.data || [];
-      // Ordenar por orden ascendente
+      const [nivelesRes, ciclosRes] = await Promise.all([
+        nivelesApi.getAll(),
+        ciclosEducativosApi.getAll(),
+      ]);
+      const data = nivelesRes.data.data || nivelesRes.data || [];
       setNiveles(data.sort((a: Nivel, b: Nivel) => (a.orden || 0) - (b.orden || 0)));
+      setCiclosEducativos(ciclosRes.data || []);
     } catch (error) {
-      console.error('Error cargando niveles:', error);
+      console.error('Error cargando datos:', error);
     } finally {
       setIsLoading(false);
     }
@@ -70,20 +81,18 @@ export default function NivelesPage() {
 
     try {
       const payload = {
-        ...formData,
+        nombre: formData.nombre,
         orden: formData.orden || niveles.length + 1,
+        descripcion: formData.descripcion || undefined,
+        cicloEducativoId: formData.cicloEducativoId || null,
       };
 
       if (editingId) {
         await nivelesApi.update(editingId, payload);
-        setNiveles(niveles.map(n =>
-          n.id === editingId ? { ...n, ...payload } : n
-        ).sort((a, b) => (a.orden || 0) - (b.orden || 0)));
       } else {
-        const response = await nivelesApi.create(payload);
-        const newNivel = response.data.data || response.data;
-        setNiveles([...niveles, newNivel].sort((a, b) => (a.orden || 0) - (b.orden || 0)));
+        await nivelesApi.create(payload);
       }
+      await fetchData();
       resetForm();
     } catch (error) {
       const apiError = error as ApiError;
@@ -98,13 +107,14 @@ export default function NivelesPage() {
       nombre: nivel.nombre,
       orden: nivel.orden || 0,
       descripcion: nivel.descripcion || '',
+      cicloEducativoId: nivel.cicloEducativo?.id || '',
     });
     setEditingId(nivel.id);
     setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este nivel?')) return;
+    if (!confirm('¿Estas seguro de eliminar este nivel?')) return;
 
     try {
       await nivelesApi.delete(id);
@@ -115,8 +125,18 @@ export default function NivelesPage() {
     }
   };
 
+  const handleCicloChange = async (nivelId: string, cicloEducativoId: string) => {
+    try {
+      await nivelesApi.update(nivelId, { cicloEducativoId: cicloEducativoId || null });
+      await fetchData();
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al asignar ciclo');
+    }
+  };
+
   const resetForm = () => {
-    setFormData({ nombre: '', orden: 0, descripcion: '' });
+    setFormData({ nombre: '', orden: 0, descripcion: '', cicloEducativoId: '' });
     setEditingId(null);
     setShowModal(false);
   };
@@ -125,7 +145,8 @@ export default function NivelesPage() {
     setFormData({
       nombre: '',
       orden: niveles.length + 1,
-      descripcion: ''
+      descripcion: '',
+      cicloEducativoId: '',
     });
     setEditingId(null);
     setShowModal(true);
@@ -135,6 +156,22 @@ export default function NivelesPage() {
     n.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Group niveles by ciclo educativo
+  const nivelesByCiclo = new Map<string, Nivel[]>();
+  const nivelesWithoutCiclo: Nivel[] = [];
+
+  filteredNiveles.forEach(nivel => {
+    if (nivel.cicloEducativo) {
+      const key = nivel.cicloEducativo.id;
+      if (!nivelesByCiclo.has(key)) {
+        nivelesByCiclo.set(key, []);
+      }
+      nivelesByCiclo.get(key)!.push(nivel);
+    } else {
+      nivelesWithoutCiclo.push(nivel);
+    }
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,7 +179,7 @@ export default function NivelesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Niveles</h1>
           <p className="text-muted-foreground">
-            Gestiona los niveles educativos (grados, cursos) de tu institución
+            Gestiona los niveles educativos (grados, cursos) de tu institucion
           </p>
         </div>
         <Button onClick={openNewModal}>
@@ -151,7 +188,7 @@ export default function NivelesPage() {
         </Button>
       </div>
 
-      {/* Búsqueda */}
+      {/* Busqueda */}
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
@@ -172,45 +209,56 @@ export default function NivelesPage() {
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="grid gap-3">
-          {filteredNiveles.length > 0 ? (
-            filteredNiveles.map((nivel) => (
-              <Card key={nivel.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center font-semibold text-primary">
-                      {nivel.orden || '-'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{nivel.nombre}</p>
-                      {nivel.descripcion && (
-                        <p className="text-sm text-muted-foreground">{nivel.descripcion}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(nivel)}
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(nivel.id)}
-                        title="Eliminar"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
+        <div className="space-y-6">
+          {/* Niveles agrupados por ciclo educativo */}
+          {Array.from(nivelesByCiclo.entries()).map(([cicloId, nivelesGrupo]) => {
+            const ciclo = ciclosEducativos.find(c => c.id === cicloId);
+            return (
+              <div key={cicloId}>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  {ciclo?.nombre || 'Ciclo desconocido'}
+                </h3>
+                <div className="grid gap-3">
+                  {nivelesGrupo.map((nivel) => (
+                    <NivelCard
+                      key={nivel.id}
+                      nivel={nivel}
+                      ciclosEducativos={ciclosEducativos}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onCicloChange={handleCicloChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Niveles sin ciclo */}
+          {nivelesWithoutCiclo.length > 0 && (
+            <div>
+              {nivelesByCiclo.size > 0 && (
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Sin ciclo educativo asignado
+                </h3>
+              )}
+              <div className="grid gap-3">
+                {nivelesWithoutCiclo.map((nivel) => (
+                  <NivelCard
+                    key={nivel.id}
+                    nivel={nivel}
+                    ciclosEducativos={ciclosEducativos}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onCicloChange={handleCicloChange}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredNiveles.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
                 <Layers className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -258,19 +306,35 @@ export default function NivelesPage() {
                     min="1"
                     value={formData.orden}
                     onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) || 0 })}
-                    placeholder="Posición en la lista"
+                    placeholder="Posicion en la lista"
                   />
                   <p className="text-xs text-muted-foreground">
-                    El orden determina cómo se muestran los niveles en las listas
+                    El orden determina como se muestran los niveles en las listas
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="descripcion">Descripción (opcional)</Label>
+                  <Label htmlFor="cicloEducativo">Ciclo Educativo</Label>
+                  <select
+                    id="cicloEducativo"
+                    value={formData.cicloEducativoId}
+                    onChange={(e) => setFormData({ ...formData, cicloEducativoId: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">-- Sin ciclo --</option>
+                    {ciclosEducativos.map((ciclo) => (
+                      <option key={ciclo.id} value={ciclo.id}>
+                        {ciclo.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="descripcion">Descripcion (opcional)</Label>
                   <Input
                     id="descripcion"
                     value={formData.descripcion}
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                    placeholder="Breve descripción del nivel"
+                    placeholder="Breve descripcion del nivel"
                   />
                 </div>
                 <div className="flex gap-2 pt-4">
@@ -299,5 +363,69 @@ export default function NivelesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function NivelCard({
+  nivel,
+  ciclosEducativos,
+  onEdit,
+  onDelete,
+  onCicloChange,
+}: {
+  nivel: Nivel;
+  ciclosEducativos: CicloEducativo[];
+  onEdit: (nivel: Nivel) => void;
+  onDelete: (id: string) => void;
+  onCicloChange: (nivelId: string, cicloEducativoId: string) => void;
+}) {
+  return (
+    <Card className="hover:shadow-sm transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center font-semibold text-primary">
+            {nivel.orden || '-'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium">{nivel.nombre}</p>
+            {nivel.descripcion && (
+              <p className="text-sm text-muted-foreground">{nivel.descripcion}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={nivel.cicloEducativo?.id || ''}
+              onChange={(e) => onCicloChange(nivel.id, e.target.value)}
+              className="text-sm px-2 py-1 border rounded-md min-w-32"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="">Sin ciclo</option>
+              {ciclosEducativos.map((ciclo) => (
+                <option key={ciclo.id} value={ciclo.id}>
+                  {ciclo.nombre}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(nivel)}
+              title="Editar"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(nivel.id)}
+              title="Eliminar"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

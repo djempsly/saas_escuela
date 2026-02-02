@@ -4,8 +4,32 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { inscripcionesApi, clasesApi, estudiantesApi } from '@/lib/api';
-import { Users, Loader2, Plus, Search, UserPlus } from 'lucide-react';
+import { inscripcionesApi, clasesApi, estudiantesApi, nivelesApi } from '@/lib/api';
+import { Users, Loader2, Plus, Search, UserPlus, CheckSquare, Square, Filter } from 'lucide-react';
+
+interface Estudiante {
+  id: string;
+  nombre: string;
+  apellido: string;
+}
+
+interface Clase {
+  id: string;
+  codigo: string;
+  materia?: { nombre: string };
+  nivel?: { id: string; nombre: string };
+}
+
+interface Inscripcion {
+  id: string;
+  estudianteId: string;
+  estudiante?: Estudiante;
+}
+
+interface Nivel {
+  id: string;
+  nombre: string;
+}
 
 interface ApiError {
   response?: {
@@ -17,22 +41,29 @@ interface ApiError {
 }
 
 export default function InscripcionesPage() {
-  const [clases, setClases] = useState<any[]>([]);
-  const [estudiantes, setEstudiantes] = useState<any[]>([]);
+  const [clases, setClases] = useState<Clase[]>([]);
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
+  const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [selectedClase, setSelectedClase] = useState('');
-  const [inscritos, setInscritos] = useState<any[]>([]);
+  const [inscritos, setInscritos] = useState<Inscripcion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterNivel, setFilterNivel] = useState('');
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [enrollProgress, setEnrollProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const [clasesRes, estudiantesRes] = await Promise.all([
+        const [clasesRes, estudiantesRes, nivelesRes] = await Promise.all([
           clasesApi.getAll(),
           estudiantesApi.getAll(),
+          nivelesApi.getAll(),
         ]);
         setClases(clasesRes.data.data || clasesRes.data || []);
         setEstudiantes(estudiantesRes.data.data || estudiantesRes.data || []);
+        setNiveles(nivelesRes.data || []);
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -44,6 +75,7 @@ export default function InscripcionesPage() {
 
   const loadInscritos = async (claseId: string) => {
     setSelectedClase(claseId);
+    setSelectedStudents(new Set());
     try {
       const response = await inscripcionesApi.getByClase(claseId);
       setInscritos(response.data.data || response.data || []);
@@ -66,15 +98,64 @@ export default function InscripcionesPage() {
     }
   };
 
+  const handleInscribirSeleccionados = async () => {
+    if (!selectedClase || selectedStudents.size === 0) return;
+
+    setIsEnrolling(true);
+    setEnrollProgress({ current: 0, total: selectedStudents.size });
+
+    const ids = Array.from(selectedStudents);
+    let enrolled = 0;
+
+    // Process in batches of 10
+    const batchSize = 10;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      try {
+        await inscripcionesApi.inscribirMasivo(selectedClase, batch);
+        enrolled += batch.length;
+        setEnrollProgress({ current: enrolled, total: ids.length });
+      } catch (error) {
+        const apiError = error as ApiError;
+        console.error('Error enrolling batch:', apiError);
+      }
+    }
+
+    setSelectedStudents(new Set());
+    setIsEnrolling(false);
+    loadInscritos(selectedClase);
+  };
+
   const estudiantesNoInscritos = estudiantes.filter(
     (e) => !inscritos.some((i) => i.estudianteId === e.id || i.estudiante?.id === e.id)
   );
 
-  const filteredEstudiantes = estudiantesNoInscritos.filter(
-    (e) =>
+  const filteredEstudiantes = estudiantesNoInscritos.filter((e) => {
+    const matchesSearch =
       e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.apellido.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      e.apellido.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  const toggleStudentSelection = (id: string) => {
+    const newSelected = new Set(selectedStudents);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedStudents(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudents.size === filteredEstudiantes.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(filteredEstudiantes.map((e) => e.id)));
+    }
+  };
+
+  const selectedClaseData = clases.find((c) => c.id === selectedClase);
 
   return (
     <div className="space-y-6">
@@ -145,29 +226,87 @@ export default function InscripcionesPage() {
           {/* Estudiantes Disponibles */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <UserPlus className="w-5 h-5" />
-                Disponibles para Inscribir
+              <CardTitle className="text-base flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Disponibles ({filteredEstudiantes.length})
+                </div>
+                {selectedStudents.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={handleInscribirSeleccionados}
+                    disabled={isEnrolling}
+                  >
+                    {isEnrolling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        {enrollProgress.current}/{enrollProgress.total}
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Inscribir ({selectedStudents.size})
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar estudiante..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="space-y-3 mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar estudiante..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
+
+              {filteredEstudiantes.length > 0 && (
+                <div className="mb-2">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                  >
+                    {selectedStudents.size === filteredEstudiantes.length ? (
+                      <CheckSquare className="w-4 h-4" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                    {selectedStudents.size === filteredEstudiantes.length
+                      ? 'Deseleccionar todos'
+                      : 'Seleccionar todos'}
+                  </button>
+                </div>
+              )}
+
               {filteredEstudiantes.length > 0 ? (
                 <div className="space-y-2 max-h-72 overflow-auto">
                   {filteredEstudiantes.map((e) => (
                     <div
                       key={e.id}
-                      className="flex items-center justify-between p-2 hover:bg-slate-50 rounded"
+                      className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                        selectedStudents.has(e.id)
+                          ? 'bg-primary/10 border border-primary/30'
+                          : 'hover:bg-slate-50'
+                      }`}
+                      onClick={() => toggleStudentSelection(e.id)}
                     >
                       <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          selectedStudents.has(e.id)
+                            ? 'bg-primary border-primary text-white'
+                            : 'border-slate-300'
+                        }`}>
+                          {selectedStudents.has(e.id) && (
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm">
                           {e.nombre[0]}{e.apellido[0]}
                         </div>
@@ -176,7 +315,10 @@ export default function InscripcionesPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleInscribir(e.id)}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          handleInscribir(e.id);
+                        }}
                       >
                         <Plus className="w-4 h-4" />
                       </Button>
@@ -185,7 +327,7 @@ export default function InscripcionesPage() {
                 </div>
               ) : (
                 <p className="text-muted-foreground text-center py-4">
-                  {searchTerm ? 'Sin resultados' : 'Todos los estudiantes están inscritos'}
+                  {searchTerm ? 'Sin resultados' : 'Todos los estudiantes estan inscritos'}
                 </p>
               )}
             </CardContent>

@@ -28,11 +28,13 @@ enum Pais {
 // ✅ Aquí diferenciamos los tipos de evaluación
 enum SistemaEducativo {
   // Dominicana
+  INICIAL_DO          // Nivel Inicial (Preescolar)
   PRIMARIA_DO
   SECUNDARIA_GENERAL_DO
   POLITECNICO_DO // Lleva Calificación Técnica (RA)
-  
+
   // Haití
+  INICIAL_HT          // Nivel Inicial (Préscolaire)
   PRIMARIA_HT
   SECUNDARIA_HT
 }
@@ -135,6 +137,7 @@ model User {
   // Roles Jerárquicos
   directorDe              Institucion?              @relation("DirectorInstitucion")
   coordinadorDe           Nivel[]                   @relation("CoordinadorNivel")
+  coordinadorCiclosEducativos CicloEducativo[]      @relation("CoordinadorCicloEducativo")
 
   // Relaciones Académicas
   clasesDictadas          Clase[]                   @relation("DocenteClase")
@@ -198,6 +201,7 @@ model Institucion {
   niveles  Nivel[]
   materias Materia[]
   ciclos   CicloLectivo[]
+  ciclosEducativos CicloEducativo[]
   clases   Clase[]
 
   // Relaciones de nuevos módulos
@@ -231,10 +235,13 @@ model Nivel {
   nombre        String      // Ej: "1ro Secundaria", "6to Primaria"
   institucionId String
   institucion   Institucion @relation(fields: [institucionId], references: [id])
-  
+
   coordinadorId String?
   coordinador   User?       @relation("CoordinadorNivel", fields: [coordinadorId], references: [id])
-  
+
+  cicloEducativoId String?
+  cicloEducativo   CicloEducativo? @relation("NivelCicloEducativo", fields: [cicloEducativoId], references: [id])
+
   clases        Clase[]
 }
 
@@ -250,6 +257,26 @@ model CicloLectivo {
   clases        Clase[]
   calificaciones Calificacion[]
   cobros        Cobro[]
+}
+
+// CicloEducativo: Agrupa niveles en ciclos educativos (diferente de CicloLectivo que es año académico)
+// Ej: "1er Ciclo" (1ro-3ro), "2do Ciclo" (4to-6to) para Primaria
+model CicloEducativo {
+  id              String       @id @default(cuid())
+  nombre          String       // "1er Ciclo", "2do Ciclo"
+  descripcion     String?
+  orden           Int          @default(1)
+
+  institucionId   String
+  institucion     Institucion  @relation(fields: [institucionId], references: [id])
+
+  niveles         Nivel[]      @relation("NivelCicloEducativo")
+  coordinadores   User[]       @relation("CoordinadorCicloEducativo")
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([nombre, institucionId])
 }
 
 model Materia {

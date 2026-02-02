@@ -17,6 +17,8 @@ import cobroRoutes from './cobro.routes';
 import adminRoutes from './admin.routes';
 import boletinRoutes from './boletin.routes';
 import dashboardRoutes from './dashboard.routes';
+import cicloEducativoRoutes from './cicloEducativo.routes';
+import importRoutes from './import.routes';
 
 const router = Router();
 
@@ -55,5 +57,11 @@ router.use('/boletines', boletinRoutes);
 
 // Rutas de dashboard
 router.use('/dashboard', dashboardRoutes);
+
+// Rutas de ciclos educativos
+router.use('/ciclos-educativos', cicloEducativoRoutes);
+
+// Rutas de importación
+router.use('/import', importRoutes);
 
 export default router;

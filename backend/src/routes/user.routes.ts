@@ -7,7 +7,11 @@ import {
   getUserByIdHandler,
   updateProfileHandler,
   updateUserHandler,
-  uploadPhotoHandler
+  uploadPhotoHandler,
+  getCoordinadoresHandler,
+  getCoordinacionInfoHandler,
+  assignCiclosHandler,
+  assignNivelesHandler,
 } from '../controllers/user.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -46,6 +50,38 @@ router.get(
   authMiddleware,
   roleMiddleware([ROLES.DIRECTOR]),
   getStaffHandler
+);
+
+// Get coordinadores - Director can see coordinators (MUST come before /:id)
+router.get(
+  '/coordinadores',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  getCoordinadoresHandler
+);
+
+// Get coordinacion info for a user (MUST come before /:id)
+router.get(
+  '/coordinadores/:id/info',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  getCoordinacionInfoHandler
+);
+
+// Assign ciclos educativos to coordinator
+router.post(
+  '/coordinadores/:id/ciclos',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  assignCiclosHandler
+);
+
+// Assign niveles to coordinator
+router.post(
+  '/coordinadores/:id/niveles',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  assignNivelesHandler
 );
 
 // Get user by ID

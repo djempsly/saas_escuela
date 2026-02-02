@@ -1,5 +1,17 @@
 import { Request, Response } from 'express';
-import { createUser, resetUserPasswordManual, findUsersByInstitucion, findStaffByInstitucion, findUserById, updateUserProfile, updateUserById } from '../services/user.service';
+import {
+  createUser,
+  resetUserPasswordManual,
+  findUsersByInstitucion,
+  findStaffByInstitucion,
+  findUserById,
+  updateUserProfile,
+  updateUserById,
+  findCoordinadores,
+  getCoordinacionInfo,
+  assignCiclosToCoordinator,
+  assignNivelesToCoordinator,
+} from '../services/user.service';
 import { crearUsuarioSchema } from '../utils/zod.schemas';
 import { ROLES } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
@@ -266,6 +278,87 @@ export const uploadPhotoHandler = async (req: Request, res: Response) => {
       fotoUrl: updatedUser.fotoUrl,
     });
   } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getCoordinadoresHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(403).json({ message: 'Acción no permitida' });
+    }
+
+    if (!req.user.institucionId) {
+      return res.status(403).json({ message: 'No tienes una institución asignada' });
+    }
+
+    const coordinadores = await findCoordinadores(req.user.institucionId);
+    return res.status(200).json({ data: coordinadores });
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getCoordinacionInfoHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.user) {
+      return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    const info = await getCoordinacionInfo(id);
+    return res.status(200).json({ data: info });
+  } catch (error: any) {
+    if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const assignCiclosHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { cicloIds } = req.body;
+
+    if (!req.user || !req.user.institucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    if (!Array.isArray(cicloIds)) {
+      return res.status(400).json({ message: 'cicloIds debe ser un array' });
+    }
+
+    const result = await assignCiclosToCoordinator(id, cicloIds, req.user.institucionId);
+    return res.status(200).json({ data: result });
+  } catch (error: any) {
+    if (error.message.includes('no encontrado') || error.message.includes('no son válidos')) {
+      return res.status(400).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const assignNivelesHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { nivelIds } = req.body;
+
+    if (!req.user || !req.user.institucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    if (!Array.isArray(nivelIds)) {
+      return res.status(400).json({ message: 'nivelIds debe ser un array' });
+    }
+
+    const result = await assignNivelesToCoordinator(id, nivelIds, req.user.institucionId);
+    return res.status(200).json({ data: result });
+  } catch (error: any) {
+    if (error.message.includes('no encontrado')) {
+      return res.status(400).json({ message: error.message });
+    }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
