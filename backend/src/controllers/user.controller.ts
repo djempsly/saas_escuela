@@ -142,7 +142,9 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Acción no permitida' });
     }
 
-    const users = await findUsersByInstitucion(req.user.institucionId, role);
+    // Solo ADMIN y DIRECTOR pueden ver contraseñas temporales
+    const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
+    const users = await findUsersByInstitucion(req.user.institucionId, role, canSeePasswords);
 
     return res.status(200).json({ data: users });
   } catch (error: any) {
@@ -160,7 +162,9 @@ export const getStaffHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No tienes una institución asignada' });
     }
 
-    const staff = await findStaffByInstitucion(req.user.institucionId);
+    // Solo ADMIN y DIRECTOR pueden ver contraseñas temporales
+    const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
+    const staff = await findStaffByInstitucion(req.user.institucionId, canSeePasswords);
 
     return res.status(200).json({ data: staff });
   } catch (error: any) {

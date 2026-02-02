@@ -121,6 +121,7 @@ model User {
   username            String   @unique
   email               String?  @unique
   password            String
+  passwordTemporal    String?  // Contraseña temporal visible solo para ADMIN/DIRECTOR
   nombre              String
   apellido            String
   role                Role     @default(ESTUDIANTE)
@@ -254,9 +255,10 @@ model CicloLectivo {
   institucionId String
   institucion   Institucion @relation(fields: [institucionId], references: [id])
 
-  clases        Clase[]
+  clases         Clase[]
   calificaciones Calificacion[]
-  cobros        Cobro[]
+  cobros         Cobro[]
+  diasLaborables DiasLaborables[]
 }
 
 // CicloEducativo: Agrupa niveles en ciclos educativos (diferente de CicloLectivo que es año académico)
@@ -313,6 +315,7 @@ model Clase {
   // Relaciones de nuevos módulos
   tareas                  Tarea[]
   eventos                 Evento[]
+  diasLaborables          DiasLaborables[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -609,4 +612,34 @@ model Pago {
   registradoPor   User         @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
 
   createdAt       DateTime     @default(now())
+}
+
+// ========== ATTENDANCE TRACKING ==========
+
+// Dias laborables por mes para calcular porcentaje de asistencia
+model DiasLaborables {
+  id              String       @id @default(cuid())
+
+  // Meses del año escolar (1=Agosto, 2=Septiembre, ..., 11=Junio)
+  agosto          Int          @default(0)
+  septiembre      Int          @default(0)
+  octubre         Int          @default(0)
+  noviembre       Int          @default(0)
+  diciembre       Int          @default(0)
+  enero           Int          @default(0)
+  febrero         Int          @default(0)
+  marzo           Int          @default(0)
+  abril           Int          @default(0)
+  mayo            Int          @default(0)
+  junio           Int          @default(0)
+
+  claseId         String
+  clase           Clase        @relation(fields: [claseId], references: [id], onDelete: Cascade)
+  cicloLectivoId  String
+  cicloLectivo    CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([claseId, cicloLectivoId])
 }

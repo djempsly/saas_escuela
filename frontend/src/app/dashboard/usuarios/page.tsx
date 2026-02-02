@@ -17,6 +17,9 @@ import {
   KeyRound,
   UserCheck,
   UserX,
+  Eye,
+  EyeOff,
+  Copy,
 } from 'lucide-react';
 
 interface ApiError {
@@ -36,6 +39,8 @@ interface Usuario {
   username: string;
   role: string;
   activo: boolean;
+  debeCambiarPassword?: boolean;
+  passwordTemporal?: string | null;
   createdAt: string;
 }
 
@@ -73,6 +78,26 @@ export default function UsuariosPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
   const [createdUsername, setCreatedUsername] = useState('');
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+
+  const canSeePasswords = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copiado al portapapeles');
+  };
 
   useEffect(() => {
     fetchUsuarios();
@@ -241,6 +266,36 @@ export default function UsuariosPage() {
                     <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
                       {ROLES_DISPLAY[u.role] || u.role}
                     </span>
+                    {/* Contraseña temporal - solo visible para ADMIN/DIRECTOR */}
+                    {canSeePasswords && u.passwordTemporal && (
+                      <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                        <span className="text-xs text-yellow-700">
+                          {visiblePasswords.has(u.id) ? u.passwordTemporal : '******'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => togglePasswordVisibility(u.id)}
+                          title={visiblePasswords.has(u.id) ? 'Ocultar' : 'Ver contraseña'}
+                        >
+                          {visiblePasswords.has(u.id) ? (
+                            <EyeOff className="w-3 h-3 text-yellow-600" />
+                          ) : (
+                            <Eye className="w-3 h-3 text-yellow-600" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard(u.passwordTemporal!)}
+                          title="Copiar"
+                        >
+                          <Copy className="w-3 h-3 text-yellow-600" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"

@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { estudiantesApi, usersApi } from '@/lib/api';
-import { Users, Search, Loader2, Eye, FileText, Plus, X, Save } from 'lucide-react';
+import { Users, Search, Loader2, Eye, FileText, Plus, X, Save, EyeOff, Copy, KeyRound } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthStore } from '@/store/auth.store';
 
 interface Estudiante {
   id: string;
@@ -15,6 +16,8 @@ interface Estudiante {
   apellido: string;
   email?: string;
   username: string;
+  debeCambiarPassword?: boolean;
+  passwordTemporal?: string | null;
 }
 
 interface ApiError {
@@ -27,6 +30,7 @@ interface ApiError {
 }
 
 export default function EstudiantesPage() {
+  const { user } = useAuthStore();
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +45,38 @@ export default function EstudiantesPage() {
     username: string;
     password: string;
   } | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+
+  const canSeePasswords = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
+
+  const togglePasswordVisibility = (estId: string) => {
+    setVisiblePasswords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(estId)) {
+        newSet.delete(estId);
+      } else {
+        newSet.add(estId);
+      }
+      return newSet;
+    });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copiado al portapapeles');
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!confirm('¿Generar nueva contraseña temporal para este estudiante?')) return;
+    try {
+      const response = await usersApi.resetPasswordManual(userId);
+      alert(`Nueva contraseña temporal: ${response.data.tempPassword}`);
+      fetchEstudiantes(); // Recargar para obtener la nueva contraseña
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al resetear contraseña');
+    }
+  };
 
   useEffect(() => {
     fetchEstudiantes();
@@ -168,7 +204,47 @@ export default function EstudiantesPage() {
                     <p className="text-sm text-muted-foreground">@{est.username}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  {/* Contraseña temporal - solo visible para ADMIN/DIRECTOR */}
+                  {canSeePasswords && est.passwordTemporal && (
+                    <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                      <span className="text-xs text-yellow-700">
+                        {visiblePasswords.has(est.id) ? est.passwordTemporal : '******'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => togglePasswordVisibility(est.id)}
+                        title={visiblePasswords.has(est.id) ? 'Ocultar' : 'Ver contraseña'}
+                      >
+                        {visiblePasswords.has(est.id) ? (
+                          <EyeOff className="w-3 h-3 text-yellow-600" />
+                        ) : (
+                          <Eye className="w-3 h-3 text-yellow-600" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(est.passwordTemporal!)}
+                        title="Copiar"
+                      >
+                        <Copy className="w-3 h-3 text-yellow-600" />
+                      </Button>
+                    </div>
+                  )}
+                  {canSeePasswords && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleResetPassword(est.id)}
+                      title="Resetear contraseña"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Link href={`/dashboard/estudiantes/${est.id}`}>
                     <Button variant="ghost" size="sm">
                       <Eye className="w-4 h-4 mr-1" /> Ver

@@ -25,6 +25,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
       username,
       email: email || null,
       password: hashedPassword,
+      passwordTemporal: tempPassword, // Guardar contraseña temporal para ADMIN/DIRECTOR
       role: rol as Role,
       institucionId: institucionId || null,
       debeCambiarPassword: true,
@@ -94,6 +95,7 @@ export const resetUserPasswordManual = async (
     where: { id: targetUserId },
     data: {
       password: hashedPassword,
+      passwordTemporal: tempPassword, // Guardar contraseña temporal
       debeCambiarPassword: true,
     },
   });
@@ -118,7 +120,7 @@ export const findUserById = async (id: string) => {
   });
 };
 
-export const findUsersByInstitucion = async (institucionId: string, role?: string) => {
+export const findUsersByInstitucion = async (institucionId: string, role?: string, includePasswordTemporal: boolean = false) => {
   return prisma.user.findMany({
     where: {
       institucionId,
@@ -133,13 +135,15 @@ export const findUsersByInstitucion = async (institucionId: string, role?: strin
       role: true,
       activo: true,
       fotoUrl: true,
+      debeCambiarPassword: true,
+      passwordTemporal: includePasswordTemporal, // Solo incluir si lo solicita ADMIN/DIRECTOR
       createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
   });
 };
 
-export const findStaffByInstitucion = async (institucionId: string) => {
+export const findStaffByInstitucion = async (institucionId: string, includePasswordTemporal: boolean = false) => {
   const staffRoles: Role[] = [
     Role.COORDINADOR,
     Role.COORDINADOR_ACADEMICO,
@@ -161,6 +165,8 @@ export const findStaffByInstitucion = async (institucionId: string) => {
       role: true,
       activo: true,
       fotoUrl: true,
+      debeCambiarPassword: true,
+      passwordTemporal: includePasswordTemporal,
       createdAt: true,
     },
     orderBy: [

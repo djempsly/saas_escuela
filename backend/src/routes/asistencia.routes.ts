@@ -7,6 +7,11 @@ import {
   getFechasAsistenciaHandler,
   getMiAsistenciaHandler,
 } from '../controllers/asistencia.controller';
+import {
+  getDiasLaborablesHandler,
+  saveDiasLaborablesHandler,
+  getAsistenciaStatsHandler,
+} from '../controllers/diasLaborables.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
@@ -27,7 +32,7 @@ router.get(
 // Rutas protegidas para docentes y administrativos
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.DOCENTE]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
   resolveTenantMiddleware,
   requireTenantMiddleware
 );
@@ -46,5 +51,12 @@ router.get('/reporte/clase', getReporteClaseHandler);
 
 // Reporte de asistencia por estudiante
 router.get('/reporte/estudiante/:estudianteId', getReporteEstudianteHandler);
+
+// Dias laborables por clase
+router.get('/dias-laborables/:claseId', getDiasLaborablesHandler);
+router.post('/dias-laborables/:claseId', saveDiasLaborablesHandler);
+
+// Estadisticas de asistencia con porcentaje
+router.get('/estadisticas/:claseId', getAsistenciaStatsHandler);
 
 export default router;

@@ -233,11 +233,12 @@ export const changePassword = async (userId: string, input: ChangePasswordInput)
   // Hash de la nueva contraseña
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  // Actualizar contraseña y marcar que ya no debe cambiarla
+  // Actualizar contraseña, borrar temporal y marcar que ya no debe cambiarla
   await prisma.user.update({
     where: { id: userId },
     data: {
       password: hashedPassword,
+      passwordTemporal: null, // Borrar contraseña temporal al cambiar
       debeCambiarPassword: false,
     },
   });
@@ -270,6 +271,7 @@ export const manualResetPassword = async (adminUserId: string, targetUserId: str
     where: { id: targetUserId },
     data: {
       password: hashedPassword,
+      passwordTemporal: tempPassword, // Guardar contraseña temporal
       debeCambiarPassword: true,
     },
   });

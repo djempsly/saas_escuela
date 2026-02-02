@@ -9,28 +9,48 @@ import { Role } from '@prisma/client';
 
 export const getDashboardStatsHandler = async (req: Request, res: Response) => {
   try {
-    if (!req.user || !req.user.institucionId) {
+    if (!req.user) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
     const { usuarioId, institucionId, rol } = req.user;
 
+    // ADMIN global puede no tener institucionId
+    if (!institucionId && rol !== Role.ADMIN) {
+      return res.status(403).json({ message: 'Usuario sin institución asignada' });
+    }
+
     let stats;
 
     switch (rol) {
+      case Role.ADMIN:
+        // Admin global - retornar stats vacíos o globales si no tiene institución
+        if (!institucionId) {
+          stats = {
+            totalEstudiantes: 0,
+            totalDocentes: 0,
+            totalClases: 0,
+            inscripcionesActivas: 0,
+            message: 'Admin global - seleccione una institución para ver estadísticas'
+          };
+        } else {
+          stats = await getDashboardStats(institucionId);
+        }
+        break;
+
       case Role.DIRECTOR:
       case Role.COORDINADOR:
       case Role.COORDINADOR_ACADEMICO:
       case Role.SECRETARIA:
-        stats = await getDashboardStats(institucionId);
+        stats = await getDashboardStats(institucionId!);
         break;
 
       case Role.DOCENTE:
-        stats = await getDashboardStatsDocente(usuarioId, institucionId);
+        stats = await getDashboardStatsDocente(usuarioId, institucionId!);
         break;
 
       case Role.ESTUDIANTE:
-        stats = await getDashboardStatsEstudiante(usuarioId, institucionId);
+        stats = await getDashboardStatsEstudiante(usuarioId, institucionId!);
         break;
 
       default:

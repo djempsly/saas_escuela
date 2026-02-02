@@ -190,6 +190,25 @@ export const asistenciaApi = {
     api.get('/asistencia/mi-asistencia'),
   getReporteClase: (claseId: string, fechaInicio: string, fechaFin: string) =>
     api.get('/asistencia/reporte/clase', { params: { claseId, fechaInicio, fechaFin } }),
+  // Dias laborables
+  getDiasLaborables: (claseId: string, cicloLectivoId: string) =>
+    api.get(`/asistencia/dias-laborables/${claseId}`, { params: { cicloLectivoId } }),
+  saveDiasLaborables: (claseId: string, cicloLectivoId: string, dias: {
+    agosto?: number;
+    septiembre?: number;
+    octubre?: number;
+    noviembre?: number;
+    diciembre?: number;
+    enero?: number;
+    febrero?: number;
+    marzo?: number;
+    abril?: number;
+    mayo?: number;
+    junio?: number;
+  }) => api.post(`/asistencia/dias-laborables/${claseId}`, { cicloLectivoId, ...dias }),
+  // Estadisticas con porcentaje
+  getEstadisticas: (claseId: string, cicloLectivoId: string) =>
+    api.get(`/asistencia/estadisticas/${claseId}`, { params: { cicloLectivoId } }),
 };
 
 // Calificaciones API

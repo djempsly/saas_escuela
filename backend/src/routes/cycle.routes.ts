@@ -13,22 +13,28 @@ import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
 
-// Aplicar middlewares en orden:
-// 1. authMiddleware - verifica JWT
-// 2. roleMiddleware - verifica roles permitidos
-// 3. resolveTenantMiddleware - resuelve institucionId (ADMIN puede usar query param)
-// 4. requireTenantMiddleware - asegura que hay un institucionId resuelto
+// Middlewares base para todas las rutas
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
   requireTenantMiddleware
 );
 
-router.post('/', createCicloHandler);
-router.get('/', getCiclosHandler);
-router.get('/:id', getCicloByIdHandler);
-router.put('/:id', updateCicloHandler);
-router.delete('/:id', deleteCicloHandler);
+// Rutas de lectura - todos los roles de staff pueden ver ciclos
+router.get(
+  '/',
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
+  getCiclosHandler
+);
+router.get(
+  '/:id',
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
+  getCicloByIdHandler
+);
+
+// Rutas de escritura - solo ADMIN y DIRECTOR
+router.post('/', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), createCicloHandler);
+router.put('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), updateCicloHandler);
+router.delete('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), deleteCicloHandler);
 
 export default router;

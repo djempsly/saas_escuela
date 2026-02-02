@@ -33,10 +33,10 @@ router.get(
   getMisInscripcionesHandler
 );
 
-// Rutas protegidas para administración
+// Rutas protegidas para administración y docentes
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.SECRETARIA]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
   resolveTenantMiddleware,
   requireTenantMiddleware
 );
