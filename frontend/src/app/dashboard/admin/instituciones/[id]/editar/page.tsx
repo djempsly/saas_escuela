@@ -262,16 +262,12 @@ export default function EditarInstitucionPage() {
       }
       if (logoFile) {
         configData.append('logo', logoFile);
-        console.log('[Frontend] Enviando logo:', logoFile.name);
       }
       if (fondoLoginFile) {
         configData.append('fondoLogin', fondoLoginFile);
-        console.log('[Frontend] Enviando fondoLogin:', fondoLoginFile.name);
       }
 
-      console.log('[Frontend] FormData keys:', Array.from(configData.keys()));
-      const response = await institucionesApi.updateConfig(id, configData);
-      console.log('[Frontend] Response:', response.data);
+      await institucionesApi.updateConfig(id, configData);
 
       setSuccess('Institucion actualizada correctamente');
       setOriginalSlug(formData.slug);

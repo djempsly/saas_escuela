@@ -1,5 +1,49 @@
-// Módulo de generación de PDFs para calificaciones
+/**
+ * Módulo de generación de PDFs para calificaciones
+ * Sistema multi-tenant con soporte para diferentes sistemas educativos
+ */
 
+// ============================================
+// EXPORTS DE TIPOS (nuevo sistema)
+// ============================================
+export * from './types/boletin.types';
+
+// ============================================
+// EXPORTS DE TEMPLATES (nuevo sistema)
+// ============================================
+export {
+  BaseBoletinTemplate,
+  defaultColorNotas,
+  defaultGradeColors as templateGradeColors,
+  defaultTemplateConfig,
+  registerTemplate,
+  getRegisteredTemplate,
+} from './templates/base-template';
+
+export type { BoletinTemplate, TemplateConfig } from './templates/base-template';
+
+export { PolitecnicoDoTemplate } from './templates/politecnico-do.template';
+export { SecundariaDoTemplate } from './templates/secundaria-do.template';
+export { PrimariaDoTemplate } from './templates/primaria-do.template';
+export { PrimariaHtTemplate } from './templates/primaria-ht.template';
+export { SecundariaHtTemplate } from './templates/secundaria-ht.template';
+
+// ============================================
+// EXPORTS DE FACTORY (nuevo sistema)
+// ============================================
+export {
+  getBoletinTemplate,
+  getTemplateMetadata,
+  hasTemplateAvailable,
+  getAvailableSystems,
+  createDefaultConfigForSystem,
+  renderBoletin,
+  validateBoletinData,
+} from './factory/template-factory';
+
+// ============================================
+// EXPORTS LEGACY (compatibilidad hacia atrás)
+// ============================================
 export * from './types';
 export { ReportCardDocument } from './report-card-document';
 export {
@@ -12,11 +56,15 @@ export {
   type ResultadoAprendizaje,
 } from './politecnico-report';
 
+import React from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { ReportCardDocument } from './report-card-document';
 import { PolitecnicoReportDocument, PolitecnicoReportData, PolitecnicoConfig, defaultGradeColors as politecnicoDefaultColors } from './politecnico-report';
 import { ReportCardData, PDFConfig, getPaperSize, GradeColors } from './types';
 import { Locale } from '../i18n';
+import { BoletinData, SistemaEducativo } from './types/boletin.types';
+import { TemplateConfig } from './templates/base-template';
+import { getBoletinTemplate } from './factory/template-factory';
 
 // Configuración por defecto de colores
 export const defaultGradeColors: GradeColors = {
@@ -46,7 +94,68 @@ export const createDefaultConfig = (
   };
 };
 
-// Generar PDF como Blob
+// ============================================
+// FUNCIONES DEL NUEVO SISTEMA DE TEMPLATES
+// ============================================
+
+/**
+ * Genera un boletín PDF como Blob usando el sistema de templates
+ */
+export const generateBoletinBlob = async (
+  sistemaEducativo: SistemaEducativo,
+  data: BoletinData,
+  config?: Partial<TemplateConfig>
+): Promise<Blob> => {
+  const template = getBoletinTemplate(sistemaEducativo, data, config);
+  const doc = template.render();
+  // Cast to any to handle react-pdf type compatibility
+  const blob = await pdf(doc as any).toBlob();
+  return blob;
+};
+
+/**
+ * Genera y descarga un boletín PDF
+ */
+export const downloadBoletin = async (
+  sistemaEducativo: SistemaEducativo,
+  data: BoletinData,
+  config?: Partial<TemplateConfig>,
+  filename?: string
+): Promise<void> => {
+  const blob = await generateBoletinBlob(sistemaEducativo, data, config);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `boletin_${data.estudiante.nombre}_${data.estudiante.apellido}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Genera y abre para imprimir un boletín PDF
+ */
+export const printBoletin = async (
+  sistemaEducativo: SistemaEducativo,
+  data: BoletinData,
+  config?: Partial<TemplateConfig>
+): Promise<void> => {
+  const blob = await generateBoletinBlob(sistemaEducativo, data, config);
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank');
+  if (printWindow) {
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }
+};
+
+// ============================================
+// FUNCIONES LEGACY (compatibilidad)
+// ============================================
+
+// Generar PDF como Blob (legacy)
 export const generateReportCardBlob = async (
   data: ReportCardData,
   config: PDFConfig
@@ -56,7 +165,7 @@ export const generateReportCardBlob = async (
   return blob;
 };
 
-// Generar y descargar PDF
+// Generar y descargar PDF (legacy)
 export const downloadReportCard = async (
   data: ReportCardData,
   config: PDFConfig,
@@ -73,7 +182,7 @@ export const downloadReportCard = async (
   URL.revokeObjectURL(url);
 };
 
-// Generar y abrir para imprimir
+// Generar y abrir para imprimir (legacy)
 export const printReportCard = async (
   data: ReportCardData,
   config: PDFConfig
@@ -88,24 +197,19 @@ export const printReportCard = async (
   }
 };
 
-// Generar múltiples boletines como un solo documento
+// Generar múltiples boletines como un solo documento (legacy)
 export const generateBulkReportCards = async (
   students: ReportCardData[],
   config: PDFConfig
 ): Promise<Blob> => {
-  // Para bulk, generamos cada PDF y los combinamos
-  // Por ahora, generamos uno por uno (en producción usaríamos pdf-lib para combinar)
   if (students.length === 0) {
     throw new Error('No hay estudiantes para generar boletines');
   }
-
-  // Por simplicidad, devolvemos el primero
-  // En implementación completa, combinaríamos todos los PDFs
   return generateReportCardBlob(students[0], config);
 };
 
 // ============================================
-// POLITÉCNICO REPORT FUNCTIONS
+// POLITÉCNICO REPORT FUNCTIONS (legacy)
 // ============================================
 
 // Crear configuración por defecto para Politécnico

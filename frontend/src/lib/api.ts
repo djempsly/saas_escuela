@@ -34,7 +34,7 @@ export const api = axios.create({
   },
 });
 
-// Interceptor para agregar token a las peticiones
+// Interceptor para agregar token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('token');
@@ -126,7 +126,9 @@ export const institucionesApi = {
   updateJson: (id: string, data: any) =>
     api.put(`/instituciones/${id}`, data),
   updateConfig: (id: string, data: FormData) =>
-    api.patch(`/instituciones/${id}/config`, data),
+    api.patch(`/instituciones/${id}/config`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   updateSensitive: (id: string, data: any) =>
     api.patch(`/instituciones/${id}/sensitive`, data),
   delete: (id: string) =>
@@ -204,6 +206,22 @@ export const calificacionesApi = {
     api.get(`/calificaciones/mi-boletin/${cicloLectivoId}`),
   getBoletin: (estudianteId: string, cicloLectivoId: string) =>
     api.get(`/calificaciones/boletin/${estudianteId}/${cicloLectivoId}`),
+};
+
+// Boletines API (datos estructurados para PDF en frontend)
+export const boletinesApi = {
+  // Obtener datos de boletín para un estudiante (genera JSON para PDF en frontend)
+  getBoletinData: (estudianteId: string, cicloId: string) =>
+    api.get(`/boletines/data/${estudianteId}/${cicloId}`),
+  // Obtener datos de boletines para todos los estudiantes de una clase
+  getBoletinesClaseData: (claseId: string, cicloId: string) =>
+    api.get(`/boletines/data/clase/${claseId}/${cicloId}`),
+  // Descargar plantilla vacía (DOCX)
+  getPlantilla: (grado: string) =>
+    api.get(`/boletines/plantilla/${grado}`, { responseType: 'blob' }),
+  // Generar boletín personalizado (DOCX)
+  generarPersonalizado: (data: { config?: any; datosEstudiante?: any; calificaciones?: any[] }) =>
+    api.post('/boletines/generar', data, { responseType: 'blob' }),
 };
 
 // Usuarios API

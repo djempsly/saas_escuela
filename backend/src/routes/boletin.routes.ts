@@ -8,6 +8,10 @@ import {
   getBoletinesClaseHandler,
   generarBoletinPersonalizadoHandler,
 } from '../controllers/boletin.controller';
+import {
+  getBoletinDataHandler,
+  getBoletinesClaseDataHandler,
+} from '../controllers/boletin-data.controller';
 
 const router = Router();
 
@@ -36,6 +40,24 @@ router.post(
   '/generar',
   roleMiddleware([Role.DIRECTOR, Role.ADMIN]),
   generarBoletinPersonalizadoHandler
+);
+
+// ============================================
+// ENDPOINTS DE DATOS (JSON para frontend)
+// ============================================
+
+// Datos estructurados de un estudiante para generar PDF en frontend
+router.get(
+  '/data/:estudianteId/:cicloId',
+  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  getBoletinDataHandler
+);
+
+// Datos de boletines de toda una clase
+router.get(
+  '/data/clase/:claseId/:cicloId',
+  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  getBoletinesClaseDataHandler
 );
 
 export default router;
