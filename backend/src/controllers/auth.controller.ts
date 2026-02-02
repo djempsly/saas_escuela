@@ -46,6 +46,10 @@ export const loginHandler = async (req: Request, res: Response) => {
     if (error.message.includes('Credenciales') || error.message.includes('desactivado')) {
       return res.status(401).json({ message: error.message });
     }
+    // Error de acceso a institución
+    if (error.message.includes('No tienes acceso') || error.message.includes('Institución no encontrada')) {
+      return res.status(403).json({ message: error.message });
+    }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

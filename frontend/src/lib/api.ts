@@ -62,8 +62,8 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  login: (identificador: string, password: string) =>
-    api.post('/auth/login', { identificador, password }),
+  login: (identificador: string, password: string, slug?: string) =>
+    api.post('/auth/login', { identificador, password, slug }),
   forgotPassword: (identificador: string) =>
     api.post('/auth/forgot-password', { identificador }),
   resetPassword: (token: string, newPassword: string) =>
@@ -228,6 +228,8 @@ export const boletinesApi = {
 export const usersApi = {
   getAll: () =>
     api.get('/users'),
+  getStaff: () =>
+    api.get('/users/staff'),
   getById: (id: string) =>
     api.get(`/users/${id}`),
   create: (data: any) =>

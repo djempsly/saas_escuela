@@ -99,7 +99,8 @@ export default function InstitutionLoginPage() {
     setError('');
 
     try {
-      const response = await authApi.login(formData.identificador, formData.password);
+      // Enviar el slug para validar que el usuario pertenece a esta institución
+      const response = await authApi.login(formData.identificador, formData.password, slug);
       const { token, user, debeCambiarPassword } = response.data;
 
       // Guardar usuario y token

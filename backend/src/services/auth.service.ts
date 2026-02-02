@@ -51,7 +51,7 @@ export const registerSuperAdmin = async (input: RegisterSuperAdminInput) => {
 };
 
 export const login = async (input: LoginInput) => {
-  const { identificador, password } = input;
+  const { identificador, password, slug } = input;
 
   // Buscar por email O username
   const user = await prisma.user.findFirst({
@@ -74,6 +74,27 @@ export const login = async (input: LoginInput) => {
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     throw new Error('Credenciales no válidas');
+  }
+
+  // SEGURIDAD: Si se proporciona slug, validar que el usuario pertenezca a esa institución
+  if (slug) {
+    // ADMIN puede acceder desde cualquier slug
+    if (user.role !== Role.ADMIN) {
+      // Buscar la institución por slug
+      const institucion = await prisma.institucion.findUnique({
+        where: { slug },
+        select: { id: true, nombre: true }
+      });
+
+      if (!institucion) {
+        throw new Error('Institución no encontrada');
+      }
+
+      // Verificar que el usuario pertenezca a esta institución
+      if (user.institucionId !== institucion.id) {
+        throw new Error('No tienes acceso a esta institución');
+      }
+    }
   }
 
   if (!process.env.JWT_SECRET) {

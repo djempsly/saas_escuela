@@ -35,30 +35,64 @@ router.get(
   getMiBoletinHandler
 );
 
-// Rutas protegidas para docentes y administrativos
-router.use(
+// ============================================
+// RUTAS DE ESCRITURA - Solo DOCENTE puede editar notas
+// ============================================
+router.post(
+  '/',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.DOCENTE]),
+  roleMiddleware([ROLES.DOCENTE]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
+  guardarCalificacionHandler
 );
 
-// Guardar calificación general
-router.post('/', guardarCalificacionHandler);
+router.post(
+  '/tecnica',
+  authMiddleware,
+  roleMiddleware([ROLES.DOCENTE]),
+  resolveTenantMiddleware,
+  requireTenantMiddleware,
+  guardarCalificacionTecnicaHandler
+);
 
-// Guardar calificación técnica (RA) - Solo Politécnico
-router.post('/tecnica', guardarCalificacionTecnicaHandler);
+router.post(
+  '/masivo',
+  authMiddleware,
+  roleMiddleware([ROLES.DOCENTE]),
+  resolveTenantMiddleware,
+  requireTenantMiddleware,
+  guardarCalificacionesMasivasHandler
+);
 
-// Guardar calificaciones masivas (por periodo)
-router.post('/masivo', guardarCalificacionesMasivasHandler);
+// ============================================
+// RUTAS DE LECTURA - Docentes, coordinadores, directores pueden ver
+// ============================================
+router.get(
+  '/clase/:claseId',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  resolveTenantMiddleware,
+  requireTenantMiddleware,
+  getCalificacionesClaseHandler
+);
 
-// Obtener calificaciones de una clase
-router.get('/clase/:claseId', getCalificacionesClaseHandler);
+router.get(
+  '/estudiante/:estudianteId',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  resolveTenantMiddleware,
+  requireTenantMiddleware,
+  getCalificacionesEstudianteHandler
+);
 
-// Obtener calificaciones de un estudiante
-router.get('/estudiante/:estudianteId', getCalificacionesEstudianteHandler);
-
-// Obtener boletín de un estudiante
-router.get('/boletin/:estudianteId/:cicloLectivoId', getBoletinHandler);
+router.get(
+  '/boletin/:estudianteId/:cicloLectivoId',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  resolveTenantMiddleware,
+  requireTenantMiddleware,
+  getBoletinHandler
+);
 
 export default router;

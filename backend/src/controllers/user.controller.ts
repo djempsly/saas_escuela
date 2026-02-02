@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createUser, resetUserPasswordManual, findUsersByInstitucion, findUserById, updateUserProfile, updateUserById } from '../services/user.service';
+import { createUser, resetUserPasswordManual, findUsersByInstitucion, findStaffByInstitucion, findUserById, updateUserProfile, updateUserById } from '../services/user.service';
 import { crearUsuarioSchema } from '../utils/zod.schemas';
 import { ROLES } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
@@ -133,6 +133,24 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
     const users = await findUsersByInstitucion(req.user.institucionId, role);
 
     return res.status(200).json({ data: users });
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getStaffHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(403).json({ message: 'Acción no permitida' });
+    }
+
+    if (!req.user.institucionId) {
+      return res.status(403).json({ message: 'No tienes una institución asignada' });
+    }
+
+    const staff = await findStaffByInstitucion(req.user.institucionId);
+
+    return res.status(200).json({ data: staff });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

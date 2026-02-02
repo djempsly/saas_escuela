@@ -24,6 +24,7 @@ import {
   Layers,
   BookMarked,
   UserPlus,
+  Briefcase,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -46,6 +47,7 @@ const menuItems = {
   DIRECTOR: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/usuarios', label: 'Usuarios', icon: Users },
+    { href: '/dashboard/personal', label: 'Personal', icon: Briefcase },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },

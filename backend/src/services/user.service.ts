@@ -139,6 +139,38 @@ export const findUsersByInstitucion = async (institucionId: string, role?: strin
   });
 };
 
+export const findStaffByInstitucion = async (institucionId: string) => {
+  const staffRoles: Role[] = [
+    Role.COORDINADOR,
+    Role.COORDINADOR_ACADEMICO,
+    Role.DOCENTE,
+    Role.SECRETARIA,
+  ];
+
+  return prisma.user.findMany({
+    where: {
+      institucionId,
+      role: { in: staffRoles },
+    },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      activo: true,
+      fotoUrl: true,
+      createdAt: true,
+    },
+    orderBy: [
+      { role: 'asc' },
+      { apellido: 'asc' },
+      { nombre: 'asc' },
+    ],
+  });
+};
+
 export const updateUserProfile = async (
   userId: string,
   data: { nombre?: string; apellido?: string; email?: string; fotoUrl?: string }

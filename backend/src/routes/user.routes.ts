@@ -3,6 +3,7 @@ import {
   createUserHandler,
   resetUserPasswordManualHandler,
   getAllUsersHandler,
+  getStaffHandler,
   getUserByIdHandler,
   updateProfileHandler,
   updateUserHandler,
@@ -37,6 +38,14 @@ router.post(
   authMiddleware,
   uploadMiddleware.single('foto'),
   uploadPhotoHandler
+);
+
+// Get staff (personal) - Director can see their registered staff (MUST come before /:id)
+router.get(
+  '/staff',
+  authMiddleware,
+  roleMiddleware([ROLES.DIRECTOR]),
+  getStaffHandler
 );
 
 // Get user by ID
