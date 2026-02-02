@@ -86,7 +86,7 @@ function ActividadCard({
 }) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Obtener fotos de la actividad
+  // Obtener fotos de la actividad - filtrar URLs vacías
   const fotos = useMemo(() => {
     const urls: string[] = [];
     if (actividad.fotos && actividad.fotos.length > 0) {
@@ -94,19 +94,27 @@ function ActividadCard({
     } else if (actividad.urlArchivo) {
       urls.push(getMediaUrl(actividad.urlArchivo));
     }
-    return urls;
+    return urls.filter(url => url && url.trim() !== '');
   }, [actividad]);
 
-  const hasVideo = actividad.videos && actividad.videos.length > 0;
+  const hasVideo = actividad.videos && actividad.videos.some(v => v && v.trim() !== '');
+
+  // Validar índice y foto actual
+  const validSlide = fotos.length > 0 ? Math.min(currentSlide, fotos.length - 1) : 0;
+  const currentPhoto = fotos[validSlide] || null;
 
   const nextSlide = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentSlide((prev) => (prev + 1) % fotos.length);
+    if (fotos.length > 1) {
+      setCurrentSlide((prev) => (prev + 1) % fotos.length);
+    }
   };
 
   const prevSlide = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentSlide((prev) => (prev - 1 + fotos.length) % fotos.length);
+    if (fotos.length > 1) {
+      setCurrentSlide((prev) => (prev - 1 + fotos.length) % fotos.length);
+    }
   };
 
   return (
@@ -115,10 +123,10 @@ function ActividadCard({
       onClick={onClick}
     >
       {/* Slider de imagenes de esta actividad */}
-      {fotos.length > 0 && (
+      {currentPhoto && (
         <div className="relative bg-slate-900" style={{ aspectRatio: '16/10' }}>
           <Image
-            src={fotos[currentSlide]}
+            src={currentPhoto}
             alt={actividad.titulo}
             fill
             className="object-contain"
@@ -151,7 +159,7 @@ function ActividadCard({
                       setCurrentSlide(index);
                     }}
                     className={`w-2 h-2 rounded-full transition-all ${
-                      index === currentSlide ? 'bg-white scale-125' : 'bg-white/50'
+                      index === validSlide ? 'bg-white scale-125' : 'bg-white/50'
                     }`}
                   />
                 ))}
@@ -160,7 +168,7 @@ function ActividadCard({
               {/* Contador */}
               <div className="absolute top-3 left-3 bg-black/60 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                 <ImageIcon className="w-3 h-3" />
-                {currentSlide + 1}/{fotos.length}
+                {validSlide + 1}/{fotos.length}
               </div>
             </>
           )}
@@ -176,7 +184,7 @@ function ActividadCard({
       )}
 
       {/* Si no hay fotos pero hay video */}
-      {fotos.length === 0 && hasVideo && (
+      {!currentPhoto && hasVideo && (
         <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center" style={{ aspectRatio: '16/10' }}>
           <div className="flex flex-col items-center gap-2 text-white">
             <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center">
@@ -252,16 +260,22 @@ function ActividadModal({
 
   if (!isOpen || !actividad) return null;
 
-  // Obtener fotos
-  const fotos = actividad.fotos?.length
+  // Obtener fotos - filtrar URLs vacías
+  const fotos = (actividad.fotos?.length
     ? actividad.fotos.map(url => getMediaUrl(url))
     : actividad.urlArchivo
       ? [getMediaUrl(actividad.urlArchivo)]
-      : [];
+      : []
+  ).filter(url => url && url.trim() !== '');
 
-  // Obtener videos
-  const videos = actividad.videos?.map(url => getMediaUrl(url)) || [];
+  // Obtener videos - filtrar URLs vacías
+  const videos = (actividad.videos?.map(url => getMediaUrl(url)) || [])
+    .filter(url => url && url.trim() !== '');
   const hasVideo = videos.length > 0;
+
+  // Validar currentSlide está en rango
+  const validSlide = fotos.length > 0 ? Math.min(currentSlide, fotos.length - 1) : 0;
+  const currentPhoto = fotos[validSlide] || null;
 
   const nextSlide = () => {
     if (fotos.length > 1) {
@@ -316,11 +330,11 @@ function ActividadModal({
             <div className="w-full h-full bg-black rounded-lg overflow-hidden">
               {renderVideo(videos[0])}
             </div>
-          ) : fotos.length > 0 ? (
+          ) : currentPhoto ? (
             // Mostrar slider de fotos
             <div className="relative w-full h-full bg-slate-900 rounded-lg overflow-hidden">
               <Image
-                src={fotos[currentSlide]}
+                src={currentPhoto}
                 alt={actividad.titulo}
                 fill
                 className="object-contain"
@@ -350,7 +364,7 @@ function ActividadModal({
                         key={index}
                         onClick={() => setCurrentSlide(index)}
                         className={`w-3 h-3 rounded-full transition-all ${
-                          index === currentSlide ? 'bg-white scale-110' : 'bg-white/50'
+                          index === validSlide ? 'bg-white scale-110' : 'bg-white/50'
                         }`}
                       />
                     ))}
@@ -359,7 +373,7 @@ function ActividadModal({
                   {/* Contador */}
                   <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm flex items-center gap-2">
                     <ImageIcon className="w-4 h-4" />
-                    {currentSlide + 1} / {fotos.length}
+                    {validSlide + 1} / {fotos.length}
                   </div>
                 </>
               )}

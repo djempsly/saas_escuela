@@ -157,12 +157,17 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
 
     // Manejar múltiples archivos (cuando se usa upload.fields())
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    console.log('[updateConfig] Files received:', files ? Object.keys(files) : 'none');
+    console.log('[updateConfig] Body:', req.body);
+
     if (files && typeof files === 'object') {
       if (files.logo && files.logo[0]) {
         logoUrl = getFileUrl(files.logo[0]);
+        console.log('[updateConfig] Logo URL:', logoUrl);
       }
       if (files.fondoLogin && files.fondoLogin[0]) {
         fondoLoginUrl = getFileUrl(files.fondoLogin[0]);
+        console.log('[updateConfig] FondoLogin URL:', fondoLoginUrl);
       }
     }
 

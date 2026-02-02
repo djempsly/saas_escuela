@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { institucionesApi, adminApi } from '@/lib/api';
+import { institucionesApi, adminApi, getMediaUrl } from '@/lib/api';
 import {
   ArrowLeft,
   Building2,
@@ -182,11 +182,12 @@ export default function VerInstitucionPage() {
               {institucion.logoUrl ? (
                 <div className="w-24 h-24 rounded-lg overflow-hidden border">
                   <Image
-                    src={institucion.logoUrl}
+                    src={getMediaUrl(institucion.logoUrl)}
                     alt={institucion.nombre}
                     width={96}
                     height={96}
                     className="object-cover w-full h-full"
+                    unoptimized
                   />
                 </div>
               ) : (

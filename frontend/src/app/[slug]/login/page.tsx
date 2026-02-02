@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
-import { authApi, institucionesApi } from '@/lib/api';
+import { authApi, institucionesApi, getMediaUrl } from '@/lib/api';
 import { Loader2, School, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -162,9 +162,10 @@ export default function InstitutionLoginPage() {
   }
 
   // Estilos dinámicos basados en branding
-  const backgroundStyle = branding.fondoLoginUrl
+  const fondoUrl = branding.fondoLoginUrl ? getMediaUrl(branding.fondoLoginUrl) : null;
+  const backgroundStyle = fondoUrl
     ? {
-        backgroundImage: `url(${branding.fondoLoginUrl})`,
+        backgroundImage: `url(${fondoUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }
@@ -178,7 +179,7 @@ export default function InstitutionLoginPage() {
       style={backgroundStyle}
     >
       {/* Overlay para mejor legibilidad si hay imagen de fondo */}
-      {branding.fondoLoginUrl && (
+      {fondoUrl && (
         <div className="absolute inset-0 bg-black/50" />
       )}
 
@@ -204,13 +205,14 @@ export default function InstitutionLoginPage() {
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            {branding.logoUrl ? (
+            {branding.logoUrl && getMediaUrl(branding.logoUrl) ? (
               <div className="relative w-20 h-20">
                 <Image
-                  src={branding.logoUrl}
+                  src={getMediaUrl(branding.logoUrl)}
                   alt={branding.nombre}
                   fill
                   className="object-contain"
+                  unoptimized
                 />
               </div>
             ) : (

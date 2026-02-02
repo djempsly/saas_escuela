@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { institucionesApi } from '@/lib/api';
+import { institucionesApi, getMediaUrl } from '@/lib/api';
 import {
   ArrowLeft,
   Building2,
@@ -147,8 +147,8 @@ export default function EditarInstitucionPage() {
         regionalEducacion: inst.regionalEducacion || '',
       });
 
-      setLogoPreview(inst.logoUrl || null);
-      setFondoLoginPreview(inst.fondoLoginUrl || null);
+      setLogoPreview(inst.logoUrl ? getMediaUrl(inst.logoUrl) : null);
+      setFondoLoginPreview(inst.fondoLoginUrl ? getMediaUrl(inst.fondoLoginUrl) : null);
       setOriginalSlug(inst.slug || '');
       setOriginalDominio(inst.dominioPersonalizado || '');
     } catch (err) {
@@ -262,11 +262,16 @@ export default function EditarInstitucionPage() {
       }
       if (logoFile) {
         configData.append('logo', logoFile);
+        console.log('[Frontend] Enviando logo:', logoFile.name);
       }
       if (fondoLoginFile) {
         configData.append('fondoLogin', fondoLoginFile);
+        console.log('[Frontend] Enviando fondoLogin:', fondoLoginFile.name);
       }
-      await institucionesApi.updateConfig(id, configData);
+
+      console.log('[Frontend] FormData keys:', Array.from(configData.keys()));
+      const response = await institucionesApi.updateConfig(id, configData);
+      console.log('[Frontend] Response:', response.data);
 
       setSuccess('Institucion actualizada correctamente');
       setOriginalSlug(formData.slug);
