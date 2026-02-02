@@ -50,6 +50,7 @@ const menuItems = {
     { href: '/dashboard/personal', label: 'Personal', icon: Briefcase },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
+    { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
     { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
@@ -64,6 +65,7 @@ const menuItems = {
   COORDINADOR: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/clases', label: 'Clases', icon: GraduationCap },
+    { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: Users },
