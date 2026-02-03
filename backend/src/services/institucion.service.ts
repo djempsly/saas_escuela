@@ -239,6 +239,20 @@ export const findInstituciones = async () => {
           sistema: true,
           activo: true
         }
+      },
+      dominios: {
+        select: {
+          id: true,
+          dominio: true,
+          verificado: true,
+          verificadoAt: true,
+        },
+        orderBy: { createdAt: 'desc' }
+      },
+      _count: {
+        select: {
+          usuarios: true
+        }
       }
     }
   });

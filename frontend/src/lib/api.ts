@@ -143,6 +143,54 @@ export const institucionesApi = {
     api.patch(`/instituciones/${id}/sensitive`, data),
   delete: (id: string) =>
     api.delete(`/instituciones/${id}`),
+  // Uploads específicos de branding
+  uploadLogo: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.post(`/instituciones/${id}/logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadFavicon: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('favicon', file);
+    return api.post(`/instituciones/${id}/favicon`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadHeroImage: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('hero', file);
+    return api.post(`/instituciones/${id}/hero`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadLoginBg: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('loginBg', file);
+    return api.post(`/instituciones/${id}/login-bg`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadLoginLogo: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('loginLogo', file);
+    return api.post(`/instituciones/${id}/login-logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// Dominios API (gestión de dominios personalizados)
+export const dominiosApi = {
+  getByInstitucion: (institucionId: string) =>
+    api.get('/admin/dominios', { params: { institucionId } }),
+  create: (dominio: string, institucionId?: string) =>
+    api.post('/admin/dominios', { dominio, institucionId }),
+  verificar: (id: string) =>
+    api.post(`/admin/dominios/${id}/verificar`),
+  delete: (id: string) =>
+    api.delete(`/admin/dominios/${id}`),
 };
 
 // Actividades API (público)

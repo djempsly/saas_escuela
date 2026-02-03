@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { institucionesApi } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { institucionesApi, getMediaUrl } from '@/lib/api';
 import {
   Building2,
   Plus,
@@ -16,6 +17,10 @@ import {
   Users,
   Power,
   PowerOff,
+  ExternalLink,
+  Globe,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -29,17 +34,27 @@ interface ApiError {
   message?: string;
 }
 
+interface Dominio {
+  id: string;
+  dominio: string;
+  verificado: boolean;
+  verificadoAt?: string;
+}
+
 interface Institucion {
   id: string;
   nombre: string;
   pais: string;
   sistemaEducativo: string;
+  sistema?: string;
   logoUrl?: string;
   colorPrimario?: string;
   activo: boolean;
   slug?: string;
+  dominioPersonalizado?: string;
+  dominios?: Dominio[];
   _count?: {
-    users: number;
+    usuarios: number;
   };
 }
 
@@ -110,10 +125,29 @@ export default function AdminInstitucionesPage() {
     }
   };
 
+  const getLandingUrl = (inst: Institucion) => {
+    // First check for verified custom domains
+    const verifiedDomain = inst.dominios?.find(d => d.verificado);
+    if (verifiedDomain) {
+      return `https://${verifiedDomain.dominio}`;
+    }
+    // Fallback to dominioPersonalizado (legacy field)
+    if (inst.dominioPersonalizado) {
+      return `https://${inst.dominioPersonalizado}`;
+    }
+    // Fallback to slug subdomain
+    if (inst.slug) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'escuela.app';
+      return `https://${inst.slug}.${baseUrl}`;
+    }
+    return null;
+  };
+
   const filteredInstituciones = instituciones.filter(
     (i) =>
       i.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.pais.toLowerCase().includes(searchTerm.toLowerCase())
+      i.pais.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      i.slug?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatSistema = (sistema: string) => {
@@ -121,10 +155,58 @@ export default function AdminInstitucionesPage() {
       PRIMARIA_DO: 'RD - Primaria',
       SECUNDARIA_GENERAL_DO: 'RD - Secundaria General',
       POLITECNICO_DO: 'RD - Politécnico',
+      NIVEL_INICIAL_DO: 'RD - Nivel Inicial',
       PRIMARIA_HT: 'Haití - Primaria',
       SECUNDARIA_HT: 'Haití - Secundaria',
+      NIVEL_INICIAL_HT: 'Haití - Nivel Inicial',
     };
     return map[sistema] || sistema;
+  };
+
+  const renderDominios = (inst: Institucion) => {
+    const dominios = inst.dominios || [];
+    const hasLegacyDominio = inst.dominioPersonalizado && dominios.length === 0;
+
+    if (dominios.length === 0 && !hasLegacyDominio) {
+      return (
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <Globe className="w-3 h-3" />
+          Solo subdomain
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {dominios.map((d) => (
+          <Badge
+            key={d.id}
+            variant={d.verificado ? 'default' : 'secondary'}
+            className={`text-xs flex items-center gap-1 ${
+              d.verificado
+                ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                : 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+            }`}
+          >
+            {d.verificado ? (
+              <CheckCircle className="w-3 h-3" />
+            ) : (
+              <Clock className="w-3 h-3" />
+            )}
+            {d.dominio}
+          </Badge>
+        ))}
+        {hasLegacyDominio && (
+          <Badge
+            variant="secondary"
+            className="text-xs flex items-center gap-1 bg-blue-100 text-blue-700"
+          >
+            <Globe className="w-3 h-3" />
+            {inst.dominioPersonalizado}
+          </Badge>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -164,7 +246,7 @@ export default function AdminInstitucionesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre o pais..."
+              placeholder="Buscar por nombre, pais o slug..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -180,96 +262,123 @@ export default function AdminInstitucionesPage() {
         </div>
       ) : filteredInstituciones.length > 0 ? (
         <div className="grid gap-4">
-          {filteredInstituciones.map((inst) => (
-            <Card key={inst.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  {/* Logo */}
-                  {inst.logoUrl ? (
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0">
-                      <Image
-                        src={inst.logoUrl}
-                        alt={inst.nombre}
-                        width={64}
-                        height={64}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${inst.colorPrimario || '#1a365d'}20` }}
-                    >
-                      <Building2
-                        className="w-8 h-8"
-                        style={{ color: inst.colorPrimario || '#1a365d' }}
-                      />
-                    </div>
-                  )}
+          {filteredInstituciones.map((inst) => {
+            const landingUrl = getLandingUrl(inst);
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg truncate">{inst.nombre}</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
-                        {inst.pais === 'DO' ? '🇩🇴 Rep. Dominicana' : '🇭🇹 Haití'}
-                      </span>
-                      <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
-                        {formatSistema(inst.sistemaEducativo)}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          inst.activo
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}
+            return (
+              <Card key={inst.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    {/* Logo */}
+                    {inst.logoUrl ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0 bg-white">
+                        <Image
+                          src={getMediaUrl(inst.logoUrl)}
+                          alt={inst.nombre}
+                          width={64}
+                          height={64}
+                          className="object-contain w-full h-full"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${inst.colorPrimario || '#1a365d'}20` }}
                       >
-                        {inst.activo ? 'Activa' : 'Inactiva'}
-                      </span>
-                    </div>
-                    {inst._count && (
-                      <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {inst._count.users} usuarios
-                      </p>
+                        <Building2
+                          className="w-8 h-8"
+                          style={{ color: inst.colorPrimario || '#1a365d' }}
+                        />
+                      </div>
                     )}
-                  </div>
 
-                  {/* Acciones */}
-                  <div className="flex gap-2">
-                    <Link href={`/dashboard/admin/instituciones/${inst.id}`}>
-                      <Button variant="ghost" size="icon" title="Ver detalles">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <Link href={`/dashboard/admin/instituciones/${inst.id}/editar`}>
-                      <Button variant="ghost" size="icon" title="Editar">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={inst.activo ? 'text-amber-500 hover:text-amber-600' : 'text-green-500 hover:text-green-600'}
-                      onClick={() => handleToggleActivo(inst)}
-                      title={inst.activo ? 'Desactivar' : 'Activar'}
-                    >
-                      {inst.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => handleDelete(inst.id)}
-                      title="Eliminar"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-semibold text-lg truncate">{inst.nombre}</h3>
+                          {inst.slug && (
+                            <p className="text-sm text-muted-foreground font-mono">
+                              /{inst.slug}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <Link href={`/dashboard/admin/instituciones/${inst.id}`}>
+                            <Button variant="ghost" size="icon" title="Ver detalles">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <Link href={`/dashboard/admin/instituciones/${inst.id}/editar`}>
+                            <Button variant="ghost" size="icon" title="Editar">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          {landingUrl && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Ver landing"
+                              onClick={() => window.open(landingUrl, '_blank')}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={inst.activo ? 'text-amber-500 hover:text-amber-600' : 'text-green-500 hover:text-green-600'}
+                            onClick={() => handleToggleActivo(inst)}
+                            title={inst.activo ? 'Desactivar' : 'Activar'}
+                          >
+                            {inst.activo ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-600"
+                            onClick={() => handleDelete(inst.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
+                          {inst.pais === 'DO' ? '🇩🇴 Rep. Dominicana' : '🇭🇹 Haití'}
+                        </span>
+                        <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
+                          {formatSistema(inst.sistemaEducativo || inst.sistema || '')}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            inst.activo
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {inst.activo ? 'Activa' : 'Inactiva'}
+                        </span>
+                        {inst._count && (
+                          <span className="text-xs px-2 py-1 bg-slate-100 rounded-full flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {inst._count.usuarios} usuarios
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Dominios */}
+                      <div className="pt-1">
+                        {renderDominios(inst)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>
