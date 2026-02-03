@@ -12,6 +12,7 @@ import {
   updateSensitiveConfigHandler,
   checkSlugHandler,
   checkDominioHandler,
+  updateSistemasEducativosHandler,
 } from '../controllers/institucion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -51,5 +52,8 @@ router.patch('/:id/config', uploadInstitucionMedia, updateConfigHandler);
 
 // Actualizar configuración sensible (nombre, slug, dominio, activo, autogestion)
 router.patch('/:id/sensitive', updateSensitiveConfigHandler);
+
+// Actualizar sistemas educativos que ofrece la institución
+router.patch('/:id/sistemas-educativos', updateSistemasEducativosHandler);
 
 export default router;

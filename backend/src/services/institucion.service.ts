@@ -601,3 +601,67 @@ export const checkDominioAvailability = async (dominio: string, excludeId?: stri
   if (excludeId && existing.id === excludeId) return true;
   return false;
 };
+
+// Actualizar sistemas educativos de una institución
+export const updateSistemasEducativos = async (
+  id: string,
+  sistemasEducativos: SistemaEducativo[]
+) => {
+  const institucion = await prisma.institucion.findUnique({
+    where: { id },
+    include: { sistemasEducativos: true },
+  });
+
+  if (!institucion) {
+    throw new Error('Institución no encontrada');
+  }
+
+  if (!sistemasEducativos || sistemasEducativos.length === 0) {
+    throw new Error('Debe proporcionar al menos un sistema educativo');
+  }
+
+  // Validar que todos los sistemas son válidos
+  for (const sistema of sistemasEducativos) {
+    if (!Object.values(SistemaEducativo).includes(sistema)) {
+      throw new Error(`Sistema educativo inválido: ${sistema}`);
+    }
+  }
+
+  // Actualizar en transacción
+  return prisma.$transaction(async (tx) => {
+    // 1. Eliminar los sistemas actuales
+    await tx.institucionSistemaEducativo.deleteMany({
+      where: { institucionId: id },
+    });
+
+    // 2. Crear los nuevos sistemas
+    for (const sistema of sistemasEducativos) {
+      await tx.institucionSistemaEducativo.create({
+        data: {
+          institucionId: id,
+          sistema,
+        },
+      });
+    }
+
+    // 3. Actualizar el sistema principal de la institución (el primero de la lista)
+    const sistemaPrincipal = sistemasEducativos[0];
+    await tx.institucion.update({
+      where: { id },
+      data: { sistema: sistemaPrincipal },
+    });
+
+    // 4. Retornar la institución actualizada
+    return tx.institucion.findUnique({
+      where: { id },
+      include: {
+        sistemasEducativos: {
+          select: {
+            sistema: true,
+            activo: true,
+          },
+        },
+      },
+    });
+  });
+};

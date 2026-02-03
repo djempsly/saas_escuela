@@ -141,6 +141,8 @@ export const institucionesApi = {
     }),
   updateSensitive: (id: string, data: any) =>
     api.patch(`/instituciones/${id}/sensitive`, data),
+  updateSistemasEducativos: (id: string, sistemasEducativos: string[]) =>
+    api.patch(`/instituciones/${id}/sistemas-educativos`, { sistemasEducativos }),
   delete: (id: string) =>
     api.delete(`/instituciones/${id}`),
   // Uploads específicos de branding

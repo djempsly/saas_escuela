@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Idioma } from '@prisma/client';
+import { Idioma, SistemaEducativo } from '@prisma/client';
 import {
   createInstitucion,
   findInstituciones,
@@ -13,6 +13,7 @@ import {
   updateSensitiveConfig,
   checkSlugAvailability,
   checkDominioAvailability,
+  updateSistemasEducativos,
 } from '../services/institucion.service';
 import { getFileUrl } from '../middleware/upload.middleware';
 import { institucionSchema } from '../utils/zod.schemas';
@@ -285,6 +286,30 @@ export const checkDominioHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json({ available, dominio });
   } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// PATCH /api/v1/instituciones/:id/sistemas-educativos - Actualizar sistemas educativos
+export const updateSistemasEducativosHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    const sistemasSchema = z.object({
+      sistemasEducativos: z.array(z.nativeEnum(SistemaEducativo)).min(1, 'Debe seleccionar al menos un sistema educativo'),
+    });
+
+    const validated = sistemasSchema.parse(req.body);
+    const result = await updateSistemasEducativos(id, validated.sistemasEducativos);
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (error.message.includes('no encontrada') || error.message.includes('inválido')) {
+      return res.status(400).json({ message: error.message });
+    }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
