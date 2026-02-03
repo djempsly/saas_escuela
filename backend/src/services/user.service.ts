@@ -25,7 +25,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
       username,
       email: email || null,
       password: hashedPassword,
-      passwordTemporal: tempPassword, // Guardar contraseña temporal para ADMIN/DIRECTOR
+      // SEGURIDAD: No guardar passwordTemporal - se devuelve solo en la respuesta
       role: rol as Role,
       institucionId: institucionId || null,
       debeCambiarPassword: true,
@@ -95,7 +95,7 @@ export const resetUserPasswordManual = async (
     where: { id: targetUserId },
     data: {
       password: hashedPassword,
-      passwordTemporal: tempPassword, // Guardar contraseña temporal
+      // SEGURIDAD: No guardar passwordTemporal - se devuelve solo en la respuesta
       debeCambiarPassword: true,
     },
   });
@@ -120,7 +120,8 @@ export const findUserById = async (id: string) => {
   });
 };
 
-export const findUsersByInstitucion = async (institucionId: string, role?: string, includePasswordTemporal: boolean = false) => {
+export const findUsersByInstitucion = async (institucionId: string, role?: string, _includePasswordTemporal: boolean = false) => {
+  // SEGURIDAD: passwordTemporal ya no existe en el schema
   return prisma.user.findMany({
     where: {
       institucionId,
@@ -136,14 +137,14 @@ export const findUsersByInstitucion = async (institucionId: string, role?: strin
       activo: true,
       fotoUrl: true,
       debeCambiarPassword: true,
-      passwordTemporal: includePasswordTemporal, // Solo incluir si lo solicita ADMIN/DIRECTOR
       createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
   });
 };
 
-export const findStaffByInstitucion = async (institucionId: string, includePasswordTemporal: boolean = false) => {
+export const findStaffByInstitucion = async (institucionId: string, _includePasswordTemporal: boolean = false) => {
+  // SEGURIDAD: passwordTemporal ya no existe en el schema
   const staffRoles: Role[] = [
     Role.COORDINADOR,
     Role.COORDINADOR_ACADEMICO,
@@ -166,7 +167,6 @@ export const findStaffByInstitucion = async (institucionId: string, includePassw
       activo: true,
       fotoUrl: true,
       debeCambiarPassword: true,
-      passwordTemporal: includePasswordTemporal,
       createdAt: true,
     },
     orderBy: [

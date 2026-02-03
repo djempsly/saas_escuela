@@ -1,6 +1,6 @@
 import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import prisma from '../config/db';
 import { LoginInput, ChangePasswordInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
@@ -53,15 +53,21 @@ export const registerSuperAdmin = async (input: RegisterSuperAdminInput) => {
 export const login = async (input: LoginInput) => {
   const { identificador, password, slug } = input;
 
-  // Buscar por email O username
+  // OPTIMIZACIÓN: Una sola query con include de institución
   const user = await prisma.user.findFirst({
     where: {
       OR: [
         { email: identificador },
         { username: identificador }
       ]
+    },
+    include: {
+      institucion: {
+        select: { id: true, slug: true, nombre: true, activo: true }
+      }
     }
   });
+
   if (!user) {
     throw new Error('Credenciales no válidas');
   }
@@ -77,23 +83,14 @@ export const login = async (input: LoginInput) => {
   }
 
   // SEGURIDAD: Si se proporciona slug, validar que el usuario pertenezca a esa institución
-  if (slug) {
-    // ADMIN puede acceder desde cualquier slug
-    if (user.role !== Role.ADMIN) {
-      // Buscar la institución por slug
-      const institucion = await prisma.institucion.findUnique({
-        where: { slug },
-        select: { id: true, nombre: true }
-      });
-
-      if (!institucion) {
-        throw new Error('Institución no encontrada');
-      }
-
-      // Verificar que el usuario pertenezca a esta institución
-      if (user.institucionId !== institucion.id) {
-        throw new Error('No tienes acceso a esta institución');
-      }
+  if (slug && user.role !== Role.ADMIN) {
+    // Verificar que el usuario tenga institución y coincida con el slug
+    if (!user.institucion || user.institucion.slug !== slug) {
+      throw new Error('Credenciales no válidas'); // No revelar detalles
+    }
+    // Verificar que la institución esté activa
+    if (!user.institucion.activo) {
+      throw new Error('Esta institución está desactivada. Contacte al administrador.');
     }
   }
 
@@ -128,7 +125,12 @@ export const login = async (input: LoginInput) => {
   };
 };
 
-export const forgotPassword = async (identificador: string) => {
+export const forgotPassword = async (identificador: string): Promise<{ needsManualReset: boolean }> => {
+  // Función helper para simular delay y prevenir timing attacks
+  const simulateDelay = async () => {
+    await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 300) + 200));
+  };
+
   // Buscar por email O username
   const user = await prisma.user.findFirst({
     where: {
@@ -139,19 +141,27 @@ export const forgotPassword = async (identificador: string) => {
     }
   });
 
-  // Security: Always return success even if user not found to prevent email enumeration
+  // SEGURIDAD: Todos los caminos que no envían email deben verse iguales desde afuera
+  // para prevenir enumeración de usuarios.
+
+  // Usuario no existe
   if (!user) {
-    return;
+    await simulateDelay();
+    return { needsManualReset: false };
   }
 
-  // SEGURIDAD: No enviar reset si el usuario está desactivado
+  // Usuario desactivado
   if (!user.activo) {
-    return;
+    await simulateDelay();
+    return { needsManualReset: false };
   }
 
-  // Verificar si el usuario tiene email registrado
+  // Usuario sin email - NO lanzar error, comportarse igual que los otros casos
   if (!user.email) {
-    throw new Error('NO_EMAIL: Este usuario no tiene email registrado. Contacte al Director para resetear su clave manualmente.');
+    await simulateDelay();
+    // Retornar flag interno para que el controller muestre mensaje genérico
+    // pero NUNCA revelar que el usuario existe sin email
+    return { needsManualReset: true };
   }
 
   if (!process.env.JWT_SECRET) {
@@ -169,6 +179,7 @@ export const forgotPassword = async (identificador: string) => {
   const link = `${frontendUrl}/reset-password?token=${resetToken}`;
 
   await sendPasswordResetEmail(user.email, link);
+  return { needsManualReset: false };
 };
 
 export const resetPassword = async (token: string, newPassword: string) => {
@@ -176,39 +187,47 @@ export const resetPassword = async (token: string, newPassword: string) => {
     throw new Error('CRITICAL: JWT_SECRET no está definido en el servidor.');
   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; type: string };
+  let decoded: { id: string; type: string };
 
-    if (decoded.type !== 'reset') {
+  // 1. Verificar token — solo capturar errores específicos de JWT
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; type: string };
+  } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      throw new Error('El enlace de reseteo ha expirado. Solicita uno nuevo.');
+    }
+    if (error instanceof JsonWebTokenError) {
       throw new Error('Token inválido');
     }
-
-    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-
-    // SEGURIDAD: Verificar que el usuario esté activo
-    if (!user.activo) {
-      throw new Error('Usuario desactivado. Contacte al administrador.');
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        debeCambiarPassword: false,
-      },
-    });
-
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Usuario desactivado')) {
-      throw error;
-    }
-    throw new Error('Token inválido o expirado');
+    // Error inesperado — dejarlo propagarse para que el error handler global lo capture
+    throw error;
   }
+
+  if (decoded.type !== 'reset') {
+    throw new Error('Token inválido');
+  }
+
+  // 2. Buscar usuario — errores de DB se propagan naturalmente
+  const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  // SEGURIDAD: Verificar que el usuario esté activo
+  if (!user.activo) {
+    throw new Error('Usuario desactivado. Contacte al administrador.');
+  }
+
+  // 3. Actualizar contraseña
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      debeCambiarPassword: false,
+    },
+  });
 };
 
 export const changePassword = async (userId: string, input: ChangePasswordInput) => {
@@ -233,12 +252,11 @@ export const changePassword = async (userId: string, input: ChangePasswordInput)
   // Hash de la nueva contraseña
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-  // Actualizar contraseña, borrar temporal y marcar que ya no debe cambiarla
+  // Actualizar contraseña y marcar que ya no debe cambiarla
   await prisma.user.update({
     where: { id: userId },
     data: {
       password: hashedPassword,
-      passwordTemporal: null, // Borrar contraseña temporal al cambiar
       debeCambiarPassword: false,
     },
   });
@@ -267,11 +285,12 @@ export const manualResetPassword = async (adminUserId: string, targetUserId: str
   const tempPassword = generateSecurePassword();
   const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
+  // SEGURIDAD: NO guardar la contraseña temporal en texto plano
+  // Solo se retorna al admin una vez y no se persiste
   await prisma.user.update({
     where: { id: targetUserId },
     data: {
       password: hashedPassword,
-      passwordTemporal: tempPassword, // Guardar contraseña temporal
       debeCambiarPassword: true,
     },
   });

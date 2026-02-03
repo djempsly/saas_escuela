@@ -11,6 +11,7 @@ import {
 } from '../controllers/actividad.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
+import { resolveTenantMiddleware } from '../middleware/tenant.middleware';
 import { uploadActividad } from '../middleware/upload.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
@@ -36,7 +37,7 @@ router.get('/:id', getActividadByIdHandler);
 // ===== RUTAS PROTEGIDAS =====
 // ADMIN puede crear/editar/eliminar cualquier actividad
 // DIRECTOR puede crear actividades SI su institución tiene autogestionActividades = true
-router.use(authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]));
+router.use(authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), resolveTenantMiddleware);
 
 // Crear actividad con archivos opcionales
 router.post('/', uploadActividad, createActividadHandler);

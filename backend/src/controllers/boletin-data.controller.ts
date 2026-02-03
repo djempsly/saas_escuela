@@ -21,14 +21,14 @@ export const getBoletinDataHandler = async (req: Request, res: Response) => {
       ? req.params.cicloId[0]
       : req.params.cicloId;
 
-    if (!req.user?.institucionId) {
+    if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
     const data = await getBoletinData(
       estudianteId,
       cicloId,
-      req.user.institucionId
+      req.resolvedInstitucionId
     );
 
     return res.status(200).json(data);
@@ -52,14 +52,14 @@ export const getBoletinesClaseDataHandler = async (req: Request, res: Response) 
       ? req.params.cicloId[0]
       : req.params.cicloId;
 
-    if (!req.user?.institucionId) {
+    if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
     const boletines = await getBoletinesClase(
       claseId,
       cicloId,
-      req.user.institucionId
+      req.resolvedInstitucionId
     );
 
     return res.status(200).json({

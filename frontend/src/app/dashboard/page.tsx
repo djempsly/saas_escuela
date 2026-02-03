@@ -73,7 +73,7 @@ export default function DashboardPage() {
 
   // Stats cards based on role
   const getStatsCards = () => {
-    if (!stats) return [];
+    if (!stats || !stats.estadisticas) return [];
 
     const role = user?.role;
     const est = stats.estadisticas;
@@ -173,7 +173,7 @@ export default function DashboardPage() {
 
   // Additional stats for directors
   const getAdditionalStats = () => {
-    if (!stats || !['DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'SECRETARIA'].includes(user?.role || '')) {
+    if (!stats || !stats.estadisticas || !['DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'SECRETARIA'].includes(user?.role || '')) {
       return null;
     }
 

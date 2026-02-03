@@ -97,8 +97,31 @@ export default function ReporteRendimientoPage() {
     setIsLoadingReporte(true);
     try {
       const response = await calificacionesApi.getByClase(selectedClase);
-      const data = response.data?.data || response.data || [];
-      setCalificaciones(data);
+      const responseData = response.data?.data || response.data;
+
+      // La API devuelve { clase, calificaciones, totalEstudiantes }
+      // Extraer el array de calificaciones
+      let calificacionesArray: any[] = [];
+
+      if (Array.isArray(responseData)) {
+        calificacionesArray = responseData;
+      } else if (responseData?.calificaciones && Array.isArray(responseData.calificaciones)) {
+        calificacionesArray = responseData.calificaciones;
+      }
+
+      // Transformar al formato esperado por el componente
+      const calificacionesTransformadas = calificacionesArray.map((cal: any) => ({
+        estudiante: cal.estudiante || { id: cal.estudianteId, nombre: '', apellido: '' },
+        promedio: cal.promedioFinal ?? 0,
+        calificaciones: [
+          { periodo: 'P1', valor: cal.p1 },
+          { periodo: 'P2', valor: cal.p2 },
+          { periodo: 'P3', valor: cal.p3 },
+          { periodo: 'P4', valor: cal.p4 },
+        ],
+      }));
+
+      setCalificaciones(calificacionesTransformadas);
     } catch (error) {
       console.error('Error generando reporte:', error);
       setCalificaciones([]);

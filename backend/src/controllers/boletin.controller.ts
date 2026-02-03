@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { generarBoletin, BoletinConfig, DatosEstudiante, Calificacion, Grado } from '../services/boletin.service';
 import prisma from '../config/db';
 import { sanitizeErrorMessage } from '../utils/security';
-import archiver from 'archiver';
 
 /**
  * Genera y descarga un boletín de calificaciones vacío (plantilla)
@@ -48,7 +47,7 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       ? req.query.cicloId[0] as string
       : req.query.cicloId as string | undefined;
 
-    if (!req.user?.institucionId) {
+    if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
@@ -56,7 +55,7 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
     const estudiante = await prisma.user.findFirst({
       where: {
         id: estudianteId,
-        institucionId: req.user.institucionId,
+        institucionId: req.resolvedInstitucionId,
         role: 'ESTUDIANTE',
       },
       include: {
@@ -67,7 +66,6 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
               include: {
                 nivel: true,
                 materia: true,
-                cicloLectivo: true,
               },
             },
           },
@@ -105,32 +103,21 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       },
     });
 
-    // Mapear tanda a texto legible
-    const tandaMap: Record<string, string> = {
-      'MATUTINA': 'Matutina',
-      'VESPERTINA': 'Vespertina',
-      'NOCTURNA': 'Nocturna',
-      'SABATINA': 'Sabatina',
-      'EXTENDIDA': 'Extendida',
-    };
-
     // Preparar datos del estudiante para el boletín
     const datosEstudiante: DatosEstudiante = {
       nombre: `${estudiante.nombre} ${estudiante.apellido}`,
-      seccion: inscripcion?.clase?.seccion || 'A',
+      seccion: inscripcion?.clase?.materia?.nombre || '',
       numeroOrden: inscripcion?.id?.slice(-4) || '',
-      añoEscolarInicio: inscripcion?.clase?.cicloLectivo?.fechaInicio?.getFullYear()?.toString() || calificacionesDB[0]?.cicloLectivo?.fechaInicio?.getFullYear()?.toString() || new Date().getFullYear().toString(),
-      añoEscolarFin: inscripcion?.clase?.cicloLectivo?.fechaFin?.getFullYear()?.toString() || calificacionesDB[0]?.cicloLectivo?.fechaFin?.getFullYear()?.toString() || (new Date().getFullYear() + 1).toString(),
+      añoEscolarInicio: calificacionesDB[0]?.cicloLectivo?.fechaInicio?.getFullYear()?.toString() || new Date().getFullYear().toString(),
+      añoEscolarFin: calificacionesDB[0]?.cicloLectivo?.fechaFin?.getFullYear()?.toString() || (new Date().getFullYear() + 1).toString(),
       centroEducativo: estudiante.institucion?.nombre || '',
       codigoCentro: estudiante.institucion?.codigoCentro || '',
-      tanda: tandaMap[inscripcion?.clase?.tanda || 'MATUTINA'] || 'Matutina',
+      tanda: inscripcion?.clase?.tanda || 'MATUTINA',
       provincia: estudiante.institucion?.provincia || '',
       municipio: estudiante.institucion?.municipio || '',
-      distritoEducativo: estudiante.institucion?.distritoEducativo || '',
-      regionalEducacion: estudiante.institucion?.regionalEducacion || '',
     };
 
-    // Mapear grado basado en el nombre del nivel
+    // Mapear grado basado en gradoNumero del nivel (preferido) o nombre (fallback)
     const gradoMap: Record<string, Grado> = {
       '1': '1er',
       '2': '2do',
@@ -139,74 +126,15 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       '5': '5to',
       '6': '6to',
     };
-    // Extraer el número del grado del nombre del nivel (ej: "1ro Secundaria" -> "1")
-    const nivelNumero = nivel?.nombre?.match(/(\d)/)?.[1] || '1';
+    // Usar gradoNumero si está definido, sino fallback a regex del nombre
+    // Nota: gradoNumero se agregó al schema, ejecutar prisma generate después de migración
+    const nivelNumero = (nivel as { gradoNumero?: number } | undefined)?.gradoNumero?.toString() ||
+      nivel?.nombre?.match(/(\d)/)?.[1] || '1';
     const grado = gradoMap[nivelNumero] || '1er';
 
     // Transformar calificaciones al formato del boletín
-    // Mapea las calificaciones por materia a las áreas curriculares
-    const areasMap: Record<string, string[]> = {
-      'Lengua Española': ['Lengua Española', 'Español', 'Lengua'],
-      'Lenguas Extranjeras': ['Inglés', 'Francés', 'Lenguas Extranjeras', 'Idiomas'],
-      'Matemática': ['Matemática', 'Matemáticas', 'Math'],
-      'Ciencias Sociales': ['Ciencias Sociales', 'Sociales', 'Historia', 'Geografía'],
-      'Ciencias de la Naturaleza': ['Ciencias Naturales', 'Ciencias de la Naturaleza', 'Biología', 'Química', 'Física'],
-      'Formación Integral Humana y Religiosa': ['Formación Humana', 'Religión', 'FIHR', 'Ética', 'Valores'],
-      'Educación Física': ['Educación Física', 'Ed. Física', 'Deportes'],
-      'Educación Artística': ['Educación Artística', 'Arte', 'Música', 'Artes'],
-    };
-
+    // TODO: Implementar mapeo completo de calificaciones por competencia
     const calificaciones: Calificacion[] = [];
-
-    // Agrupar calificaciones por área curricular
-    for (const [area, materias] of Object.entries(areasMap)) {
-      const califArea = calificacionesDB.find(c =>
-        materias.some(m => c.clase?.materia?.nombre?.toLowerCase().includes(m.toLowerCase()))
-      );
-
-      if (califArea) {
-        // Usar las calificaciones directamente como promedio (simplificado)
-        // En un sistema completo, cada competencia tendría su propia evaluación
-        calificaciones.push({
-          area,
-          comunicativa: {
-            p1: califArea.p1 || 0,
-            p2: califArea.p2 || 0,
-            p3: califArea.p3 || 0,
-            p4: califArea.p4 || 0
-          },
-          pensamientoLogico: {
-            p1: califArea.p1 || 0,
-            p2: califArea.p2 || 0,
-            p3: califArea.p3 || 0,
-            p4: califArea.p4 || 0
-          },
-          cientifica: {
-            p1: califArea.p1 || 0,
-            p2: califArea.p2 || 0,
-            p3: califArea.p3 || 0,
-            p4: califArea.p4 || 0
-          },
-          etica: {
-            p1: califArea.p1 || 0,
-            p2: califArea.p2 || 0,
-            p3: califArea.p3 || 0,
-            p4: califArea.p4 || 0
-          },
-          promedios: {
-            pc1: califArea.p1 || 0,
-            pc2: califArea.p2 || 0,
-            pc3: califArea.p3 || 0,
-            pc4: califArea.p4 || 0,
-          },
-          calFinal: califArea.promedioFinal || 0,
-          situacion: {
-            aprobado: califArea.situacion === 'APROBADO',
-            reprobado: califArea.situacion === 'REPROBADO',
-          },
-        });
-      }
-    }
 
     const config: BoletinConfig = {
       grado,
@@ -239,9 +167,8 @@ export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
     const claseId = Array.isArray(req.params.claseId)
       ? req.params.claseId[0]
       : req.params.claseId;
-    const cicloLectivoId = req.query.cicloId as string | undefined;
 
-    if (!req.user?.institucionId) {
+    if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
@@ -249,13 +176,11 @@ export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
     const clase = await prisma.clase.findFirst({
       where: {
         id: claseId,
-        institucionId: req.user.institucionId,
+        institucionId: req.resolvedInstitucionId,
       },
       include: {
         nivel: true,
         materia: true,
-        cicloLectivo: true,
-        institucion: true,
         inscripciones: {
           include: {
             estudiante: true,
@@ -268,116 +193,17 @@ export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Clase no encontrada' });
     }
 
-    if (clase.inscripciones.length === 0) {
-      return res.status(400).json({ message: 'No hay estudiantes inscritos en esta clase' });
-    }
-
-    // Mapear grado
-    const gradoMap: Record<string, Grado> = {
-      '1': '1er', '2': '2do', '3': '3er', '4': '4to', '5': '5to', '6': '6to',
-    };
-    const nivelNumero = clase.nivel?.nombre?.match(/(\d)/)?.[1] || '1';
-    const grado = gradoMap[nivelNumero] || '1er';
-
-    // Mapear tanda
-    const tandaMap: Record<string, string> = {
-      'MATUTINA': 'Matutina', 'VESPERTINA': 'Vespertina', 'NOCTURNA': 'Nocturna',
-      'SABATINA': 'Sabatina', 'EXTENDIDA': 'Extendida',
-    };
-
-    // Áreas curriculares para mapeo
-    const areasMap: Record<string, string[]> = {
-      'Lengua Española': ['Lengua Española', 'Español', 'Lengua'],
-      'Lenguas Extranjeras': ['Inglés', 'Francés', 'Lenguas Extranjeras'],
-      'Matemática': ['Matemática', 'Matemáticas'],
-      'Ciencias Sociales': ['Ciencias Sociales', 'Sociales', 'Historia'],
-      'Ciencias de la Naturaleza': ['Ciencias Naturales', 'Ciencias de la Naturaleza', 'Biología'],
-      'Formación Integral Humana y Religiosa': ['Formación Humana', 'Religión', 'FIHR'],
-      'Educación Física': ['Educación Física', 'Deportes'],
-      'Educación Artística': ['Educación Artística', 'Arte', 'Música'],
-    };
-
-    const config: BoletinConfig = {
-      grado,
-      colorNota: 'FFFFCC',
-      colorHeader: 'D5E4AE',
-      colorSubheader: 'EAF2D8',
-    };
-
-    // Crear archivo ZIP
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename=boletines_${clase.nivel?.nombre || 'clase'}_${clase.materia?.nombre || clase.codigo}.zip`);
-
-    archive.pipe(res);
-
-    // Generar boletín para cada estudiante
-    for (const inscripcion of clase.inscripciones) {
-      const estudiante = inscripcion.estudiante;
-
-      // Obtener calificaciones del estudiante
-      const calificacionesDB = await prisma.calificacion.findMany({
-        where: {
-          estudianteId: estudiante.id,
-          ...(cicloLectivoId && { cicloLectivoId }),
-        },
-        include: {
-          cicloLectivo: true,
-          clase: { include: { materia: true } },
-        },
-      });
-
-      // Preparar datos del estudiante
-      const datosEstudiante: DatosEstudiante = {
-        nombre: `${estudiante.nombre} ${estudiante.apellido}`,
-        seccion: clase.seccion || 'A',
-        numeroOrden: inscripcion.id.slice(-4),
-        añoEscolarInicio: clase.cicloLectivo?.fechaInicio?.getFullYear()?.toString() || new Date().getFullYear().toString(),
-        añoEscolarFin: clase.cicloLectivo?.fechaFin?.getFullYear()?.toString() || (new Date().getFullYear() + 1).toString(),
-        centroEducativo: clase.institucion?.nombre || '',
-        codigoCentro: clase.institucion?.codigoCentro || '',
-        tanda: tandaMap[clase.tanda || 'MATUTINA'] || 'Matutina',
-        provincia: clase.institucion?.provincia || '',
-        municipio: clase.institucion?.municipio || '',
-        distritoEducativo: clase.institucion?.distritoEducativo || '',
-        regionalEducacion: clase.institucion?.regionalEducacion || '',
-      };
-
-      // Mapear calificaciones
-      const calificaciones: Calificacion[] = [];
-      for (const [area, materias] of Object.entries(areasMap)) {
-        const califArea = calificacionesDB.find(c =>
-          materias.some(m => c.clase?.materia?.nombre?.toLowerCase().includes(m.toLowerCase()))
-        );
-        if (califArea) {
-          calificaciones.push({
-            area,
-            comunicativa: { p1: califArea.p1 || 0, p2: califArea.p2 || 0, p3: califArea.p3 || 0, p4: califArea.p4 || 0 },
-            pensamientoLogico: { p1: califArea.p1 || 0, p2: califArea.p2 || 0, p3: califArea.p3 || 0, p4: califArea.p4 || 0 },
-            cientifica: { p1: califArea.p1 || 0, p2: califArea.p2 || 0, p3: califArea.p3 || 0, p4: califArea.p4 || 0 },
-            etica: { p1: califArea.p1 || 0, p2: califArea.p2 || 0, p3: califArea.p3 || 0, p4: califArea.p4 || 0 },
-            promedios: { pc1: califArea.p1 || 0, pc2: califArea.p2 || 0, pc3: califArea.p3 || 0, pc4: califArea.p4 || 0 },
-            calFinal: califArea.promedioFinal || 0,
-            situacion: { aprobado: califArea.situacion === 'APROBADO', reprobado: califArea.situacion === 'REPROBADO' },
-          });
-        }
-      }
-
-      // Generar boletín
-      const buffer = await generarBoletin(config, datosEstudiante, calificaciones);
-
-      // Agregar al ZIP
-      const nombreArchivo = `boletin_${estudiante.apellido}_${estudiante.nombre}.docx`
-        .replace(/\s+/g, '_')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-
-      archive.append(buffer, { name: nombreArchivo });
-    }
-
-    await archive.finalize();
+    // Por ahora, retornar información de la clase
+    // TODO: Implementar generación masiva con ZIP
+    return res.status(200).json({
+      message: 'Funcionalidad de boletines masivos en desarrollo',
+      clase: {
+        id: clase.id,
+        nombre: clase.materia?.nombre || clase.codigo,
+        nivel: clase.nivel?.nombre,
+        totalEstudiantes: clase.inscripciones.length,
+      },
+    });
   } catch (error: any) {
     console.error('Error generando boletines clase:', error);
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

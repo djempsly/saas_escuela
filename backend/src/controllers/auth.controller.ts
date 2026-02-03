@@ -58,21 +58,19 @@ export const forgotPasswordHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = forgotPasswordSchema.parse({ body: req.body });
     await forgotPassword(validatedData.body.identificador);
-    // Always return success (security: prevent email enumeration)
-    return res.status(200).json({ message: 'Si el usuario tiene email registrado, recibirás un enlace de recuperación.' });
+
+    // SEGURIDAD: SIEMPRE retornar el mismo mensaje, sin importar si el usuario existe o no.
+    // Esto previene la enumeración de usuarios.
+    return res.status(200).json({
+      message: 'Si el identificador está registrado y tiene email, recibirás instrucciones para resetear tu contraseña. Si no tienes email registrado, contacta al Director de tu institución.'
+    });
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    // Error específico: usuario sin email
-    if (error.message.includes('NO_EMAIL')) {
-      return res.status(400).json({
-        message: 'Este usuario no tiene email registrado. Contacte al Director para resetear su clave manualmente.',
-        code: 'NO_EMAIL'
-      });
-    }
-    // Always return success for security (other errors)
-    return res.status(200).json({ message: 'Si el usuario tiene email registrado, recibirás un enlace de recuperación.' });
+    // Solo errores críticos del sistema (JWT_SECRET, DB, etc.)
+    console.error('Error en forgotPassword:', error);
+    return res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
 
@@ -85,10 +83,18 @@ export const resetPasswordHandler = async (req: Request, res: Response) => {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
-    // Errores de token son seguros para mostrar
-    if (error.message.includes('Token') || error.message.includes('desactivado')) {
+    // Errores específicos que son seguros para mostrar al usuario
+    if (
+      error.message.includes('Token') ||
+      error.message.includes('enlace') ||
+      error.message.includes('expirado') ||
+      error.message.includes('desactivado') ||
+      error.message.includes('Usuario no encontrado')
+    ) {
       return res.status(400).json({ message: error.message });
     }
+    // Error inesperado - loguear y retornar mensaje genérico
+    console.error('Error en resetPassword:', error);
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

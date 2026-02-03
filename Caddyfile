@@ -1,0 +1,67 @@
+# =============================================================
+# CADDYFILE - Proxy reverso con SSL automático para Multi-Tenant
+#
+# Este archivo NO se modifica cuando agregas clientes nuevos.
+# Caddy genera certificados SSL automáticamente para cada
+# dominio que llegue, siempre que tu backend lo confirme.
+#
+# Flujo:
+# 1. Usuario accede a politecnicoolga.com
+# 2. Caddy pregunta al backend: "¿este dominio es tuyo?"
+# 3. Backend dice SÍ (200) → Caddy genera SSL automáticamente
+# 4. Backend dice NO (404) → Caddy rechaza (no genera certificado)
+# =============================================================
+
+# Configuración global
+{
+	# Email para notificaciones de Let's Encrypt (opcional)
+	email admin@{$BASE_DOMAIN}
+
+	# Habilitar on-demand TLS
+	on_demand_tls {
+		# Caddy pregunta a tu backend antes de generar cualquier certificado
+		ask http://app:4000/api/internal/verify-domain
+	}
+}
+
+# =============================================================
+# Bloque principal - Acepta CUALQUIER dominio con HTTPS
+# =============================================================
+:443 {
+	# TLS on-demand: genera certificados bajo demanda
+	tls {
+		on_demand
+	}
+
+	# Servir archivos subidos directamente (más eficiente que pasar por Node)
+	handle /uploads/* {
+		root * /app
+		file_server
+	}
+
+	# Todo lo demás va al backend Node.js
+	handle {
+		reverse_proxy app:4000 {
+			# Headers para que el backend sepa el dominio original
+			header_up Host {host}
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Logs de acceso
+	log {
+		output file /data/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+}
+
+# =============================================================
+# Redirigir HTTP a HTTPS
+# =============================================================
+:80 {
+	redir https://{host}{uri} permanent
+}

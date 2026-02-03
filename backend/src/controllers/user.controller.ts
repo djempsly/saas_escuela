@@ -20,20 +20,20 @@ import { getFileUrl } from '../middleware/upload.middleware';
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(403).json({ message: 'Acción no permitida' });
+      return res.status(403).json({ message: 'Accion no permitida' });
     }
 
     const validatedData = crearUsuarioSchema.parse({ body: req.body });
 
-    // ADMIN puede crear DIRECTOR (con o sin institución)
+    // ADMIN puede crear DIRECTOR (con o sin institucion)
     if (req.user.rol === ROLES.ADMIN) {
       // ADMIN puede crear cualquier rol excepto otro ADMIN
       if (validatedData.body.rol === ROLES.ADMIN) {
         return res.status(403).json({ message: 'No puedes crear usuarios con rol ADMIN' });
       }
 
-      // Para DIRECTOR, no se requiere institucionId
-      const institucionId = validatedData.body.institucionId || null;
+      // Usar resolvedInstitucionId (puede venir de query param para ADMIN)
+      const institucionId = req.resolvedInstitucionId || validatedData.body.institucionId || null;
       const result = await createUser(validatedData.body, institucionId as string);
 
       return res.status(201).json({
@@ -52,12 +52,12 @@ export const createUserHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // DIRECTOR solo puede crear usuarios de su institución
-    if (!req.user.institucionId) {
-      return res.status(403).json({ message: 'Acción no permitida' });
+    // DIRECTOR solo puede crear usuarios de su institucion
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'Accion no permitida' });
     }
 
-    // Only DIRECTORS can create users (además del ADMIN ya manejado arriba)
+    // Only DIRECTORS can create users (ademas del ADMIN ya manejado arriba)
     if (req.user.rol !== ROLES.DIRECTOR) {
       return res.status(403).json({ message: 'No tienes permisos para crear usuarios' });
     }
@@ -67,7 +67,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No puedes crear usuarios con este rol' });
     }
 
-    const result = await createUser(validatedData.body, req.user.institucionId);
+    const result = await createUser(validatedData.body, req.resolvedInstitucionId);
     return res.status(201).json({
       status: 'success',
       data: {
@@ -84,10 +84,10 @@ export const createUserHandler = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.issues) {
-      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
+      return res.status(400).json({ message: 'Datos no validos', errors: error.issues });
     }
     // Error de email duplicado es seguro mostrar
-    if (error.message.includes('correo electrónico ya está en uso')) {
+    if (error.message.includes('correo electronico ya esta en uso')) {
       return res.status(409).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -104,13 +104,14 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
 
     const requester = {
       id: req.user.usuarioId.toString(),
-      institucionId: req.user.institucionId ? req.user.institucionId.toString() : null,
+      // Usar resolvedInstitucionId para filtrar por tenant
+      institucionId: req.resolvedInstitucionId || null,
       role: req.user.rol
     };
 
     const result = await resetUserPasswordManual(id, requester);
     return res.status(200).json({
-      message: 'Contraseña reseteada exitosamente',
+      message: 'Contrasena reseteada exitosamente',
       tempPassword: result.tempPassword
     });
   } catch (error: any) {
@@ -127,24 +128,19 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
 export const getAllUsersHandler = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(403).json({ message: 'Acción no permitida' });
+      return res.status(403).json({ message: 'Accion no permitida' });
     }
 
     const { role } = req.query as { role?: string };
 
-    // ADMIN puede ver usuarios globalmente (usa admin routes para eso)
-    // Para esta ruta, ADMIN sin institucionId retorna array vacío
-    if (!req.user.institucionId) {
-      if (req.user.rol === ROLES.ADMIN) {
-        // SuperAdmin should use /admin/usuarios for global users
-        return res.status(200).json({ data: [] });
-      }
-      return res.status(403).json({ message: 'Acción no permitida' });
+    // Usar resolvedInstitucionId (ya resuelto por el middleware)
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'Debe especificar una institucion' });
     }
 
-    // Solo ADMIN y DIRECTOR pueden ver contraseñas temporales
+    // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
-    const users = await findUsersByInstitucion(req.user.institucionId, role, canSeePasswords);
+    const users = await findUsersByInstitucion(req.resolvedInstitucionId, role, canSeePasswords);
 
     return res.status(200).json({ data: users });
   } catch (error: any) {
@@ -155,16 +151,17 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
 export const getStaffHandler = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(403).json({ message: 'Acción no permitida' });
+      return res.status(403).json({ message: 'Accion no permitida' });
     }
 
-    if (!req.user.institucionId) {
-      return res.status(403).json({ message: 'No tienes una institución asignada' });
+    // Usar resolvedInstitucionId (ya resuelto por el middleware)
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No tienes una institucion asignada' });
     }
 
-    // Solo ADMIN y DIRECTOR pueden ver contraseñas temporales
+    // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
-    const staff = await findStaffByInstitucion(req.user.institucionId, canSeePasswords);
+    const staff = await findStaffByInstitucion(req.resolvedInstitucionId, canSeePasswords);
 
     return res.status(200).json({ data: staff });
   } catch (error: any) {
@@ -186,8 +183,8 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Verificar permisos multi-tenant
-    if (req.user.rol !== ROLES.ADMIN && user.institucionId !== req.user.institucionId) {
+    // Verificar permisos multi-tenant usando resolvedInstitucionId
+    if (req.user.rol !== ROLES.ADMIN && user.institucionId !== req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No tienes permisos para ver este usuario' });
     }
 
@@ -224,7 +221,7 @@ export const updateProfileHandler = async (req: Request, res: Response) => {
       fotoUrl: updatedUser.fotoUrl,
     });
   } catch (error: any) {
-    if (error.message.includes('correo electrónico ya está en uso')) {
+    if (error.message.includes('correo electronico ya esta en uso')) {
       return res.status(409).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -244,7 +241,7 @@ export const updateUserHandler = async (req: Request, res: Response) => {
     const updatedUser = await updateUserById(
       id,
       { nombre, apellido, email, activo },
-      req.user.institucionId || null,
+      req.resolvedInstitucionId || null,
       req.user.rol
     );
 
@@ -253,7 +250,7 @@ export const updateUserHandler = async (req: Request, res: Response) => {
       data: updatedUser,
     });
   } catch (error: any) {
-    if (error.message.includes('correo electrónico ya está en uso')) {
+    if (error.message.includes('correo electronico ya esta en uso')) {
       return res.status(409).json({ message: error.message });
     }
     if (error.message.includes('No tienes permisos') || error.message.includes('no encontrado')) {
@@ -270,7 +267,7 @@ export const uploadPhotoHandler = async (req: Request, res: Response) => {
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: 'No se proporcionó ninguna imagen' });
+      return res.status(400).json({ message: 'No se proporciono ninguna imagen' });
     }
 
     const fotoUrl = getFileUrl(req.file);
@@ -289,14 +286,15 @@ export const uploadPhotoHandler = async (req: Request, res: Response) => {
 export const getCoordinadoresHandler = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(403).json({ message: 'Acción no permitida' });
+      return res.status(403).json({ message: 'Accion no permitida' });
     }
 
-    if (!req.user.institucionId) {
-      return res.status(403).json({ message: 'No tienes una institución asignada' });
+    // Usar resolvedInstitucionId
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No tienes una institucion asignada' });
     }
 
-    const coordinadores = await findCoordinadores(req.user.institucionId);
+    const coordinadores = await findCoordinadores(req.resolvedInstitucionId);
     return res.status(200).json({ data: coordinadores });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -326,7 +324,7 @@ export const assignCiclosHandler = async (req: Request, res: Response) => {
     const { id } = req.params as { id: string };
     const { cicloIds } = req.body;
 
-    if (!req.user || !req.user.institucionId) {
+    if (!req.user || !req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
@@ -334,10 +332,10 @@ export const assignCiclosHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'cicloIds debe ser un array' });
     }
 
-    const result = await assignCiclosToCoordinator(id, cicloIds, req.user.institucionId);
+    const result = await assignCiclosToCoordinator(id, cicloIds, req.resolvedInstitucionId);
     return res.status(200).json({ data: result });
   } catch (error: any) {
-    if (error.message.includes('no encontrado') || error.message.includes('no son válidos')) {
+    if (error.message.includes('no encontrado') || error.message.includes('no son validos')) {
       return res.status(400).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -349,7 +347,7 @@ export const assignNivelesHandler = async (req: Request, res: Response) => {
     const { id } = req.params as { id: string };
     const { nivelIds } = req.body;
 
-    if (!req.user || !req.user.institucionId) {
+    if (!req.user || !req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
@@ -357,7 +355,7 @@ export const assignNivelesHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'nivelIds debe ser un array' });
     }
 
-    const result = await assignNivelesToCoordinator(id, nivelIds, req.user.institucionId);
+    const result = await assignNivelesToCoordinator(id, nivelIds, req.resolvedInstitucionId);
     return res.status(200).json({ data: result });
   } catch (error: any) {
     if (error.message.includes('no encontrado')) {

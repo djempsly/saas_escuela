@@ -30,12 +30,13 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
 };
 
 export const createInstitucion = async (input: any) => {
-  const { director, directorId, colores, sistemaEducativo, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
+  const { director, directorId, colores, sistemaEducativo, sistemasEducativos, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
 
   // Debug: Log received values
   console.log('Creating institution with:', {
     idiomaPrincipal,
     sistemaEducativo,
+    sistemasEducativos,
     pais: rest.pais,
     nombre: rest.nombre
   });
@@ -45,12 +46,27 @@ export const createInstitucion = async (input: any) => {
     throw new Error(`Sistema educativo inválido o no proporcionado: ${sistemaEducativo}`);
   }
 
+  // Validar sistemas educativos adicionales si se proporcionan
+  const sistemasValidos: SistemaEducativo[] = [];
+  if (sistemasEducativos && Array.isArray(sistemasEducativos)) {
+    for (const sistema of sistemasEducativos) {
+      if (Object.values(SistemaEducativo).includes(sistema as SistemaEducativo)) {
+        sistemasValidos.push(sistema as SistemaEducativo);
+      }
+    }
+  }
+  // Siempre incluir el sistema principal
+  if (!sistemasValidos.includes(sistemaEducativo as SistemaEducativo)) {
+    sistemasValidos.push(sistemaEducativo as SistemaEducativo);
+  }
+
   // Validate and resolve idiomaPrincipal
   let resolvedIdioma: Idioma = Idioma.ESPANOL;
   if (idiomaPrincipal && Object.values(Idioma).includes(idiomaPrincipal as Idioma)) {
     resolvedIdioma = idiomaPrincipal as Idioma;
   }
   console.log('Resolved idioma:', resolvedIdioma);
+  console.log('Sistemas educativos a crear:', sistemasValidos);
 
   // Generar slug único
   const slug = inputSlug ? generateSlug(inputSlug) : await generateUniqueSlug(rest.nombre);
@@ -96,6 +112,16 @@ export const createInstitucion = async (input: any) => {
           directorId: existingDirector.id,
         },
       });
+
+      // Crear registros de sistemas educativos que ofrece la institución
+      for (const sistema of sistemasValidos) {
+        await tx.institucionSistemaEducativo.create({
+          data: {
+            institucionId: newInstitucion.id,
+            sistema,
+          },
+        });
+      }
 
       // Actualizar director con nueva institucionId
       await tx.user.update({
@@ -166,13 +192,23 @@ export const createInstitucion = async (input: any) => {
       },
     });
 
-    // 3. Update Director with InstitucionId
+    // 3. Crear registros de sistemas educativos que ofrece la institución
+    for (const sistema of sistemasValidos) {
+      await tx.institucionSistemaEducativo.create({
+        data: {
+          institucionId: newInstitucion.id,
+          sistema,
+        },
+      });
+    }
+
+    // 4. Update Director with InstitucionId
     await tx.user.update({
       where: { id: newDirector.id },
       data: { institucionId: newInstitucion.id },
     });
 
-    // 4. Create initial director history entry
+    // 5. Create initial director history entry
     await tx.historialDirector.create({
       data: {
         institucionId: newInstitucion.id,
@@ -197,6 +233,12 @@ export const findInstituciones = async () => {
           apellido: true,
           email: true
         }
+      },
+      sistemasEducativos: {
+        select: {
+          sistema: true,
+          activo: true
+        }
       }
     }
   });
@@ -212,6 +254,12 @@ export const findInstitucionById = async (id: string) => {
           nombre: true,
           apellido: true,
           email: true
+        }
+      },
+      sistemasEducativos: {
+        select: {
+          sistema: true,
+          activo: true
         }
       }
     }

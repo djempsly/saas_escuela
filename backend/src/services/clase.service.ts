@@ -20,6 +20,30 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
   if (!docente) throw new Error('Docente no encontrado o no pertenece a la institucion');
   if (!ciclo) throw new Error('Ciclo lectivo no encontrado o no pertenece a la institucion');
 
+  // SEGURIDAD: Verificar que no exista otra clase con la misma materia, nivel, ciclo y sección
+  // No puede haber dos materias con el mismo nombre en el mismo grado
+  const claseExistente = await prisma.clase.findFirst({
+    where: {
+      materiaId: input.materiaId,
+      nivelId: input.nivelId,
+      cicloLectivoId: input.cicloLectivoId,
+      seccion: input.seccion || null,
+      institucionId,
+    },
+    include: {
+      materia: { select: { nombre: true } },
+      nivel: { select: { nombre: true } },
+    },
+  });
+
+  if (claseExistente) {
+    const seccionMsg = input.seccion ? ` sección ${input.seccion}` : '';
+    throw new Error(
+      `Ya existe una clase de "${claseExistente.materia.nombre}" en "${claseExistente.nivel.nombre}"${seccionMsg} para este ciclo lectivo. ` +
+      `Si necesita otra sección, especifique una sección diferente (ej: A, B, C).`
+    );
+  }
+
   // Usar codigo proporcionado o generar uno automaticamente
   let codigo = input.codigo || generateCodigoClase();
 

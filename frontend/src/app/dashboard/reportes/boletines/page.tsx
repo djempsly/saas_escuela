@@ -106,7 +106,17 @@ export default function ReporteBoletinesPage() {
     setIsLoadingBoletin(true);
     try {
       const response = await calificacionesApi.getBoletin(estudianteId, selectedCiclo);
-      setBoletin(response.data?.data || response.data);
+      const data = response.data?.data || response.data;
+      // Asegurar que el boletín tenga estructura correcta
+      if (data) {
+        setBoletin({
+          ...data,
+          calificaciones: Array.isArray(data.calificaciones) ? data.calificaciones : [],
+          promedio: data.promedio ?? 0,
+        });
+      } else {
+        setBoletin(null);
+      }
     } catch (error) {
       console.error('Error cargando boletin:', error);
       setBoletin(null);
@@ -245,15 +255,25 @@ export default function ReporteBoletinesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {boletin.calificaciones.map((cal, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-medium">{cal.materia}</TableCell>
-                        <TableCell>{cal.periodo}</TableCell>
-                        <TableCell className="text-right">
-                          {cal.calificacion !== null ? cal.calificacion.toFixed(1) : '-'}
+                    {boletin.calificaciones.length > 0 ? (
+                      boletin.calificaciones.map((cal, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{cal.materia}</TableCell>
+                          <TableCell>{cal.periodo}</TableCell>
+                          <TableCell className="text-right">
+                            {cal.calificacion !== null && cal.calificacion !== undefined
+                              ? cal.calificacion.toFixed(1)
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                          No hay calificaciones registradas para este ciclo
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
 
@@ -261,7 +281,7 @@ export default function ReporteBoletinesPage() {
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Promedio General</p>
                     <p className="text-2xl font-bold text-primary">
-                      {boletin.promedio.toFixed(2)}
+                      {(boletin.promedio ?? 0).toFixed(2)}
                     </p>
                   </div>
                 </div>

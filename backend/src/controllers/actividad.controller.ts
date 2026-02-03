@@ -28,22 +28,22 @@ export const createActividadHandler = async (req: Request, res: Response) => {
 
     if (req.user.rol === Role.ADMIN) {
       // ADMIN puede crear actividades globales (sin institucionId)
-      // o especificar una institución
-      institucionId = req.body.institucionId || null;
+      // o especificar una institución via query param o body
+      institucionId = req.resolvedInstitucionId || req.body.institucionId || null;
     } else if (req.user.rol === Role.DIRECTOR) {
       // DIRECTOR solo puede crear para su institución si tiene autogestion
-      if (!req.user.institucionId) {
+      if (!req.resolvedInstitucionId) {
         return res.status(403).json({ message: 'No tienes institución asignada' });
       }
 
-      const canCreate = await canDirectorCreateActividad(req.user.institucionId);
+      const canCreate = await canDirectorCreateActividad(req.resolvedInstitucionId);
       if (!canCreate) {
         return res.status(403).json({
           message: 'Tu institución no tiene habilitada la autogestión de actividades',
         });
       }
 
-      institucionId = req.user.institucionId;
+      institucionId = req.resolvedInstitucionId;
     } else {
       return res.status(403).json({ message: 'No tienes permisos para crear actividades' });
     }

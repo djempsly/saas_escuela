@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Role } from '@prisma/client';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
+import { resolveTenantMiddleware } from '../middleware/tenant.middleware';
 import {
   getBoletinPlantillaHandler,
   getBoletinEstudianteHandler,
@@ -25,6 +26,7 @@ router.get('/plantilla/:grado', getBoletinPlantillaHandler);
 router.get(
   '/estudiante/:estudianteId',
   roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  resolveTenantMiddleware,
   getBoletinEstudianteHandler
 );
 
@@ -32,6 +34,7 @@ router.get(
 router.get(
   '/clase/:claseId',
   roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  resolveTenantMiddleware,
   getBoletinesClaseHandler
 );
 
@@ -50,6 +53,7 @@ router.post(
 router.get(
   '/data/:estudianteId/:cicloId',
   roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  resolveTenantMiddleware,
   getBoletinDataHandler
 );
 
@@ -57,6 +61,7 @@ router.get(
 router.get(
   '/data/clase/:claseId/:cicloId',
   roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  resolveTenantMiddleware,
   getBoletinesClaseDataHandler
 );
 

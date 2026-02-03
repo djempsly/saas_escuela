@@ -60,7 +60,11 @@ export const institucionSchema = z.object({
   body: z.object({
     nombre: z.string().min(3, 'Nombre requerido'),
     pais: z.nativeEnum(Pais),
+    // Sistema principal (requerido para compatibilidad)
     sistemaEducativo: z.nativeEnum(SistemaEducativo),
+    // Sistemas adicionales que ofrece la institución (opcional)
+    // Permite seleccionar múltiples: inicial, primaria, secundaria, etc.
+    sistemasEducativos: z.array(z.nativeEnum(SistemaEducativo)).optional(),
     idiomaPrincipal: z.nativeEnum(Idioma).optional(),
     logo: z.string().optional().nullable(),
     slug: z.string().min(3).optional().nullable(),
@@ -113,6 +117,7 @@ export const cicloLectivoSchema = z.object({
 export const nivelSchema = z.object({
   body: z.object({
     nombre: z.string().min(1),
+    gradoNumero: z.number().int().min(1).max(12).optional(), // Grado numérico (1-12)
     coordinadorId: z.string().optional()
   }),
 });

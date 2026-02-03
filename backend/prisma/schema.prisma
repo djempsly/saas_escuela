@@ -129,7 +129,7 @@ model User {
   username            String   @unique
   email               String?  @unique
   password            String
-  passwordTemporal    String?  // Contraseña temporal visible solo para ADMIN/DIRECTOR
+  // SEGURIDAD: passwordTemporal eliminado - nunca guardar contraseñas en texto plano
   nombre              String
   apellido            String
   role                Role     @default(ESTUDIANTE)
@@ -177,6 +177,7 @@ model User {
 model Institucion {
   id                String           @id @default(cuid())
   nombre            String
+  nombreMostrar     String?          // Nombre que se muestra en la UI (puede diferir del oficial)
   lema              String?
   direccion         String?
 
@@ -188,15 +189,33 @@ model Institucion {
 
   // ✅ Branding / Marca (Personalización desde Dashboard)
   logoUrl           String?
+  logoWidth         Int?             @default(120)
+  logoHeight        Int?             @default(60)
   logoPosicion      String           @default("center") // center, left, right - posición del logo en landing
-  fondoLoginUrl     String?          // Imagen de fondo para la página de login
-  colorPrimario     String           @default("#000000") // Para el header/botones
-  colorSecundario   String           @default("#ffffff") // Para fondos/textos
+  faviconUrl        String?          // Favicon personalizado
+  colorPrimario     String           @default("#1a56db") // Para el header/botones
+  colorSecundario   String           @default("#7c3aed") // Para fondos/textos
+  accentColor       String           @default("#059669") // Color de acento
+
+  // Landing page
+  heroImageUrl      String?          // Imagen principal del hero section
+  heroTitle         String?          // Título del hero
+  heroSubtitle      String?          // Subtítulo del hero
+
+  // Login page
+  loginBgType       String           @default("color")  // "color" | "image" | "gradient"
+  loginBgColor      String           @default("#f3f4f6")
+  fondoLoginUrl     String?          // Imagen de fondo para la página de login (legacy)
+  loginBgGradient   String?          // CSS gradient para fondo de login
+  loginLogoUrl      String?          // Logo específico para página de login
 
   // ✅ Configuración Regional
   pais              Pais             @default(DO)
-  sistema           SistemaEducativo
+  sistema           SistemaEducativo // Sistema principal (para compatibilidad)
   idiomaPrincipal   Idioma           @default(ESPANOL)
+
+  // ✅ Sistemas educativos que ofrece (permite múltiples: inicial, primaria, secundaria)
+  sistemasEducativos InstitucionSistemaEducativo[]
 
   // Datos Ministeriales y Ubicación
   codigoCentro      String?
@@ -222,9 +241,29 @@ model Institucion {
   cobros              Cobro[]
   historialDirectores HistorialDirector[]
   actividades         Actividad[]
+  dominios            InstitucionDominio[]  // Dominios personalizados verificados
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ✅ Gestión de dominios personalizados (para multi-tenant con dominios propios)
+model InstitucionDominio {
+  id              String      @id @default(cuid())
+  institucionId   String
+  institucion     Institucion @relation(fields: [institucionId], references: [id], onDelete: Cascade)
+
+  dominio         String      @unique  // "politecnicoolga.com"
+  verificado      Boolean     @default(false)
+  sslActivo       Boolean     @default(false)
+  verificadoAt    DateTime?
+  ultimoCheck     DateTime?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([dominio])
+  @@index([institucionId])
 }
 
 // ✅ Super Admin - Historial de directores por institución
@@ -242,9 +281,24 @@ model HistorialDirector {
   @@index([directorId])
 }
 
+// ✅ Relación muchos a muchos: Una institución puede ofrecer múltiples sistemas educativos
+// Ejemplo: Colegio ABC puede tener INICIAL_DO, PRIMARIA_DO y SECUNDARIA_GENERAL_DO
+model InstitucionSistemaEducativo {
+  id              String           @id @default(cuid())
+  institucionId   String
+  institucion     Institucion      @relation(fields: [institucionId], references: [id], onDelete: Cascade)
+  sistema         SistemaEducativo
+  activo          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+
+  @@unique([institucionId, sistema])
+  @@index([institucionId])
+}
+
 model Nivel {
   id            String      @id @default(cuid())
   nombre        String      // Ej: "1ro Secundaria", "6to Primaria"
+  gradoNumero   Int?        // Número del grado (1-12) para evitar regex frágiles
   institucionId String
   institucion   Institucion @relation(fields: [institucionId], references: [id])
 

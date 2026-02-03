@@ -38,8 +38,8 @@ interface Clase {
   docente?: { nombre: string; apellido: string };
 }
 
-// Roles que pueden ver calificaciones
-const ROLES_LECTURA = ['ADMIN', 'DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'DOCENTE'];
+// Roles que pueden ver calificaciones (sábana de notas)
+const ROLES_LECTURA = ['ADMIN', 'DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'DOCENTE', 'SECRETARIA'];
 // Solo docente puede editar
 const ROLES_ESCRITURA = ['DOCENTE'];
 
@@ -90,9 +90,27 @@ export default function CalificacionesPage() {
     setIsLoading(true);
     try {
       const response = await calificacionesApi.getByClase(claseId);
-      setCalificaciones(response.data.data || response.data || []);
+      const responseData = response.data?.data || response.data;
+
+      // La API devuelve { clase, calificaciones, totalEstudiantes }
+      // Extraer el array de calificaciones (incluye estudiantes sin notas)
+      let calificacionesArray: Calificacion[] = [];
+
+      if (Array.isArray(responseData)) {
+        calificacionesArray = responseData;
+      } else if (responseData?.calificaciones && Array.isArray(responseData.calificaciones)) {
+        calificacionesArray = responseData.calificaciones.map((cal: any) => ({
+          ...cal,
+          claseId: claseId,
+          // Asegurar que promedio se calcule correctamente
+          promedio: cal.promedioFinal ?? null,
+        }));
+      }
+
+      setCalificaciones(calificacionesArray);
     } catch (error) {
       console.error('Error:', error);
+      setCalificaciones([]);
     } finally {
       setIsLoading(false);
     }
