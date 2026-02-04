@@ -27,9 +27,14 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
   const { clearBranding } = useInstitutionStore();
 
   const handleLogout = () => {
+    const slug = branding?.slug;
     logout();
     clearBranding();
-    router.push('/login');
+    if (slug) {
+      router.push(`/${slug}`);
+    } else {
+      router.push('/');
+    }
   };
 
   const getInitials = (nombre?: string, apellido?: string) => {

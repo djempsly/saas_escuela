@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { clasesApi, inscripcionesApi, calificacionesApi } from '@/lib/api';
+import { clasesApi, inscripcionesApi, sabanaApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import {
   ArrowLeft,
@@ -13,12 +13,21 @@ import {
   ClipboardCheck,
   FileText,
   Loader2,
-  GraduationCap,
   Calendar,
   User,
   Hash,
+  ChevronLeft,
+  ChevronRight,
+  Search
 } from 'lucide-react';
 import Link from 'next/link';
+import { Input } from '@/components/ui/input';
+import { 
+  BoletinIndividual, 
+  SabanaData, 
+  Estudiante as SabanaEstudiante, 
+  Calificacion 
+} from '../../sabana-notas/page';
 
 interface Estudiante {
   id: string;
@@ -44,16 +53,6 @@ interface Clase {
   cicloLectivo: { id: string; nombre: string };
 }
 
-interface Calificacion {
-  estudianteId: string;
-  estudiante: { nombre: string; apellido: string };
-  p1?: number | null;
-  p2?: number | null;
-  p3?: number | null;
-  p4?: number | null;
-  promedioFinal?: number | null;
-}
-
 export default function ClaseDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -62,25 +61,28 @@ export default function ClaseDetailPage() {
 
   const [clase, setClase] = useState<Clase | null>(null);
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
-  const [calificaciones, setCalificaciones] = useState<Calificacion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'estudiantes' | 'calificaciones'>('estudiantes');
 
+  // Sabana state
+  const [sabanaData, setSabanaData] = useState<SabanaData | null>(null);
+  const [loadingSabana, setLoadingSabana] = useState(false);
+  const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'boletin'>('list');
+  const [searchTerm, setSearchTerm] = useState('');
+
   const isDocente = user?.role === 'DOCENTE';
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [claseRes, inscripcionesRes, calificacionesRes] = await Promise.all([
+        const [claseRes, inscripcionesRes] = await Promise.all([
           clasesApi.getById(claseId),
           inscripcionesApi.getByClase(claseId),
-          calificacionesApi.getByClase(claseId),
         ]);
 
         setClase(claseRes.data?.data || claseRes.data);
         setInscripciones(inscripcionesRes.data?.data || inscripcionesRes.data || []);
-        setCalificaciones(calificacionesRes.data?.data || calificacionesRes.data || []);
       } catch (error) {
         console.error('Error cargando clase:', error);
       } finally {
@@ -93,11 +95,65 @@ export default function ClaseDetailPage() {
     }
   }, [claseId]);
 
-  const getNotaColor = (nota: number | null | undefined) => {
-    if (nota === null || nota === undefined) return 'text-muted-foreground';
-    if (nota >= 70) return 'text-green-600';
-    if (nota >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+  // Cargar sábana cuando se activa la pestaña y tenemos los datos de la clase
+  useEffect(() => {
+    const loadSabana = async () => {
+      if (activeTab === 'calificaciones' && clase && !sabanaData && !loadingSabana) {
+        setLoadingSabana(true);
+        try {
+          // Usamos el nivel y ciclo de la clase para cargar la sábana completa
+          const response = await sabanaApi.getSabana(clase.nivel.id, clase.cicloLectivo.id);
+          setSabanaData(response.data);
+        } catch (error) {
+          console.error('Error cargando sábana:', error);
+        } finally {
+          setLoadingSabana(false);
+        }
+      }
+    };
+
+    loadSabana();
+  }, [activeTab, clase, sabanaData, loadingSabana]);
+
+  // Filtrar estudiantes de la sábana para mostrar solo los de esta clase
+  const estudiantesClase = useMemo(() => {
+    if (!sabanaData || inscripciones.length === 0) return [];
+    
+    const inscritosIds = new Set(inscripciones.map(i => i.estudianteId));
+    
+    return sabanaData.estudiantes.filter(est => 
+      inscritosIds.has(est.id) &&
+      (est.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+       est.apellido.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [sabanaData, inscripciones, searchTerm]);
+
+  // Verificar si el docente puede editar
+  const canEditMateria = useCallback((_materiaId: string, cal: Calificacion | undefined) => {
+    if (!isDocente) return false;
+    if (!cal) return false;
+    // Permitir editar si es el docente de la clase actual (o si coincide el ID)
+    return cal.docenteId === user?.id;
+  }, [isDocente, user?.id]);
+
+  const handleSaveCalificacion = async (
+    claseId: string,
+    estudianteId: string,
+    periodo: string,
+    valor: number | null
+  ) => {
+    await sabanaApi.updateCalificacion({
+      claseId,
+      estudianteId,
+      periodo: periodo as 'p1' | 'p2' | 'p3' | 'p4' | 'rp1' | 'rp2' | 'rp3' | 'rp4',
+      valor,
+    });
+    // Recargar datos en silencio? Idealmente actualizar estado local optimista o recargar
+    // Por simplicidad, recargamos la sábana completa
+    if (clase) {
+        const response = await sabanaApi.getSabana(clase.nivel.id, clase.cicloLectivo.id);
+        setSabanaData(response.data);
+    }
   };
 
   if (isLoading) {
@@ -109,23 +165,7 @@ export default function ClaseDetailPage() {
   }
 
   if (!clase) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Clase no encontrada</h3>
-            <p className="text-muted-foreground mb-4">
-              La clase que buscas no existe o no tienes acceso
-            </p>
-            <Button onClick={() => router.back()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <div>Clase no encontrada</div>;
   }
 
   return (
@@ -216,10 +256,10 @@ export default function ClaseDetailPage() {
                 Tomar Asistencia
               </Button>
             </Link>
-            <Link href={`/dashboard/calificaciones`}>
+            <Link href={`/dashboard/sabana-notas?nivel=${clase.nivel.id}&ciclo=${clase.cicloLectivo.id}`}>
               <Button variant="outline">
                 <FileText className="w-4 h-4 mr-2" />
-                Sabana de Notas
+                Sábana Completa (Todos los alumnos)
               </Button>
             </Link>
             <Link href={`/dashboard/tareas?claseId=${claseId}`}>
@@ -254,7 +294,7 @@ export default function ClaseDetailPage() {
           }`}
         >
           <FileText className="w-4 h-4 inline mr-2" />
-          Sabana de Notas
+          Sábana de Notas
         </button>
       </div>
 
@@ -295,72 +335,86 @@ export default function ClaseDetailPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            {calificaciones.length > 0 ? (
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left p-4 font-medium">#</th>
-                    <th className="text-left p-4 font-medium">Estudiante</th>
-                    <th className="text-center p-4 font-medium w-20">P1</th>
-                    <th className="text-center p-4 font-medium w-20">P2</th>
-                    <th className="text-center p-4 font-medium w-20">P3</th>
-                    <th className="text-center p-4 font-medium w-20">P4</th>
-                    <th className="text-center p-4 font-medium w-24 bg-slate-100">Promedio</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {calificaciones.map((cal, idx) => (
-                    <tr key={cal.estudianteId} className="border-t hover:bg-slate-50">
-                      <td className="p-4 text-muted-foreground">{idx + 1}</td>
-                      <td className="p-4 font-medium">
-                        {cal.estudiante?.nombre} {cal.estudiante?.apellido}
-                      </td>
-                      <td className={`text-center p-4 ${getNotaColor(cal.p1)}`}>
-                        {cal.p1 ?? '-'}
-                      </td>
-                      <td className={`text-center p-4 ${getNotaColor(cal.p2)}`}>
-                        {cal.p2 ?? '-'}
-                      </td>
-                      <td className={`text-center p-4 ${getNotaColor(cal.p3)}`}>
-                        {cal.p3 ?? '-'}
-                      </td>
-                      <td className={`text-center p-4 ${getNotaColor(cal.p4)}`}>
-                        {cal.p4 ?? '-'}
-                      </td>
-                      <td className={`text-center p-4 font-bold bg-slate-50 ${getNotaColor(cal.promedioFinal)}`}>
-                        {cal.promedioFinal?.toFixed(1) ?? '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="space-y-4">
+            {/* Contenido de Sábana de Notas */}
+            {loadingSabana ? (
+                <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            ) : sabanaData ? (
+                <>
+                    {viewMode === 'list' ? (
+                        <Card>
+                            <CardContent className="pt-4">
+                                <div className="mb-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Buscar estudiante..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="pl-8"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {estudiantesClase.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <p>No se encontraron estudiantes para esta clase.</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y">
+                                        {estudiantesClase.map((est, idx) => (
+                                            <button
+                                                key={est.id}
+                                                className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-center gap-3"
+                                                onClick={() => {
+                                                    const originalIndex = sabanaData.estudiantes.findIndex(e => e.id === est.id);
+                                                    setCurrentStudentIndex(originalIndex);
+                                                    setViewMode('boletin');
+                                                }}
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                                                    {est.nombre[0]}{est.apellido[0]}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium">
+                                                        {est.apellido.toUpperCase()}, {est.nombre}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Click para ver/editar boletín
+                                                    </p>
+                                                </div>
+                                                <ChevronRight className="w-5 h-5 ml-auto text-muted-foreground" />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <BoletinIndividual
+                            estudiante={sabanaData.estudiantes[currentStudentIndex]}
+                            materias={sabanaData.materias}
+                            sabanaData={sabanaData}
+                            currentIndex={currentStudentIndex}
+                            totalEstudiantes={sabanaData.estudiantes.length} // Note: This navigation might iterate over ALL students in level, not just filtered ones. This is okay for "Sábana" context.
+                            onPrevious={() => currentStudentIndex > 0 && setCurrentStudentIndex(currentStudentIndex - 1)}
+                            onNext={() => currentStudentIndex < sabanaData.estudiantes.length - 1 && setCurrentStudentIndex(currentStudentIndex + 1)}
+                            onBack={() => setViewMode('list')}
+                            onStudentChange={setCurrentStudentIndex}
+                            estudiantes={sabanaData.estudiantes}
+                            canEditMateria={canEditMateria}
+                            onSaveCalificacion={handleSaveCalificacion}
+                            isReadOnly={false}
+                        />
+                    )}
+                </>
             ) : (
-              <div className="py-12 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No hay calificaciones registradas</p>
-                <Link href="/dashboard/calificaciones">
-                  <Button>Ir a Sabana de Notas</Button>
-                </Link>
-              </div>
+                <div className="py-12 text-center text-muted-foreground">
+                    No se pudo cargar la sábana de notas.
+                </div>
             )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Legend for grades */}
-      {activeTab === 'calificaciones' && calificaciones.length > 0 && (
-        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-green-500"></span> 70-100: Aprobado
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-yellow-500"></span> 60-69: En riesgo
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-red-500"></span> 0-59: Reprobado
-          </span>
         </div>
       )}
     </div>

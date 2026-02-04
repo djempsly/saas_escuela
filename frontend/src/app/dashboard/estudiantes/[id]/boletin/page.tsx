@@ -206,7 +206,7 @@ export default function BoletinEstudiantePage() {
                     <TableCell className="font-medium">{cal.materia}</TableCell>
                     <TableCell>{cal.periodo}</TableCell>
                     <TableCell className="text-right">
-                      {cal.calificacion !== null ? cal.calificacion.toFixed(1) : '-'}
+                      {cal.calificacion != null && !isNaN(Number(cal.calificacion)) ? Number(cal.calificacion).toFixed(1) : '-'}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -217,7 +217,7 @@ export default function BoletinEstudiantePage() {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Promedio General</p>
                 <p className="text-2xl font-bold text-primary">
-                  {boletin.promedio.toFixed(2)}
+                  {boletin.promedio != null && !isNaN(Number(boletin.promedio)) ? Number(boletin.promedio).toFixed(2) : '0.00'}
                 </p>
               </div>
             </div>

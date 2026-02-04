@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 // ==================== TIPOS ====================
 
-interface Materia {
+export interface Materia {
   id: string;
   nombre: string;
   codigo: string | null;
@@ -27,7 +27,7 @@ interface Materia {
   tipo: string;
 }
 
-interface Calificacion {
+export interface Calificacion {
   p1: number | null;
   p2: number | null;
   p3: number | null;
@@ -50,7 +50,7 @@ interface Calificacion {
   docenteNombre: string | null;
 }
 
-interface Estudiante {
+export interface Estudiante {
   id: string;
   nombre: string;
   apellido: string;
@@ -60,7 +60,7 @@ interface Estudiante {
   };
 }
 
-interface SabanaData {
+export interface SabanaData {
   nivel: {
     id: string;
     nombre: string;
@@ -229,7 +229,7 @@ interface EditableCell {
   periodoIndex: number;
 }
 
-function BoletinIndividual({
+export function BoletinIndividual({
   estudiante,
   materias,
   sabanaData,
@@ -549,6 +549,7 @@ function BoletinIndividual({
             fontSize: '9px',
             border: '1px solid #ccc',
             marginBottom: '20px',
+            pageBreakAfter: 'always',
           }}
         >
           {/* Franja Lateral Vertical */}
@@ -580,9 +581,11 @@ function BoletinIndividual({
             {/* Header con Logo MINERD */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
               <div style={{ textAlign: 'center', flex: 1 }}>
-                <div style={{ width: '60px', height: '60px', backgroundColor: '#f0f0f0', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', border: '1px solid #ccc' }}>
-                  MINERD
-                </div>
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
+                  alt="MINERD"
+                  style={{ width: '60px', marginBottom: '5px' }}
+                />
                 <p style={{ fontSize: '8px', margin: 0, fontWeight: 'bold' }}>Viceministerio de Servicios Técnicos y Pedagógicos</p>
                 <p style={{ fontSize: '7px', margin: 0 }}>
                   {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
@@ -824,11 +827,9 @@ function BoletinIndividual({
                       
                       {/* COMPLETIVA */}
                       <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
-                        {/* 50% PCP - To be calculated properly in backend, using placeholder logic */}
                         {cal?.cpc30 ? Math.round(cal.cpc30) : '-'}
                       </td>
                       <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
-                         {/* 50% CPC */}
                         {cal?.cpcTotal ? Math.round(cal.cpcTotal) : '-'}
                       </td>
                       <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
@@ -1092,9 +1093,11 @@ function BoletinIndividual({
                 La visión del futuro
               </p>
             </div>
-            <div style={{ width: '50px', height: '50px', backgroundColor: 'white', padding: '5px', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px' }}>
-              MINERD
-            </div>
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
+              alt="MINERD"
+              style={{ width: '50px', backgroundColor: 'white', padding: '5px', borderRadius: '5px' }}
+            />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>

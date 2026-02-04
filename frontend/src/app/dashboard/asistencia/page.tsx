@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   Settings,
   BarChart3,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 
 const ESTADOS = [
@@ -88,6 +89,7 @@ interface Ciclo {
 
 export default function AsistenciaPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const claseIdFromUrl = searchParams.get('clase');
 
   const { user } = useAuthStore();
@@ -286,7 +288,10 @@ export default function AsistenciaPage() {
   };
 
   const getTotalDiasConfig = () => {
-    return Object.values(diasLaborables).reduce((a, b) => a + b, 0);
+    return MESES.reduce((total, mes) => {
+      const val = diasLaborables[mes.key as keyof DiasLaborables];
+      return total + (typeof val === 'number' ? val : 0);
+    }, 0);
   };
 
   // Estadisticas
@@ -307,11 +312,16 @@ export default function AsistenciaPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Asistencia</h1>
-          <p className="text-muted-foreground">
-            {canEdit ? 'Registra la asistencia de tu clase' : 'Consulta la asistencia'}
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Asistencia</h1>
+            <p className="text-muted-foreground">
+              {canEdit ? 'Registra la asistencia de tu clase' : 'Consulta la asistencia'}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           {selectedClase && selectedCiclo && (
