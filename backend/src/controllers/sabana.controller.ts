@@ -23,7 +23,7 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
     }
 
-    const niveles = await getNivelesParaSabana(user.institucionId);
+    const niveles = await getNivelesParaSabana(user.institucionId, user.id, user.role);
     return res.json(niveles);
   } catch (error: any) {
     console.error('Error obteniendo niveles para sábana:', error);

@@ -122,11 +122,14 @@ export const getSabanaByNivel = async (
   const pais = nivel.institucion.pais;
   const numeroPeriodos = pais === 'HT' ? 3 : 4;
 
-  // 4. Obtener todas las materias oficiales de la institución
+  // 4. Obtener todas las materias oficiales O TÉCNICAS de la institución
   const materiasDb = await prisma.materia.findMany({
     where: {
       institucionId,
-      esOficial: true,
+      OR: [
+        { esOficial: true },
+        { tipo: 'TECNICA' }
+      ]
     },
     orderBy: { orden: 'asc' },
   });
@@ -175,6 +178,12 @@ export const getSabanaByNivel = async (
     },
   });
 
+  // Mapa para buscar clases por ID rápidamente
+  const claseById = new Map<string, typeof clases[0]>();
+  for (const clase of clases) {
+    claseById.set(clase.id, clase);
+  }
+
   // 6. Crear un mapa de estudiantes únicos
   const estudiantesMap = new Map<
     string,
@@ -216,19 +225,13 @@ export const getSabanaByNivel = async (
   const calificacionesMap = new Map<string, Map<string, typeof calificaciones[0]>>();
   for (const cal of calificaciones) {
     // Encontrar la clase para obtener la materia
-    const clase = clases.find((c) => c.id === cal.claseId);
+    const clase = claseById.get(cal.claseId);
     if (!clase) continue;
 
     if (!calificacionesMap.has(cal.estudianteId)) {
       calificacionesMap.set(cal.estudianteId, new Map());
     }
     calificacionesMap.get(cal.estudianteId)!.set(clase.materia.id, cal);
-  }
-
-  // Crear mapa de clases por materia
-  const clasesPorMateria = new Map<string, typeof clases[0]>();
-  for (const clase of clases) {
-    clasesPorMateria.set(clase.materia.id, clase);
   }
 
   // 8. Construir los datos de estudiantes con sus calificaciones
@@ -238,8 +241,20 @@ export const getSabanaByNivel = async (
       const calificacionesEst: SabanaEstudiante['calificaciones'] = {};
 
       for (const materia of materias) {
+        // Encontrar la clase específica de esta materia en la que el estudiante está inscrito
+        let claseEstudiante: typeof clases[0] | null = null;
+        for (const claseId of est.clases) {
+          const c = claseById.get(claseId);
+          if (c && c.materia.id === materia.id) {
+            claseEstudiante = c;
+            break;
+          }
+        }
+
         const cal = calificacionesMap.get(est.id)?.get(materia.id);
-        const clase = clasesPorMateria.get(materia.id);
+        
+        // Determinar la clase final para metadatos (prioridad: inscripción, luego la de la calificación)
+        const claseFinal = claseEstudiante || (cal ? claseById.get(cal.claseId) : null);
 
         if (cal) {
           // Calcular promedio según el número de períodos
@@ -274,9 +289,9 @@ export const getSabanaByNivel = async (
             promedioFinal: cal.promedioFinal,
             situacion: cal.situacion,
             // Metadata
-            claseId: clase?.id || null,
-            docenteId: clase?.docente?.id || null,
-            docenteNombre: clase?.docente ? `${clase.docente.nombre} ${clase.docente.apellido}` : null,
+            claseId: claseFinal?.id || null,
+            docenteId: claseFinal?.docente?.id || null,
+            docenteNombre: claseFinal?.docente ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}` : null,
           };
         } else {
           // El estudiante no está inscrito en esta materia o no tiene calificación
@@ -298,9 +313,9 @@ export const getSabanaByNivel = async (
             cex: null,
             promedioFinal: null,
             situacion: null,
-            claseId: clase?.id || null, // Puede haber clase pero no calificación
-            docenteId: clase?.docente?.id || null,
-            docenteNombre: clase?.docente ? `${clase.docente.nombre} ${clase.docente.apellido}` : null,
+            claseId: claseFinal?.id || null, // Puede haber clase pero no calificación
+            docenteId: claseFinal?.docente?.id || null,
+            docenteNombre: claseFinal?.docente ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}` : null,
           };
         }
       }
@@ -339,10 +354,22 @@ export const getSabanaByNivel = async (
 
 /**
  * Obtiene la lista de niveles disponibles para la sábana de notas
+ * Filtra por docente si se proporciona userId y userRole es DOCENTE
  */
-export const getNivelesParaSabana = async (institucionId: string) => {
+export const getNivelesParaSabana = async (institucionId: string, userId?: string, userRole?: string) => {
+  const where: any = { institucionId };
+
+  // Si es docente, solo devolver niveles donde tiene clases
+  if (userRole === 'DOCENTE' && userId) {
+    where.clases = {
+      some: {
+        docenteId: userId
+      }
+    };
+  }
+
   return prisma.nivel.findMany({
-    where: { institucionId },
+    where,
     orderBy: [{ gradoNumero: 'asc' }, { nombre: 'asc' }],
     include: {
       cicloEducativo: {

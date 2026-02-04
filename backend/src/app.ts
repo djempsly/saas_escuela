@@ -24,6 +24,7 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 
 // ============ SEGURIDAD: Rate Limiting ============

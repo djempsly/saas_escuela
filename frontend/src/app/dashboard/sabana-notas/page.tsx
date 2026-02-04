@@ -539,7 +539,7 @@ function BoletinIndividual({
         <div
           className="boletin-page bg-white relative mx-auto"
           style={{
-            width: '100%',
+            width: '35.56cm',
             maxWidth: '35.56cm',
             minHeight: '21.59cm',
             padding: '0.8cm',
@@ -655,26 +655,35 @@ function BoletinIndividual({
               width: '100%',
               borderCollapse: 'collapse',
               marginBottom: '10px',
-              fontSize: '7px'
+              fontSize: '6px'
             }}>
               <thead>
                 <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '3px', width: '15%', textAlign: 'left' }}>ASIGNATURAS</th>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '3px', width: '12%', textAlign: 'left' }}>ASIGNATURAS</th>
                   {COMPETENCIAS.map(comp => (
-                    <th key={comp.id} colSpan={8} style={{ border: '1px solid black', padding: '2px', fontSize: '5px' }}>
+                    <th key={comp.id} colSpan={8} style={{ border: '1px solid black', padding: '1px', fontSize: '5px' }}>
                       {comp.corto}
                     </th>
                   ))}
-                  <th colSpan={4} style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fbbf24', color: 'black', fontSize: '6px' }}>
+                  <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', fontSize: '5px' }}>
                     PROM. PER.
                   </th>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fbbf24', color: 'black', width: '3%' }}>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
                     C.F.
                   </th>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fbbf24', color: 'black', width: '3%' }}>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
                     %AA
                   </th>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fbbf24', color: 'black', width: '3%' }}>
+                  <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', fontSize: '5px' }}>
+                    CALIFICACIÓN COMPLETIVA
+                  </th>
+                  <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '5px' }}>
+                    CALIFICACIÓN EXTRAORDINARIA
+                  </th>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'black', width: '2.5%' }}>
+                    C.E.
+                  </th>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
                     SIT.
                   </th>
                 </tr>
@@ -683,10 +692,10 @@ function BoletinIndividual({
                     PERIODOS.map(p => (
                       <th key={`${comp.id}-${p}`} style={{
                         border: '1px solid black',
-                        padding: '1px',
+                        padding: '0px',
                         fontSize: '5px',
                         backgroundColor: p.startsWith('RP') ? '#e5e7eb' : 'transparent',
-                        minWidth: '14px'
+                        minWidth: '12px'
                       }}>
                         {p}
                       </th>
@@ -697,6 +706,15 @@ function BoletinIndividual({
                       {p}
                     </th>
                   ))}
+                  {/* Completiva Headers */}
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb' }}>50% PCP</th>
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb' }}>50% CPC</th>
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb', fontWeight: 'bold' }}>C.C.</th>
+                  
+                  {/* Extraordinaria Headers */}
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db' }}>30% PCP</th>
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db' }}>70% CPEx</th>
+                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db', fontWeight: 'bold' }}>C.Ex.</th>
                 </tr>
               </thead>
               <tbody>
@@ -711,14 +729,14 @@ function BoletinIndividual({
                     <tr key={idx}>
                       <td style={{
                         border: '1px solid black',
-                        padding: '3px',
+                        padding: '2px',
                         fontWeight: 'bold',
                         textAlign: 'left',
                         fontSize: '6px',
                         backgroundColor: canEdit && !isReadOnly ? '#e0f2fe' : 'transparent'
                       }}>
                         {asignatura.nombre}
-                        {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (editable)</span>}
+                        {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
                       </td>
                       {COMPETENCIAS.map(comp => (
                         PERIODOS.map(p => {
@@ -732,19 +750,18 @@ function BoletinIndividual({
                               key={cellId}
                               style={{
                                 border: '1px solid black',
-                                padding: '2px',
+                                padding: '1px',
                                 textAlign: 'center',
-                                fontSize: '7px',
+                                fontSize: '6px',
                                 backgroundColor: isEditing ? '#fef9c3' : (p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
                                 color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
                                 fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
                                 cursor: canEdit && !isReadOnly ? 'pointer' : 'default',
                                 transition: 'background-color 0.15s ease',
-                                minWidth: '18px',
-                                minHeight: '18px'
+                                minWidth: '15px',
+                                height: '15px'
                               }}
                               onClick={() => handleCellClick(cellId, valor || null, canEdit)}
-                              title={canEdit && !isReadOnly ? 'Click para editar. Tab para siguiente, Enter para guardar.' : undefined}
                             >
                               {isEditing ? (
                                 <input
@@ -760,13 +777,12 @@ function BoletinIndividual({
                                   disabled={isSaving}
                                   style={{
                                     width: '100%',
-                                    border: '2px solid #2563eb',
+                                    border: '1px solid #2563eb',
                                     textAlign: 'center',
-                                    fontSize: '7px',
+                                    fontSize: '6px',
                                     backgroundColor: '#fef9c3',
                                     outline: 'none',
-                                    borderRadius: '2px',
-                                    padding: '2px'
+                                    padding: '0'
                                   }}
                                 />
                               ) : (
@@ -777,42 +793,72 @@ function BoletinIndividual({
                         })
                       ))}
                       {/* Promedios por periodo */}
-                      <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '7px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
                         {calcularPromedioPeriodo(cal, 'p1', 'rp1') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '7px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
                         {calcularPromedioPeriodo(cal, 'p2', 'rp2') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '7px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
                         {calcularPromedioPeriodo(cal, 'p3', 'rp3') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '7px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
                         {calcularPromedioPeriodo(cal, 'p4', 'rp4') || '-'}
                       </td>
                       {/* C.F. */}
                       <td style={{
                         border: '1px solid black',
-                        padding: '2px',
+                        padding: '1px',
                         textAlign: 'center',
                         fontWeight: 'bold',
                         backgroundColor: '#fef3c7',
-                        fontSize: '8px',
+                        fontSize: '7px',
                         color: cf > 0 && cf < 70 ? '#dc2626' : 'inherit'
                       }}>
                         {cf || '-'}
                       </td>
                       {/* %AA */}
-                      <td style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#fef3c7', fontSize: '7px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#fef3c7', fontSize: '6px' }}>
                         -
                       </td>
+                      
+                      {/* COMPLETIVA */}
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
+                        {/* 50% PCP - To be calculated properly in backend, using placeholder logic */}
+                        {cal?.cpc30 ? Math.round(cal.cpc30) : '-'}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
+                         {/* 50% CPC */}
+                        {cal?.cpcTotal ? Math.round(cal.cpcTotal) : '-'}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
+                        {cal?.cc || '-'}
+                      </td>
+
+                      {/* EXTRAORDINARIA */}
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '6px' }}>
+                        {cal?.cpex30 ? Math.round(cal.cpex30) : '-'}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '6px' }}>
+                        {cal?.cpex70 || '-'}
+                      </td>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '6px' }}>
+                        {cal?.cex || '-'}
+                      </td>
+
+                      {/* EVALUACION ESPECIAL */}
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '6px' }}>
+                        -
+                      </td>
+
                       {/* Situación */}
                       <td style={{
                         border: '1px solid black',
-                        padding: '2px',
+                        padding: '1px',
                         textAlign: 'center',
                         fontWeight: 'bold',
                         backgroundColor: situacion === 'A' ? '#dcfce7' : situacion === 'R' ? '#fee2e2' : '#f3f4f6',
-                        fontSize: '8px'
+                        fontSize: '7px'
                       }}>
                         {situacion}
                       </td>
@@ -836,7 +882,7 @@ function BoletinIndividual({
                   MÓDULOS FORMATIVOS (FORMACIÓN TÉCNICO PROFESIONAL)
                 </div>
 
-                {/* TABLA DE MÓDULOS TÉCNICOS - Formato simplificado con P1-P4 */}
+                {/* TABLA DE MÓDULOS TÉCNICOS */}
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '7px', marginBottom: '10px' }}>
                   <thead>
                     <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
@@ -870,7 +916,7 @@ function BoletinIndividual({
                             backgroundColor: canEdit && !isReadOnly ? '#dbeafe' : 'transparent'
                           }}>
                             {modulo.nombre || ''}
-                            {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (editable)</span>}
+                            {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
                           </td>
                           {PERIODOS.map(p => {
                             const pLower = p.toLowerCase() as 'p1' | 'rp1' | 'p2' | 'rp2' | 'p3' | 'rp3' | 'p4' | 'rp4';
@@ -892,7 +938,6 @@ function BoletinIndividual({
                                   cursor: canEdit && !isReadOnly ? 'pointer' : 'default'
                                 }}
                                 onClick={() => handleCellClick(cellId, valor || null, canEdit)}
-                                title={canEdit && !isReadOnly ? 'Click para editar' : undefined}
                               >
                                 {isEditingThis ? (
                                   <input
@@ -908,12 +953,12 @@ function BoletinIndividual({
                                     disabled={isSaving}
                                     style={{
                                       width: '100%',
-                                      border: '2px solid #2563eb',
+                                      border: '1px solid #2563eb',
                                       textAlign: 'center',
                                       fontSize: '8px',
                                       backgroundColor: '#fef9c3',
                                       outline: 'none',
-                                      borderRadius: '2px'
+                                      padding: '0'
                                     }}
                                   />
                                 ) : (
@@ -1019,7 +1064,7 @@ function BoletinIndividual({
         <div
           className="boletin-page bg-white relative mx-auto"
           style={{
-            width: '100%',
+            width: '35.56cm',
             maxWidth: '35.56cm',
             height: '21.59cm',
             padding: '1cm',
@@ -1218,7 +1263,7 @@ function BoletinIndividual({
       <style jsx global>{`
         @media print {
           @page {
-            size: legal landscape;
+            size: 35.56cm 21.59cm;
             margin: 0;
           }
           body {
@@ -1232,7 +1277,8 @@ function BoletinIndividual({
             page-break-after: always;
             page-break-inside: avoid;
             border: none !important;
-            max-width: none !important;
+            max-width: 35.56cm !important;
+            min-height: 21.59cm !important;
           }
           .print-content {
             padding: 0 !important;
