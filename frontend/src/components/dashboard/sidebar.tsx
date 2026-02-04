@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { InstitutionBranding } from '@/store/institution.store';
 import { User } from '@/store/auth.store';
+import { getMediaUrl } from '@/lib/api';
 import {
   LayoutDashboard,
   Users,
@@ -28,6 +29,7 @@ import {
   CheckSquare,
   FileText,
   Clock,
+  Table2,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -57,6 +59,7 @@ const menuItems = {
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
     { href: '/dashboard/ciclos-educativos', label: 'Ciclos Educativos', icon: Clock },
@@ -76,6 +79,7 @@ const menuItems = {
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
@@ -89,6 +93,7 @@ const menuItems = {
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
@@ -104,6 +109,7 @@ const menuItems = {
     { href: '/dashboard/tareas', label: 'Tareas', icon: FileText },
     { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
   ],
@@ -176,11 +182,12 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
       >
         {branding?.logoUrl ? (
           <Image
-            src={branding.logoUrl}
+            src={getMediaUrl(branding.logoUrl)}
             alt={branding.nombre}
             width={40}
             height={40}
             className="rounded"
+            unoptimized
           />
         ) : (
           <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">

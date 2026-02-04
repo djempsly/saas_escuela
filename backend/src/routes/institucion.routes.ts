@@ -13,10 +13,13 @@ import {
   checkSlugHandler,
   checkDominioHandler,
   updateSistemasEducativosHandler,
+  uploadFaviconHandler,
+  uploadHeroHandler,
+  uploadLoginLogoHandler,
 } from '../controllers/institucion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
-import { uploadInstitucionMedia } from '../middleware/upload.middleware';
+import { uploadInstitucionMedia, uploadFavicon, uploadHero, uploadLoginLogo } from '../middleware/upload.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -55,5 +58,14 @@ router.patch('/:id/sensitive', updateSensitiveConfigHandler);
 
 // Actualizar sistemas educativos que ofrece la institución
 router.patch('/:id/sistemas-educativos', updateSistemasEducativosHandler);
+
+// Subir favicon de institución
+router.post('/:id/favicon', uploadFavicon, uploadFaviconHandler);
+
+// Subir imagen hero de institución
+router.post('/:id/hero', uploadHero, uploadHeroHandler);
+
+// Subir logo de login de institución
+router.post('/:id/login-logo', uploadLoginLogo, uploadLoginLogoHandler);
 
 export default router;

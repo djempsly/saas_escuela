@@ -19,6 +19,7 @@ import boletinRoutes from './boletin.routes';
 import dashboardRoutes from './dashboard.routes';
 import cicloEducativoRoutes from './cicloEducativo.routes';
 import importRoutes from './import.routes';
+import sabanaRoutes from './sabana.routes';
 
 const router = Router();
 
@@ -63,5 +64,8 @@ router.use('/ciclos-educativos', cicloEducativoRoutes);
 
 // Rutas de importación
 router.use('/import', importRoutes);
+
+// Rutas de Sábana de Notas
+router.use('/sabana', sabanaRoutes);
 
 export default router;

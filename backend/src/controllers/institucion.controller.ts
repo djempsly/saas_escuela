@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Idioma, SistemaEducativo } from '@prisma/client';
+import prisma from '../config/db';
 import {
   createInstitucion,
   findInstituciones,
@@ -239,12 +240,22 @@ export const updateSensitiveConfigHandler = async (req: Request, res: Response) 
 
     const sensitiveSchema = z.object({
       nombre: z.string().min(3).optional(),
+      nombreMostrar: z.string().nullable().optional(),
       slug: z.string().min(3).optional(),
       dominioPersonalizado: z.string().nullable().optional(),
       idiomaPrincipal: z.nativeEnum(Idioma).optional(),
       logoPosicion: z.enum(['left', 'center', 'right']).optional(),
+      logoWidth: z.number().int().positive().optional(),
+      logoHeight: z.number().int().positive().optional(),
       activo: z.boolean().optional(),
       autogestionActividades: z.boolean().optional(),
+      // Landing page fields
+      heroTitle: z.string().nullable().optional(),
+      heroSubtitle: z.string().nullable().optional(),
+      // Login page fields
+      loginBgType: z.enum(['color', 'image', 'gradient']).optional(),
+      loginBgColor: z.string().optional(),
+      loginBgGradient: z.string().nullable().optional(),
     });
 
     const validated = sensitiveSchema.parse(req.body);
@@ -310,6 +321,78 @@ export const updateSistemasEducativosHandler = async (req: Request, res: Respons
     if (error.message.includes('no encontrada') || error.message.includes('inválido')) {
       return res.status(400).json({ message: error.message });
     }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// POST /api/v1/instituciones/:id/favicon - Subir favicon
+export const uploadFaviconHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se proporcionó archivo de favicon' });
+    }
+
+    const faviconUrl = getFileUrl(req.file);
+
+    const result = await prisma.institucion.update({
+      where: { id },
+      data: { faviconUrl },
+      select: { id: true, faviconUrl: true },
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error uploading favicon:', error);
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// POST /api/v1/instituciones/:id/hero - Subir imagen hero
+export const uploadHeroHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se proporcionó imagen hero' });
+    }
+
+    const heroImageUrl = getFileUrl(req.file);
+
+    const result = await prisma.institucion.update({
+      where: { id },
+      data: { heroImageUrl },
+      select: { id: true, heroImageUrl: true },
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error uploading hero image:', error);
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+// POST /api/v1/instituciones/:id/login-logo - Subir logo de login
+export const uploadLoginLogoHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No se proporcionó logo de login' });
+    }
+
+    const loginLogoUrl = getFileUrl(req.file);
+
+    const result = await prisma.institucion.update({
+      where: { id },
+      data: { loginLogoUrl },
+      select: { id: true, loginLogoUrl: true },
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error uploading login logo:', error);
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

@@ -2,6 +2,7 @@ import { Role, SistemaEducativo, Idioma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { generateSecurePassword, generateUsername } from '../utils/security';
+import { getMateriasOficiales } from '../utils/materias-oficiales';
 
 // Función para generar slug desde nombre
 export const generateSlug = (nombre: string): string => {
@@ -528,13 +529,23 @@ export const updateSensitiveConfig = async (
   id: string,
   input: {
     nombre?: string;
+    nombreMostrar?: string | null;
     slug?: string;
     dominioPersonalizado?: string | null;
     idiomaPrincipal?: Idioma;
     logoPosicion?: string;
+    logoWidth?: number;
+    logoHeight?: number;
     fondoLoginUrl?: string | null;
     activo?: boolean;
     autogestionActividades?: boolean;
+    // Landing page fields
+    heroTitle?: string | null;
+    heroSubtitle?: string | null;
+    // Login page fields
+    loginBgType?: string;
+    loginBgColor?: string;
+    loginBgGradient?: string | null;
   }
 ) => {
   const institucion = await prisma.institucion.findUnique({
@@ -569,12 +580,22 @@ export const updateSensitiveConfig = async (
     where: { id },
     data: {
       ...(input.nombre && { nombre: input.nombre }),
+      ...(input.nombreMostrar !== undefined && { nombreMostrar: input.nombreMostrar }),
       ...(input.slug && { slug: generateSlug(input.slug) }),
       ...(input.dominioPersonalizado !== undefined && { dominioPersonalizado: input.dominioPersonalizado }),
       ...(input.idiomaPrincipal && { idiomaPrincipal: input.idiomaPrincipal }),
       ...(input.logoPosicion && { logoPosicion: input.logoPosicion }),
+      ...(input.logoWidth !== undefined && { logoWidth: input.logoWidth }),
+      ...(input.logoHeight !== undefined && { logoHeight: input.logoHeight }),
       ...(input.fondoLoginUrl !== undefined && { fondoLoginUrl: input.fondoLoginUrl }),
       ...(input.activo !== undefined && { activo: input.activo }),
+      // Landing page fields
+      ...(input.heroTitle !== undefined && { heroTitle: input.heroTitle }),
+      ...(input.heroSubtitle !== undefined && { heroSubtitle: input.heroSubtitle }),
+      // Login page fields
+      ...(input.loginBgType && { loginBgType: input.loginBgType }),
+      ...(input.loginBgColor && { loginBgColor: input.loginBgColor }),
+      ...(input.loginBgGradient !== undefined && { loginBgGradient: input.loginBgGradient }),
       ...(input.autogestionActividades !== undefined && { autogestionActividades: input.autogestionActividades }),
     },
   });
@@ -627,6 +648,10 @@ export const updateSistemasEducativos = async (
     }
   }
 
+  // Identificar sistemas nuevos para sembrar materias oficiales
+  const sistemasActuales = institucion.sistemasEducativos.map(s => s.sistema);
+  const sistemasNuevos = sistemasEducativos.filter(s => !sistemasActuales.includes(s));
+
   // Actualizar en transacción
   return prisma.$transaction(async (tx) => {
     // 1. Eliminar los sistemas actuales
@@ -651,7 +676,38 @@ export const updateSistemasEducativos = async (
       data: { sistema: sistemaPrincipal },
     });
 
-    // 4. Retornar la institución actualizada
+    // 4. Sembrar materias oficiales para sistemas nuevos
+    for (const sistema of sistemasNuevos) {
+      const { materias, pais, provisional } = getMateriasOficiales(sistema);
+
+      for (const materia of materias) {
+        // Verificar si ya existe una materia con el mismo nombre
+        const existente = await tx.materia.findFirst({
+          where: {
+            institucionId: id,
+            nombre: materia.nombre,
+          },
+        });
+
+        if (!existente) {
+          await tx.materia.create({
+            data: {
+              nombre: materia.nombre,
+              codigo: materia.codigo,
+              descripcion: materia.descripcion,
+              tipo: materia.tipo,
+              esOficial: true,
+              orden: materia.orden,
+              pais,
+              provisional,
+              institucionId: id,
+            },
+          });
+        }
+      }
+    }
+
+    // 5. Retornar la institución actualizada
     return tx.institucion.findUnique({
       where: { id },
       include: {
@@ -664,4 +720,59 @@ export const updateSistemasEducativos = async (
       },
     });
   });
+};
+
+// Sembrar materias oficiales para una institución
+export const seedMateriasOficiales = async (
+  institucionId: string,
+  sistemas?: SistemaEducativo[]
+) => {
+  const institucion = await prisma.institucion.findUnique({
+    where: { id: institucionId },
+    include: { sistemasEducativos: true },
+  });
+
+  if (!institucion) {
+    throw new Error('Institución no encontrada');
+  }
+
+  // Usar los sistemas proporcionados o los de la institución
+  const sistemasToSeed = sistemas || institucion.sistemasEducativos.map(s => s.sistema);
+
+  const materiasCreadas: string[] = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (const sistema of sistemasToSeed) {
+      const { materias, pais, provisional } = getMateriasOficiales(sistema);
+
+      for (const materia of materias) {
+        // Verificar si ya existe una materia con el mismo nombre
+        const existente = await tx.materia.findFirst({
+          where: {
+            institucionId,
+            nombre: materia.nombre,
+          },
+        });
+
+        if (!existente) {
+          await tx.materia.create({
+            data: {
+              nombre: materia.nombre,
+              codigo: materia.codigo,
+              descripcion: materia.descripcion,
+              tipo: materia.tipo,
+              esOficial: true,
+              orden: materia.orden,
+              pais,
+              provisional,
+              institucionId,
+            },
+          });
+          materiasCreadas.push(materia.nombre);
+        }
+      }
+    }
+  });
+
+  return { materiasCreadas };
 };

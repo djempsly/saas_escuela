@@ -349,13 +349,19 @@ model CicloEducativo {
 model Materia {
   id            String      @id @default(cuid())
   nombre        String
+  codigo        String?     // Código corto (ES, MA, CN, etc.)
   descripcion   String?
   tipo          TipoMateria @default(GENERAL) // Si es TÉCNICA, usará CalificaciónTecnica
+  esOficial     Boolean     @default(false)  // true = materia del MINERD/MENFP (no editable)
+  orden         Int         @default(0)       // Orden en la sábana de notas
+  pais          String?     // "DO" o "HT" para materias oficiales
+  provisional   Boolean     @default(false)  // true = materia provisional (Haití)
   institucionId String
   institucion   Institucion @relation(fields: [institucionId], references: [id])
   clases        Clase[]
 
   @@unique([nombre, institucionId])
+  @@index([institucionId, esOficial])
 }
 
 model Clase {

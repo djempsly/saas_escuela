@@ -184,6 +184,7 @@ export const institucionesApi = {
 };
 
 // Dominios API (gestión de dominios personalizados)
+// Dominios API
 export const dominiosApi = {
   getByInstitucion: (institucionId: string) =>
     api.get('/admin/dominios', { params: { institucionId } }),
@@ -583,6 +584,22 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+// Sábana de Notas API
+export const sabanaApi = {
+  getNiveles: () =>
+    api.get('/sabana/niveles'),
+  getCiclosLectivos: () =>
+    api.get('/sabana/ciclos-lectivos'),
+  getSabana: (nivelId: string, cicloLectivoId: string) =>
+    api.get(`/sabana/${nivelId}/${cicloLectivoId}`),
+  updateCalificacion: (data: {
+    claseId: string;
+    estudianteId: string;
+    periodo: 'p1' | 'p2' | 'p3' | 'p4' | 'rp1' | 'rp2' | 'rp3' | 'rp4';
+    valor: number | null;
+  }) => api.patch('/sabana/calificacion', data),
 };
 
 // Tipos de roles disponibles

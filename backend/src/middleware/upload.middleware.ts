@@ -29,8 +29,8 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'foto') {
       cb(null, fotosDir);
-    } else if (file.fieldname === 'logo' || file.fieldname === 'fondoLogin') {
-      cb(null, logosDir); // Guardamos fondoLogin junto con logos
+    } else if (file.fieldname === 'logo' || file.fieldname === 'fondoLogin' || file.fieldname === 'favicon' || file.fieldname === 'hero' || file.fieldname === 'loginLogo') {
+      cb(null, logosDir); // Guardamos assets de institución en logos
     } else if (file.fieldname === 'imagen' || file.fieldname === 'imagenes' || file.mimetype.startsWith('image/')) {
       cb(null, imagesDir);
     } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
@@ -54,8 +54,18 @@ const fileFilter = (
 ) => {
   const allowedImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const allowedVideos = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+  const allowedIcons = ['image/x-icon', 'image/vnd.microsoft.icon', 'image/png', 'image/svg+xml'];
 
-  if (file.fieldname === 'imagen' || file.fieldname === 'imagenes' || file.fieldname === 'logo' || file.fieldname === 'foto' || file.fieldname === 'fondoLogin') {
+  const imageFields = ['imagen', 'imagenes', 'logo', 'foto', 'fondoLogin', 'hero', 'loginLogo'];
+  const iconFields = ['favicon'];
+
+  if (iconFields.includes(file.fieldname)) {
+    if (allowedIcons.includes(file.mimetype) || allowedImages.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten iconos (ICO, PNG, SVG)'));
+    }
+  } else if (imageFields.includes(file.fieldname)) {
     if (allowedImages.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -108,6 +118,15 @@ export const getFileUrl = (file: Express.Multer.File): string => {
 
 // Middleware para subir foto de perfil
 export const uploadFoto = upload.single('foto');
+
+// Middleware para subir favicon de institución
+export const uploadFavicon = upload.single('favicon');
+
+// Middleware para subir hero image de institución
+export const uploadHero = upload.single('hero');
+
+// Middleware para subir login logo de institución
+export const uploadLoginLogo = upload.single('loginLogo');
 
 // Función para eliminar archivo
 export const deleteFile = (filePath: string): void => {
