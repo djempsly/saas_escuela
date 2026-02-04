@@ -6,26 +6,40 @@
 import { SistemaEducativo } from '@prisma/client';
 import prisma from '../config/db';
 
+export interface SabanaCalificacion {
+  p1: number | null;
+  p2: number | null;
+  p3: number | null;
+  p4: number | null;
+  rp1: number | null;
+  rp2: number | null;
+  rp3: number | null;
+  rp4: number | null;
+  promedio: number | null;
+  // Completiva (MINERD format)
+  cpc30: number | null; // 50% PCP for completiva
+  cpcTotal: number | null; // 50% CPC
+  cc: number | null; // C.C. - Calificación Completiva
+  // Extraordinaria (MINERD format)
+  cpex30: number | null; // 30% PCP
+  cpex70: number | null; // 70% CPEx
+  cex: number | null; // C.Ex - Calificación Extraordinaria
+  // Final
+  promedioFinal: number | null;
+  situacion: string | null;
+  // Metadata
+  claseId: string | null;
+  docenteId: string | null;
+  docenteNombre: string | null;
+}
+
 export interface SabanaEstudiante {
   id: string;
   nombre: string;
   apellido: string;
   fotoUrl: string | null;
   calificaciones: {
-    [materiaId: string]: {
-      p1: number | null;
-      p2: number | null;
-      p3: number | null;
-      p4: number | null;
-      rp1: number | null;
-      rp2: number | null;
-      rp3: number | null;
-      rp4: number | null;
-      promedio: number | null;
-      claseId: string | null;
-      docenteId: string | null;
-      docenteNombre: string | null;
-    };
+    [materiaId: string]: SabanaCalificacion;
   };
 }
 
@@ -248,6 +262,18 @@ export const getSabanaByNivel = async (
             rp3: cal.rp3,
             rp4: numeroPeriodos === 4 ? cal.rp4 : null,
             promedio,
+            // Completiva fields from DB
+            cpc30: cal.cpc_30,
+            cpcTotal: cal.cpc_total,
+            cc: cal.cpc_total, // C.C. is same as cpc_total
+            // Extraordinaria fields from DB
+            cpex30: cal.cpex_70 ? (promedio ?? 0) * 0.3 : null, // 30% of PCP
+            cpex70: cal.cpex_70,
+            cex: cal.cpex_total,
+            // Final
+            promedioFinal: cal.promedioFinal,
+            situacion: cal.situacion,
+            // Metadata
             claseId: clase?.id || null,
             docenteId: clase?.docente?.id || null,
             docenteNombre: clase?.docente ? `${clase.docente.nombre} ${clase.docente.apellido}` : null,
@@ -264,6 +290,14 @@ export const getSabanaByNivel = async (
             rp3: null,
             rp4: null,
             promedio: null,
+            cpc30: null,
+            cpcTotal: null,
+            cc: null,
+            cpex30: null,
+            cpex70: null,
+            cex: null,
+            promedioFinal: null,
+            situacion: null,
             claseId: clase?.id || null, // Puede haber clase pero no calificación
             docenteId: clase?.docente?.id || null,
             docenteNombre: clase?.docente ? `${clase.docente.nombre} ${clase.docente.apellido}` : null,
@@ -327,15 +361,17 @@ export const getNivelesParaSabana = async (institucionId: string) => {
 };
 
 /**
- * Obtiene los ciclos lectivos activos para la institución
+ * Obtiene los ciclos lectivos para la institución (activos primero, luego históricos)
  */
 export const getCiclosLectivosParaSabana = async (institucionId: string) => {
   return prisma.cicloLectivo.findMany({
     where: {
       institucionId,
-      activo: true,
     },
-    orderBy: { fechaInicio: 'desc' },
+    orderBy: [
+      { activo: 'desc' }, // Active cycles first
+      { fechaInicio: 'desc' },
+    ],
   });
 };
 
