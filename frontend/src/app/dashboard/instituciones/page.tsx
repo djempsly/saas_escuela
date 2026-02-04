@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { institucionesApi } from '@/lib/api';
+import { institucionesApi, getMediaUrl } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
 import {
@@ -109,11 +109,12 @@ export default function InstitucionesPage() {
               {institucion.logoUrl ? (
                 <div className="w-32 h-32 rounded-lg overflow-hidden border">
                   <Image
-                    src={institucion.logoUrl}
+                    src={getMediaUrl(institucion.logoUrl)}
                     alt={institucion.nombre}
                     width={128}
                     height={128}
                     className="object-cover w-full h-full"
+                    unoptimized
                   />
                 </div>
               ) : (

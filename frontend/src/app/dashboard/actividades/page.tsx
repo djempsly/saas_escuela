@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { actividadesApi } from '@/lib/api';
+import { actividadesApi, getMediaUrl } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import {
   Activity,
@@ -147,10 +147,11 @@ export default function ActividadesPage() {
               {actividad.urlArchivo && (
                 <div className="aspect-video relative bg-slate-100">
                   <Image
-                    src={actividad.urlArchivo}
+                    src={getMediaUrl(actividad.urlArchivo)}
                     alt={actividad.titulo}
                     fill
                     className="object-cover"
+                    unoptimized
                   />
                 </div>
               )}

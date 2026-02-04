@@ -16,6 +16,7 @@ import {
   getCompetencyStatus,
 } from './types';
 import { translations, Locale } from '../i18n';
+import { getMediaUrl } from '../api';
 
 // Registrar fuentes (opcional - usar fuentes del sistema)
 Font.register({
@@ -230,7 +231,7 @@ export const ReportCardDocument: React.FC<ReportCardDocumentProps> = ({ data, co
         {/* Header con logo e info de institución */}
         <View style={styles.header}>
           {institucion.logoUrl && (
-            <Image src={institucion.logoUrl} style={styles.logo} />
+            <Image src={getMediaUrl(institucion.logoUrl)} style={styles.logo} />
           )}
           <View style={styles.headerInfo}>
             <Text style={styles.institutionName}>{institucion.nombre}</Text>

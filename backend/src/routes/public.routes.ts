@@ -159,6 +159,84 @@ router.get(
 );
 
 /**
+ * GET /api/public/instituciones
+ *
+ * Retorna lista de instituciones activas con logo (para landing global).
+ * No requiere autenticación ni resolución de tenant.
+ */
+router.get('/instituciones', async (req: Request, res: Response) => {
+  try {
+    const instituciones = await prisma.institucion.findMany({
+      where: {
+        activo: true,
+        logoUrl: { not: null },
+      },
+      select: {
+        id: true,
+        nombre: true,
+        slug: true,
+        logoUrl: true,
+      },
+      orderBy: { nombre: 'asc' },
+    });
+
+    res.json({
+      data: instituciones,
+    });
+  } catch (error) {
+    console.error('[PUBLIC] Error en /instituciones:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/**
+ * GET /api/public/actividades
+ *
+ * Retorna actividades globales públicas (sin institución específica).
+ * Para la landing page principal.
+ */
+router.get('/actividades', async (req: Request, res: Response) => {
+  try {
+    const { limit } = req.query as { limit?: string };
+    const take = limit ? parseInt(limit) : 10;
+
+    const actividades = await prisma.actividad.findMany({
+      where: {
+        publicado: true,
+        // Actividades globales (sin institución) o de cualquier institución activa
+        OR: [
+          { institucionId: null },
+          { institucion: { activo: true } },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }],
+      take,
+      select: {
+        id: true,
+        titulo: true,
+        contenido: true,
+        urlArchivo: true,
+        fotos: true,
+        videos: true,
+        tipoMedia: true,
+        createdAt: true,
+        autor: {
+          select: { nombre: true, apellido: true },
+        },
+        institucion: {
+          select: { nombre: true, slug: true },
+        },
+      },
+    });
+
+    res.json(actividades);
+  } catch (error) {
+    console.error('[PUBLIC] Error en /actividades:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/**
  * GET /api/public/health
  *
  * Health check para la institución pública.

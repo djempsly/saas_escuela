@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { actividadesApi, institucionesApi, getMediaUrl } from '@/lib/api';
+import { publicEndpoints, getMediaUrl } from '@/lib/api';
 import {
   GraduationCap,
   Users,
@@ -194,15 +194,15 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Cargar actividades e instituciones en paralelo
+        // Cargar actividades e instituciones en paralelo usando endpoints públicos
         const [actividadesRes, institucionesRes] = await Promise.all([
-          actividadesApi.getAll(5),
-          institucionesApi.getAll(),
+          publicEndpoints.getActividades(5),
+          publicEndpoints.getInstituciones(),
         ]);
         setActividades(actividadesRes.data || []);
         const instData = institucionesRes.data?.data || institucionesRes.data || [];
-        // Filtrar solo instituciones con logo
-        setInstituciones(instData.filter((i: Institucion) => i.logoUrl));
+        // Las instituciones ya vienen filtradas con logo desde el backend
+        setInstituciones(instData);
       } catch (error) {
         console.error('Error cargando datos:', error);
       } finally {

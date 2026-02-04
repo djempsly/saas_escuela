@@ -5,6 +5,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { materiasApi } from '@/lib/api';
 import {
   BookMarked,
@@ -22,6 +30,8 @@ interface Materia {
   nombre: string;
   codigo?: string;
   descripcion?: string;
+  tipo: 'GENERAL' | 'TECNICA';
+  esOficial?: boolean;
   createdAt: string;
 }
 
@@ -44,6 +54,7 @@ export default function MateriasPage() {
     nombre: '',
     codigo: '',
     descripcion: '',
+    tipo: 'GENERAL' as 'GENERAL' | 'TECNICA',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -91,6 +102,7 @@ export default function MateriasPage() {
       nombre: materia.nombre,
       codigo: materia.codigo || '',
       descripcion: materia.descripcion || '',
+      tipo: materia.tipo || 'GENERAL',
     });
     setEditingId(materia.id);
     setShowModal(true);
@@ -109,7 +121,7 @@ export default function MateriasPage() {
   };
 
   const resetForm = () => {
-    setFormData({ nombre: '', codigo: '', descripcion: '' });
+    setFormData({ nombre: '', codigo: '', descripcion: '', tipo: 'GENERAL' });
     setEditingId(null);
     setShowModal(false);
   };
@@ -166,7 +178,17 @@ export default function MateriasPage() {
                       <BookMarked className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium">{materia.nombre}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{materia.nombre}</p>
+                        <Badge variant={materia.tipo === 'TECNICA' ? 'default' : 'secondary'} className="text-xs">
+                          {materia.tipo === 'TECNICA' ? 'Técnica' : 'General'}
+                        </Badge>
+                        {materia.esOficial && (
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                            Oficial
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                         {materia.codigo && <span>Código: {materia.codigo}</span>}
                         {materia.descripcion && <span>• {materia.descripcion}</span>}
@@ -252,6 +274,24 @@ export default function MateriasPage() {
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                     placeholder="Breve descripción de la materia"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipo">Tipo de Materia *</Label>
+                  <Select
+                    value={formData.tipo}
+                    onValueChange={(value: 'GENERAL' | 'TECNICA') => setFormData({ ...formData, tipo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GENERAL">General (Formación Fundamental)</SelectItem>
+                      <SelectItem value="TECNICA">Técnica (Módulo Formativo - Politécnico)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Las materias técnicas aparecen en la sección de Módulos Formativos del boletín
+                  </p>
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button

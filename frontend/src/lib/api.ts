@@ -60,6 +60,23 @@ api.interceptors.response.use(
   }
 );
 
+// API pública (sin autenticación) - para landing pages
+const publicApiBaseUrl = API_BASE_URL.replace('/api/v1', '/api/public');
+export const publicApi = axios.create({
+  baseURL: publicApiBaseUrl,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Public API endpoints (no authentication required)
+export const publicEndpoints = {
+  getInstituciones: () => publicApi.get('/instituciones'),
+  getActividades: (limit?: number) => publicApi.get('/actividades', { params: { limit } }),
+  getLanding: () => publicApi.get('/landing'),
+  getBranding: () => publicApi.get('/branding'),
+};
+
 // Auth API
 export const authApi = {
   login: (identificador: string, password: string, slug?: string) =>

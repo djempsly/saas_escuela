@@ -9,6 +9,7 @@ import {
   Font,
 } from '@react-pdf/renderer';
 import { Locale } from '../i18n';
+import { getMediaUrl } from '../api';
 
 // Tipos específicos para Politécnico
 export interface CompetenciaCalificacion {
@@ -386,7 +387,7 @@ export const PolitecnicoReportDocument: React.FC<{
         {/* Header */}
         <View style={styles.header}>
           {institucion.logoUrl && (
-            <Image src={institucion.logoUrl} style={styles.logo} />
+            <Image src={getMediaUrl(institucion.logoUrl)} style={styles.logo} />
           )}
           <View style={styles.headerInfo}>
             <Text style={styles.institutionName}>{institucion.nombre}</Text>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getMediaUrl } from '@/lib/api';
 
 interface MediaViewerProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export function MediaViewer({
             {branding.logoUrl ? (
               <div className="relative w-48 h-48 mb-6">
                 <Image
-                  src={branding.logoUrl}
+                  src={getMediaUrl(branding.logoUrl)}
                   alt={branding.nombre}
                   fill
                   className="object-contain rounded-lg"
@@ -197,7 +198,7 @@ export function MediaViewer({
             {branding.logoUrl ? (
               <div className="relative w-40 h-40 mb-4">
                 <Image
-                  src={branding.logoUrl}
+                  src={getMediaUrl(branding.logoUrl)}
                   alt={branding.nombre}
                   fill
                   className="object-contain rounded-lg"

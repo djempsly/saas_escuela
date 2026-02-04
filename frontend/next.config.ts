@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
+      // Desarrollo local
       {
         protocol: 'http',
         hostname: 'localhost',
@@ -10,11 +11,25 @@ const nextConfig: NextConfig = {
         pathname: '/uploads/**',
       },
       {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '4000',
+        pathname: '/uploads/**',
+      },
+      // Producción - cualquier host HTTPS
+      {
         protocol: 'https',
         hostname: '**',
       },
+      // Producción - cualquier host HTTP (para dominios internos)
+      {
+        protocol: 'http',
+        hostname: '**',
+        pathname: '/uploads/**',
+      },
     ],
-    unoptimized: process.env.NODE_ENV === 'development',
+    // Desactivar optimización para evitar problemas con URLs dinámicas
+    unoptimized: true,
   },
 };
 

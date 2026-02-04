@@ -24,6 +24,7 @@ import {
   TemplateConfig,
   registerTemplate,
 } from './base-template';
+import { getMediaUrl } from '../../api';
 
 // Tamaño Legal en puntos (8.5" x 14")
 const LEGAL_WIDTH = 612;
@@ -122,7 +123,7 @@ export class PolitecnicoDoTemplate extends BaseBoletinTemplate {
           {/* Header */}
           <View style={styles.header}>
             {institucion.logoUrl && (
-              <Image src={institucion.logoUrl} style={styles.logo} />
+              <Image src={getMediaUrl(institucion.logoUrl)} style={styles.logo} />
             )}
             <View style={styles.headerInfo}>
               <Text style={styles.institutionName}>{institucion.nombre}</Text>

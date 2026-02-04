@@ -100,6 +100,22 @@ interface CicloLectivo {
 
 type ViewMode = 'list' | 'boletin';
 
+// ==================== SISTEMAS EDUCATIVOS ====================
+
+const SISTEMAS_CON_MODULOS_TECNICOS = ['POLITECNICO_DO'];
+const SISTEMAS_PRIMARIA = ['PRIMARIA_DO', 'PRIMARIA_HT'];
+const SISTEMAS_INICIAL = ['INICIAL_DO', 'INICIAL_HT'];
+const SISTEMAS_SECUNDARIA = ['SECUNDARIA_GENERAL_DO', 'SECUNDARIA_HT', 'POLITECNICO_DO'];
+
+// Determinar el tipo de formato de sábana según el sistema educativo
+const getFormatoSabana = (sistemaEducativo: string): 'politecnico' | 'secundaria' | 'primaria' | 'inicial' => {
+  if (SISTEMAS_CON_MODULOS_TECNICOS.includes(sistemaEducativo)) return 'politecnico';
+  if (SISTEMAS_SECUNDARIA.includes(sistemaEducativo)) return 'secundaria';
+  if (SISTEMAS_PRIMARIA.includes(sistemaEducativo)) return 'primaria';
+  if (SISTEMAS_INICIAL.includes(sistemaEducativo)) return 'inicial';
+  return 'secundaria'; // Por defecto
+};
+
 // ==================== COMPETENCIAS MINERD OFICIALES ====================
 
 const COMPETENCIAS = [
@@ -203,6 +219,16 @@ function StudentList({
 
 // ==================== COMPONENTE BOLETÍN INDIVIDUAL - FORMATO MINERD ====================
 
+// Helper para generar lista de celdas editables para navegación
+interface EditableCell {
+  cellId: string;
+  claseId: string | null;
+  periodo: string;
+  asignaturaIndex: number;
+  competenciaIndex: number;
+  periodoIndex: number;
+}
+
 function BoletinIndividual({
   estudiante,
   materias,
@@ -229,11 +255,12 @@ function BoletinIndividual({
   onStudentChange: (index: number) => void;
   estudiantes: Estudiante[];
   canEditMateria: (materiaId: string, cal: Calificacion | undefined) => boolean;
-  onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null) => void;
+  onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null) => Promise<void>;
   isReadOnly: boolean;
 }) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Colores dinámicos según el grado
   const nivelNombre = sabanaData.nivel?.nombre || '';
@@ -268,44 +295,176 @@ function BoletinIndividual({
     return cf >= 70 ? 'A' : 'R';
   };
 
+  // Usar asignaturas estáticas del MINERD
+  // Buscar la materia del backend que coincida con la asignatura MINERD (por código o nombre)
+  const findMateriaByAsignatura = useCallback((asignatura: { codigo: string; nombre: string }) => {
+    return materias.find(m =>
+      m.codigo === asignatura.codigo ||
+      m.nombre.toLowerCase().includes(asignatura.nombre.toLowerCase().split(' ')[0]) ||
+      asignatura.nombre.toLowerCase().includes(m.nombre.toLowerCase().split(' ')[0])
+    );
+  }, [materias]);
+
+  // Módulos técnicos del backend (estos sí vienen dinámicos según la especialidad)
+  const modulosTecnicos = useMemo(() => materias.filter(m => m.tipo === 'TECNICA'), [materias]);
+
+  // Generar lista de celdas editables para navegación con Tab
+  const editableCells = useMemo(() => {
+    const cells: EditableCell[] = [];
+
+    // Asignaturas generales
+    ASIGNATURAS_GENERALES_MINERD.forEach((asignatura, asigIdx) => {
+      const materia = findMateriaByAsignatura(asignatura);
+      const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
+      const canEdit = materia ? canEditMateria(materia.id, cal) : false;
+
+      if (canEdit && !isReadOnly) {
+        COMPETENCIAS.forEach((comp, compIdx) => {
+          PERIODOS.forEach((p, perIdx) => {
+            const cellId = `${asignatura.codigo}-${comp.id}-${p}`;
+            cells.push({
+              cellId,
+              claseId: cal?.claseId || null,
+              periodo: p.toLowerCase(),
+              asignaturaIndex: asigIdx,
+              competenciaIndex: compIdx,
+              periodoIndex: perIdx,
+            });
+          });
+        });
+      }
+    });
+
+    // Módulos técnicos
+    modulosTecnicos.forEach((modulo, modIdx) => {
+      const cal = estudiante.calificaciones[modulo.id];
+      const canEdit = canEditMateria(modulo.id, cal);
+
+      if (canEdit && !isReadOnly) {
+        PERIODOS.forEach((p, perIdx) => {
+          const cellId = `modulo-${modulo.id}-${p}`;
+          cells.push({
+            cellId,
+            claseId: cal?.claseId || null,
+            periodo: p.toLowerCase(),
+            asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
+            competenciaIndex: 0,
+            periodoIndex: perIdx,
+          });
+        });
+      }
+    });
+
+    return cells;
+  }, [findMateriaByAsignatura, estudiante.calificaciones, canEditMateria, isReadOnly, modulosTecnicos]);
+
+  // Encontrar siguiente celda editable
+  const findNextCell = useCallback((currentCellId: string, reverse: boolean = false) => {
+    const currentIdx = editableCells.findIndex(c => c.cellId === currentCellId);
+    if (currentIdx === -1) return null;
+
+    const nextIdx = reverse
+      ? (currentIdx > 0 ? currentIdx - 1 : editableCells.length - 1)
+      : (currentIdx < editableCells.length - 1 ? currentIdx + 1 : 0);
+
+    return editableCells[nextIdx];
+  }, [editableCells]);
+
   // Manejar edición de celda
   const handleCellClick = (cellId: string, currentValue: number | null, canEdit: boolean) => {
-    if (!canEdit || isReadOnly) return;
+    if (!canEdit || isReadOnly || isSaving) return;
     setEditingCell(cellId);
-    setTempValue(currentValue?.toString() || '');
+    setTempValue(currentValue !== null && currentValue !== 0 ? currentValue.toString() : '');
   };
 
-  const handleCellBlur = (claseId: string | null, periodo: string) => {
+  // Obtener el valor actual de una celda por su ID
+  const getCellValue = useCallback((nextCell: EditableCell) => {
+    // Verificar si es un módulo técnico (cellId comienza con "modulo-")
+    if (nextCell.cellId.startsWith('modulo-')) {
+      // Extraer el moduloId del cellId
+      const moduloIdx = nextCell.asignaturaIndex - ASIGNATURAS_GENERALES_MINERD.length;
+      const modulo = modulosTecnicos[moduloIdx];
+      if (modulo) {
+        const cal = estudiante.calificaciones[modulo.id];
+        const value = cal?.[nextCell.periodo as keyof Calificacion];
+        return typeof value === 'number' && value !== 0 ? value : null;
+      }
+    } else {
+      // Asignatura general
+      const asignatura = ASIGNATURAS_GENERALES_MINERD[nextCell.asignaturaIndex];
+      if (asignatura) {
+        const materia = findMateriaByAsignatura(asignatura);
+        const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
+        const value = cal?.[nextCell.periodo as keyof Calificacion];
+        return typeof value === 'number' && value !== 0 ? value : null;
+      }
+    }
+    return null;
+  }, [estudiante.calificaciones, findMateriaByAsignatura, modulosTecnicos]);
+
+  // Guardar y cerrar celda actual
+  const saveAndCloseCell = useCallback(async (claseId: string | null, periodo: string, moveToNext?: EditableCell | null) => {
     if (!claseId) {
       setEditingCell(null);
+      if (moveToNext) {
+        const nextValue = getCellValue(moveToNext);
+        setEditingCell(moveToNext.cellId);
+        setTempValue(nextValue !== null ? nextValue.toString() : '');
+      }
       return;
     }
 
     const num = tempValue === '' ? null : parseFloat(tempValue);
     if (num !== null && (isNaN(num) || num < 0 || num > 100)) {
       toast.error('Valor debe ser entre 0 y 100');
-      setEditingCell(null);
       return;
     }
 
-    onSaveCalificacion(claseId, estudiante.id, periodo, num);
-    setEditingCell(null);
-  };
+    setIsSaving(true);
+    try {
+      await onSaveCalificacion(claseId, estudiante.id, periodo, num);
+      setEditingCell(null);
+
+      // Mover a la siguiente celda si se especificó
+      if (moveToNext) {
+        setTimeout(() => {
+          const nextValue = getCellValue(moveToNext);
+          setEditingCell(moveToNext.cellId);
+          setTempValue(nextValue !== null ? nextValue.toString() : '');
+        }, 100);
+      }
+    } catch {
+      toast.error('Error al guardar');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [tempValue, onSaveCalificacion, estudiante.id, getCellValue]);
+
+  // Manejar blur de celda (sin navegación)
+  const handleCellBlur = useCallback((claseId: string | null, periodo: string) => {
+    // Solo guardar si no estamos en proceso de navegación con Tab/Enter
+    if (!isSaving) {
+      saveAndCloseCell(claseId, periodo);
+    }
+  }, [isSaving, saveAndCloseCell]);
+
+  // Manejar teclas en celda
+  const handleCellKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>, claseId: string | null, periodo: string, currentCellId: string) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const nextCell = findNextCell(currentCellId, e.shiftKey);
+      saveAndCloseCell(claseId, periodo, nextCell);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const nextCell = findNextCell(currentCellId, false);
+      saveAndCloseCell(claseId, periodo, nextCell);
+    } else if (e.key === 'Escape') {
+      setEditingCell(null);
+      setTempValue('');
+    }
+  }, [findNextCell, saveAndCloseCell]);
 
   const handlePrint = () => window.print();
-
-  // Usar asignaturas estáticas del MINERD
-  // Buscar la materia del backend que coincida con la asignatura MINERD (por código o nombre)
-  const findMateriaByAsignatura = (asignatura: { codigo: string; nombre: string }) => {
-    return materias.find(m =>
-      m.codigo === asignatura.codigo ||
-      m.nombre.toLowerCase().includes(asignatura.nombre.toLowerCase().split(' ')[0]) ||
-      asignatura.nombre.toLowerCase().includes(m.nombre.toLowerCase().split(' ')[0])
-    );
-  };
-
-  // Módulos técnicos del backend (estos sí vienen dinámicos según la especialidad)
-  const modulosTecnicos = materias.filter(m => m.tipo === 'TECNICA');
 
   return (
     <>
@@ -363,8 +522,14 @@ function BoletinIndividual({
       {/* Mensaje para docente */}
       {!isReadOnly && (
         <div className="no-print bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800 mx-4 mt-4 rounded">
-          <strong>Nota:</strong> Solo puede editar las calificaciones de las asignaturas que usted imparte.
-          Haga clic en una celda para editar. Las demás filas están en modo solo lectura.
+          <strong>📝 Instrucciones:</strong> Solo puede editar las calificaciones de las asignaturas que usted imparte (resaltadas en azul claro).
+          <ul className="mt-2 ml-4 list-disc">
+            <li><strong>Click</strong> en una celda azul para editar</li>
+            <li><strong>Tab</strong> para guardar y pasar a la siguiente celda</li>
+            <li><strong>Shift+Tab</strong> para volver a la celda anterior</li>
+            <li><strong>Enter</strong> para guardar y avanzar</li>
+            <li><strong>Esc</strong> para cancelar sin guardar</li>
+          </ul>
         </div>
       )}
 
@@ -419,8 +584,16 @@ function BoletinIndividual({
                   MINERD
                 </div>
                 <p style={{ fontSize: '8px', margin: 0, fontWeight: 'bold' }}>Viceministerio de Servicios Técnicos y Pedagógicos</p>
-                <p style={{ fontSize: '7px', margin: 0 }}>Dirección de Educación Secundaria</p>
-                <p style={{ fontSize: '7px', margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
+                <p style={{ fontSize: '7px', margin: 0 }}>
+                  {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
+                    ? 'Dirección de Educación Primaria'
+                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'inicial'
+                    ? 'Dirección de Educación Inicial'
+                    : 'Dirección de Educación Secundaria'}
+                </p>
+                {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
+                  <p style={{ fontSize: '7px', margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
+                )}
               </div>
               <div style={{ textAlign: 'center', flex: 1 }}>
                 <h1 style={{ fontSize: '14px', margin: 0, color: colorPrimario, fontWeight: 900 }}>
@@ -429,7 +602,15 @@ function BoletinIndividual({
                 <p style={{ fontSize: '11px', margin: '3px 0', fontWeight: 'bold' }}>
                   {nivelNombre || 'Nivel Secundario'}
                 </p>
-                <p style={{ fontSize: '9px', margin: 0 }}>Modalidad Técnico Profesional</p>
+                <p style={{ fontSize: '9px', margin: 0 }}>
+                  {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico'
+                    ? 'Modalidad Técnico Profesional'
+                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'secundaria'
+                    ? 'Educación Secundaria General'
+                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
+                    ? 'Educación Primaria'
+                    : 'Nivel Inicial'}
+                </p>
                 <p style={{ fontSize: '9px', margin: '3px 0' }}>
                   Año Escolar: {sabanaData.cicloLectivo?.nombre || '20__ - 20__'}
                 </p>
@@ -554,33 +735,38 @@ function BoletinIndividual({
                                 padding: '2px',
                                 textAlign: 'center',
                                 fontSize: '7px',
-                                backgroundColor: p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#e0f2fe' : 'transparent'),
+                                backgroundColor: isEditing ? '#fef9c3' : (p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
                                 color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
                                 fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
-                                cursor: canEdit && !isReadOnly ? 'pointer' : 'default'
+                                cursor: canEdit && !isReadOnly ? 'pointer' : 'default',
+                                transition: 'background-color 0.15s ease',
+                                minWidth: '18px',
+                                minHeight: '18px'
                               }}
                               onClick={() => handleCellClick(cellId, valor || null, canEdit)}
+                              title={canEdit && !isReadOnly ? 'Click para editar. Tab para siguiente, Enter para guardar.' : undefined}
                             >
                               {isEditing ? (
                                 <input
                                   type="number"
                                   min="0"
                                   max="100"
+                                  step="1"
                                   value={tempValue}
                                   onChange={(e) => setTempValue(e.target.value)}
                                   onBlur={() => handleCellBlur(cal?.claseId || null, pLower)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleCellBlur(cal?.claseId || null, pLower);
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                  }}
+                                  onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, pLower, cellId)}
                                   autoFocus
+                                  disabled={isSaving}
                                   style={{
                                     width: '100%',
-                                    border: 'none',
+                                    border: '2px solid #2563eb',
                                     textAlign: 'center',
                                     fontSize: '7px',
                                     backgroundColor: '#fef9c3',
-                                    outline: 'none'
+                                    outline: 'none',
+                                    borderRadius: '2px',
+                                    padding: '2px'
                                   }}
                                 />
                               ) : (
@@ -636,8 +822,8 @@ function BoletinIndividual({
               </tbody>
             </table>
 
-            {/* TÍTULO MÓDULOS TÉCNICOS */}
-            {modulosTecnicos.length > 0 && (
+            {/* TÍTULO MÓDULOS TÉCNICOS - Solo para sistemas Politécnicos */}
+            {modulosTecnicos.length > 0 && getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
               <>
                 <div style={{
                   backgroundColor: colorPrimario,
@@ -650,73 +836,112 @@ function BoletinIndividual({
                   MÓDULOS FORMATIVOS (FORMACIÓN TÉCNICO PROFESIONAL)
                 </div>
 
-                {/* TABLA DE MÓDULOS TÉCNICOS (RA) */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '6px', marginBottom: '10px' }}>
+                {/* TABLA DE MÓDULOS TÉCNICOS - Formato simplificado con P1-P4 */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '7px', marginBottom: '10px' }}>
                   <thead>
-                    <tr style={{ backgroundColor: colorClaro }}>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '15%', textAlign: 'left' }}>MÓDULOS</th>
-                      {[1,2,3,4,5,6,7,8,9,10].map(i => (
-                        <th key={i} colSpan={3} style={{ border: '1px solid black', padding: '2px', fontSize: '6px' }}>RA{i}</th>
-                      ))}
-                      <th style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fef3c7', width: '3%' }}>C.F.</th>
-                      <th style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fef3c7', width: '3%' }}>%AA</th>
-                      <th style={{ border: '1px solid black', padding: '2px', backgroundColor: '#fef3c7', width: '3%' }}>SIT.</th>
-                    </tr>
-                    <tr style={{ fontSize: '5px' }}>
-                      <th style={{ border: '1px solid black' }}></th>
-                      {[1,2,3,4,5,6,7,8,9,10].flatMap(i => [
-                        <th key={`cra-${i}`} style={{ border: '1px solid black', padding: '1px' }}>CRA</th>,
-                        <th key={`rp1-${i}`} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb' }}>RP1</th>,
-                        <th key={`rp2-${i}`} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb' }}>RP2</th>
-                      ])}
-                      <th style={{ border: '1px solid black' }}></th>
-                      <th style={{ border: '1px solid black' }}></th>
-                      <th style={{ border: '1px solid black' }}></th>
+                    <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
+                      <th style={{ border: '1px solid black', padding: '4px', width: '30%', textAlign: 'left' }}>MÓDULO TÉCNICO</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P1</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP1</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P2</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP2</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P3</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP3</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P4</th>
+                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP4</th>
+                      <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>C.F.</th>
+                      <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>SIT.</th>
                     </tr>
                   </thead>
                   <tbody>
                     {modulosTecnicos.map((modulo, idx) => {
                       const cal = estudiante.calificaciones[modulo.id];
+                      const canEdit = canEditMateria(modulo.id, cal);
                       const cf = calcularCF(cal);
                       const situacion = calcularSituacion(cf);
 
                       return (
                         <tr key={idx}>
-                          <td style={{ border: '1px solid black', padding: '3px', fontWeight: 'bold', fontSize: '6px' }}>
-                            {modulo.nombre || ''}
-                          </td>
-                          {[1,2,3,4,5,6,7,8,9,10].flatMap(raNum => [
-                            <td key={`cra-${raNum}-${idx}`} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontSize: '7px' }}>
-                              -
-                            </td>,
-                            <td key={`rp1-${raNum}-${idx}`} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#f3f4f6', fontSize: '7px' }}>
-                              -
-                            </td>,
-                            <td key={`rp2-${raNum}-${idx}`} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', backgroundColor: '#f3f4f6', fontSize: '7px' }}>
-                              -
-                            </td>
-                          ])}
                           <td style={{
                             border: '1px solid black',
+                            padding: '4px',
+                            fontWeight: 'bold',
+                            fontSize: '7px',
+                            backgroundColor: canEdit && !isReadOnly ? '#dbeafe' : 'transparent'
+                          }}>
+                            {modulo.nombre || ''}
+                            {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (editable)</span>}
+                          </td>
+                          {PERIODOS.map(p => {
+                            const pLower = p.toLowerCase() as 'p1' | 'rp1' | 'p2' | 'rp2' | 'p3' | 'rp3' | 'p4' | 'rp4';
+                            const valor = cal?.[pLower] || 0;
+                            const cellId = `modulo-${modulo.id}-${p}`;
+                            const isEditingThis = editingCell === cellId;
+
+                            return (
+                              <td
+                                key={cellId}
+                                style={{
+                                  border: '1px solid black',
+                                  padding: '3px',
+                                  textAlign: 'center',
+                                  fontSize: '8px',
+                                  backgroundColor: isEditingThis ? '#fef9c3' : (p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
+                                  color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
+                                  fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
+                                  cursor: canEdit && !isReadOnly ? 'pointer' : 'default'
+                                }}
+                                onClick={() => handleCellClick(cellId, valor || null, canEdit)}
+                                title={canEdit && !isReadOnly ? 'Click para editar' : undefined}
+                              >
+                                {isEditingThis ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    value={tempValue}
+                                    onChange={(e) => setTempValue(e.target.value)}
+                                    onBlur={() => handleCellBlur(cal?.claseId || null, pLower)}
+                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, pLower, cellId)}
+                                    autoFocus
+                                    disabled={isSaving}
+                                    style={{
+                                      width: '100%',
+                                      border: '2px solid #2563eb',
+                                      textAlign: 'center',
+                                      fontSize: '8px',
+                                      backgroundColor: '#fef9c3',
+                                      outline: 'none',
+                                      borderRadius: '2px'
+                                    }}
+                                  />
+                                ) : (
+                                  valor > 0 ? valor : '-'
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td style={{
+                            border: '1px solid black',
+                            padding: '3px',
                             textAlign: 'center',
                             fontWeight: 'bold',
                             backgroundColor: '#fef3c7',
-                            fontSize: '8px',
+                            fontSize: '9px',
                             color: cf > 0 && cf < 70 ? '#dc2626' : 'inherit'
                           }}>
                             {cf || '-'}
                           </td>
-                          <td style={{ border: '1px solid black', textAlign: 'center', backgroundColor: '#fef3c7', fontSize: '7px' }}>
-                            -
-                          </td>
                           <td style={{
                             border: '1px solid black',
+                            padding: '3px',
                             textAlign: 'center',
                             fontWeight: 'bold',
                             backgroundColor: situacion === 'A' ? '#dcfce7' : situacion === 'R' ? '#fee2e2' : '#f3f4f6',
-                            fontSize: '8px'
+                            fontSize: '9px'
                           }}>
-                            {modulo.nombre ? situacion : ''}
+                            {situacion}
                           </td>
                         </tr>
                       );
@@ -1094,8 +1319,16 @@ export default function SabanaNotasPage() {
   }, [loadSabana]);
 
   // Verificar si el docente puede editar una materia específica
+  // El docente puede editar si:
+  // 1. Es DOCENTE
+  // 2. Hay una calificacion (o registro vacío con claseId) y el docenteId coincide
   const canEditMateria = useCallback((_materiaId: string, cal: Calificacion | undefined) => {
-    if (!isDocente || !cal) return false;
+    if (!isDocente) return false;
+    // Si no hay registro de calificación con docenteId, no puede editar
+    if (!cal) return false;
+    // Si hay calificación pero no tiene docenteId asignado, no puede editar
+    if (!cal.docenteId) return false;
+    // Solo puede editar si es su clase
     return cal.docenteId === user?.id;
   }, [isDocente, user?.id]);
 
@@ -1105,19 +1338,16 @@ export default function SabanaNotasPage() {
     estudianteId: string,
     periodo: string,
     valor: number | null
-  ) => {
-    try {
-      await sabanaApi.updateCalificacion({
-        claseId,
-        estudianteId,
-        periodo: periodo as 'p1' | 'p2' | 'p3' | 'p4' | 'rp1' | 'rp2' | 'rp3' | 'rp4',
-        valor,
-      });
-      toast.success('Calificación guardada');
-      await loadSabana();
-    } catch {
-      toast.error('Error al guardar calificación');
-    }
+  ): Promise<void> => {
+    await sabanaApi.updateCalificacion({
+      claseId,
+      estudianteId,
+      periodo: periodo as 'p1' | 'p2' | 'p3' | 'p4' | 'rp1' | 'rp2' | 'rp3' | 'rp4',
+      valor,
+    });
+    toast.success('Calificación guardada');
+    // Recargar datos en segundo plano sin bloquear la navegación
+    loadSabana();
   };
 
   // Navegación entre estudiantes
