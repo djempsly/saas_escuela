@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ciclosApi } from '@/lib/api';
-import { Calendar, Plus, Loader2, CheckCircle, Circle } from 'lucide-react';
+import { Calendar, Plus, Loader2, CheckCircle, Circle, Power } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ApiError {
   response?: {
@@ -28,6 +29,7 @@ interface CicloLectivo {
 export default function CiclosPage() {
   const [ciclos, setCiclos] = useState<CicloLectivo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [newCiclo, setNewCiclo] = useState({
     nombre: '',
@@ -36,19 +38,34 @@ export default function CiclosPage() {
     activo: false,
   });
 
+  const fetchCiclos = async () => {
+    try {
+      const response = await ciclosApi.getAll();
+      setCiclos(response.data.data || response.data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCiclos = async () => {
-      try {
-        const response = await ciclosApi.getAll();
-        setCiclos(response.data.data || response.data || []);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchCiclos();
   }, []);
+
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    setIsUpdating(id);
+    try {
+      await ciclosApi.update(id, { activo: !currentStatus });
+      toast.success(currentStatus ? 'Ciclo desactivado' : 'Ciclo activado');
+      fetchCiclos();
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.message || 'Error al actualizar estado');
+    } finally {
+      setIsUpdating(null);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +74,10 @@ export default function CiclosPage() {
       setCiclos([response.data, ...ciclos]);
       setShowModal(false);
       setNewCiclo({ nombre: '', fechaInicio: '', fechaFin: '', activo: false });
+      toast.success('Ciclo creado exitosamente');
     } catch (error) {
       const apiError = error as ApiError;
-      alert(apiError.response?.data?.message || 'Error al crear ciclo');
+      toast.error(apiError.response?.data?.message || 'Error al crear ciclo');
     }
   };
 
@@ -95,7 +113,7 @@ export default function CiclosPage() {
                 <div className="flex items-center justify-between mb-4">
                   <Calendar className="w-8 h-8 text-primary" />
                   {ciclo.activo ? (
-                    <span className="flex items-center gap-1 text-sm text-green-600">
+                    <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
                       <CheckCircle className="w-4 h-4" /> Activo
                     </span>
                   ) : (
@@ -108,6 +126,22 @@ export default function CiclosPage() {
                 <p className="text-sm text-muted-foreground mt-2">
                   {formatDate(ciclo.fechaInicio)} - {formatDate(ciclo.fechaFin)}
                 </p>
+                <div className="mt-6 pt-4 border-t flex justify-end">
+                  <Button
+                    variant={ciclo.activo ? "destructive" : "default"}
+                    size="sm"
+                    onClick={() => handleToggleStatus(ciclo.id, ciclo.activo)}
+                    disabled={isUpdating !== null}
+                    className="w-full"
+                  >
+                    {isUpdating === ciclo.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Power className="w-4 h-4 mr-2" />
+                    )}
+                    {ciclo.activo ? 'Desactivar Ciclo' : 'Activar Ciclo'}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

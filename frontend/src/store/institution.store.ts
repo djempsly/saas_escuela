@@ -15,6 +15,7 @@ export interface InstitutionBranding {
   sistemaEducativo?: string;
   idiomaPrincipal?: string;
   slug?: string;
+  dominioPersonalizado?: string;
   autogestionActividades?: boolean;
 }
 

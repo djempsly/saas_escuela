@@ -11,6 +11,9 @@ import { errorHandler } from './middleware/error-handler.middleware';
 
 const app: Application = express();
 
+// Confiar en el proxy (necesario para rate-limiting correcto detrás de Caddy/Docker)
+app.set('trust proxy', 1);
+
 // ============ SEGURIDAD: Headers HTTP con Helmet ============
 // Protege contra ataques comunes como XSS, clickjacking, etc.
 app.use(helmet({
@@ -31,7 +34,7 @@ app.use(helmet({
 // Rate limiting general para toda la API
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Máximo 100 requests por ventana por IP
+  max: 1000, // Aumentado a 1000 requests por ventana para evitar bloqueos en dashboard
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes. Intenta de nuevo en 15 minutos.' },

@@ -28,12 +28,23 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
 
   const handleLogout = () => {
     const slug = branding?.slug;
+    const customDomain = branding?.dominioPersonalizado;
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
+    
+    // Si estamos en un dominio personalizado, la redirección a /login
+    // nos mantendrá en ese dominio y el backend resolverá el tenant.
+    // Si estamos en el dominio principal (localhost, etc), usamos el slug.
+    const isCustomDomain = customDomain && currentHost === customDomain;
+
     logout();
     clearBranding();
-    if (slug) {
-      router.push(`/${slug}`);
+
+    if (isCustomDomain) {
+      router.push('/login');
+    } else if (slug) {
+      router.push(`/${slug}/login`);
     } else {
-      router.push('/');
+      router.push('/login');
     }
   };
 

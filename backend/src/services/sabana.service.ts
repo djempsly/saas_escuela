@@ -252,7 +252,11 @@ export const getSabanaByNivel = async (
       const califsEst: SabanaEstudiante['calificaciones'] = {};
 
       for (const materia of materias) {
-        // Buscar la clase de esta materia donde el estudiante está inscrito
+        // 1. Buscar si hay una clase para esta materia en este nivel (independiente del estudiante)
+        // Esto permite saber quién es el docente de esta materia en este nivel
+        const claseNivelMateria = clases.find(c => c.materia.id === materia.id);
+
+        // 2. Buscar si el estudiante está explícitamente inscrito en esa clase
         let claseEstudiante = null;
         for (const cid of est.clases) {
           const c = claseById.get(cid);
@@ -285,8 +289,8 @@ export const getSabanaByNivel = async (
           rasMap[t.ra_codigo] = t.valor;
         });
 
-        // Clase final para metadata (inscripción o la de la nota)
-        const claseFinal = claseEstudiante || (general ? claseById.get(general.claseId) : null);
+        // Clase final para metadata (inscripción, clase del nivel o la de la nota)
+        const claseFinal = claseEstudiante || claseNivelMateria || (general ? claseById.get(general.claseId) : null);
 
         califsEst[materia.id] = {
           p1: general?.p1 ?? null,
@@ -384,12 +388,18 @@ export const updateCalificacionSabana = async (
     where: { id: claseId },
     include: {
       materia: true,
+      cicloLectivo: true,
       nivel: { include: { institucion: true } }
     }
   });
 
   if (!clase) throw new Error('Clase no encontrada');
   if (clase.nivel.institucionId !== userInstitucionId) throw new Error('Sin permiso');
+  
+  // Bloquear edición si el ciclo no está activo
+  if (!clase.cicloLectivo.activo) {
+    throw new Error('No se pueden editar calificaciones de un ciclo lectivo inactivo');
+  }
 
   const esDocente = clase.docenteId === userId;
   const esDirector = userRole === 'DIRECTOR';
