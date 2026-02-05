@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { estudiantesApi, usersApi } from '@/lib/api';
+import { estudiantesApi, usersApi, nivelesApi } from '@/lib/api';
 import { Users, Search, Loader2, Eye, FileText, Plus, X, Save, EyeOff, Copy, KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
@@ -18,6 +18,19 @@ interface Estudiante {
   username: string;
   debeCambiarPassword?: boolean;
   passwordTemporal?: string | null;
+  inscripciones?: {
+    clase: {
+      nivel: {
+        id: string;
+        nombre: string;
+      };
+    };
+  }[];
+}
+
+interface Nivel {
+  id: string;
+  nombre: string;
 }
 
 interface ApiError {
@@ -32,6 +45,8 @@ interface ApiError {
 export default function EstudiantesPage() {
   const { user } = useAuthStore();
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
+  const [niveles, setNiveles] = useState<Nivel[]>([]);
+  const [selectedNivel, setSelectedNivel] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -84,8 +99,12 @@ export default function EstudiantesPage() {
 
   const fetchEstudiantes = async () => {
     try {
-      const response = await estudiantesApi.getAll();
-      setEstudiantes(response.data.data || response.data || []);
+      const [estRes, nivRes] = await Promise.all([
+        estudiantesApi.getAll(),
+        nivelesApi.getAll(),
+      ]);
+      setEstudiantes(estRes.data.data || estRes.data || []);
+      setNiveles(nivRes.data.data || nivRes.data || []);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -125,12 +144,20 @@ export default function EstudiantesPage() {
     setShowModal(false);
   };
 
-  const filtered = estudiantes.filter(
-    (e) =>
-      e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    return estudiantes.filter((e) => {
+      const matchesSearch =
+        e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.username.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesNivel =
+        selectedNivel === 'all' ||
+        e.inscripciones?.some((ins) => ins.clase.nivel.id === selectedNivel);
+
+      return matchesSearch && matchesNivel;
+    });
+  }, [estudiantes, searchTerm, selectedNivel]);
 
   return (
     <div className="space-y-6">
@@ -174,14 +201,31 @@ export default function EstudiantesPage() {
 
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar estudiante..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar estudiante..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="whitespace-nowrap hidden md:block">Filtrar por Nivel:</Label>
+              <select
+                value={selectedNivel}
+                onChange={(e) => setSelectedNivel(e.target.value)}
+                className="w-full h-10 px-3 py-2 bg-background border rounded-md text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <option value="all">Todos los niveles</option>
+                {niveles.map((nivel) => (
+                  <option key={nivel.id} value={nivel.id}>
+                    {nivel.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -192,73 +236,87 @@ export default function EstudiantesPage() {
         </div>
       ) : filtered.length > 0 ? (
         <div className="grid gap-3">
-          {filtered.map((est) => (
-            <Card key={est.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-medium">
-                    {est.nombre[0]}{est.apellido[0]}
-                  </div>
-                  <div>
-                    <p className="font-medium">{est.nombre} {est.apellido}</p>
-                    <p className="text-sm text-muted-foreground">@{est.username}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Contraseña temporal - solo visible para ADMIN/DIRECTOR */}
-                  {canSeePasswords && est.passwordTemporal && (
-                    <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
-                      <span className="text-xs text-yellow-700">
-                        {visiblePasswords.has(est.id) ? est.passwordTemporal : '******'}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => togglePasswordVisibility(est.id)}
-                        title={visiblePasswords.has(est.id) ? 'Ocultar' : 'Ver contraseña'}
-                      >
-                        {visiblePasswords.has(est.id) ? (
-                          <EyeOff className="w-3 h-3 text-yellow-600" />
-                        ) : (
-                          <Eye className="w-3 h-3 text-yellow-600" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => copyToClipboard(est.passwordTemporal!)}
-                        title="Copiar"
-                      >
-                        <Copy className="w-3 h-3 text-yellow-600" />
-                      </Button>
+          {filtered.map((est) => {
+            // Obtener el nombre del nivel si tiene inscripciones
+            const nivelName = est.inscripciones?.[0]?.clase.nivel.nombre;
+
+            return (
+              <Card key={est.id}>
+                <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-medium">
+                      {est.nombre[0]}{est.apellido[0]}
                     </div>
-                  )}
-                  {canSeePasswords && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleResetPassword(est.id)}
-                      title="Resetear contraseña"
-                    >
-                      <KeyRound className="w-4 h-4" />
-                    </Button>
-                  )}
-                  <Link href={`/dashboard/estudiantes/${est.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="w-4 h-4 mr-1" /> Ver
-                    </Button>
-                  </Link>
-                  <Link href={`/dashboard/estudiantes/${est.id}/boletin`}>
-                    <Button variant="outline" size="sm">
-                      <FileText className="w-4 h-4 mr-1" /> Boletín
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <div>
+                      <p className="font-medium">{est.nombre} {est.apellido}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">@{est.username}</p>
+                        {nivelName && (
+                          <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">
+                            {nivelName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+                    {/* Contraseña temporal - solo visible para ADMIN/DIRECTOR */}
+                    {canSeePasswords && est.passwordTemporal && (
+                      <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                        <span className="text-xs text-yellow-700">
+                          {visiblePasswords.has(est.id) ? est.passwordTemporal : '******'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => togglePasswordVisibility(est.id)}
+                          title={visiblePasswords.has(est.id) ? 'Ocultar' : 'Ver contraseña'}
+                        >
+                          {visiblePasswords.has(est.id) ? (
+                            <EyeOff className="w-3 h-3 text-yellow-600" />
+                          ) : (
+                            <Eye className="w-3 h-3 text-yellow-600" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard(est.passwordTemporal!)}
+                          title="Copiar"
+                        >
+                          <Copy className="w-3 h-3 text-yellow-600" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      {canSeePasswords && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleResetPassword(est.id)}
+                          title="Resetear contraseña"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Link href={`/dashboard/estudiantes/${est.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="w-4 h-4 mr-1" /> Ver
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/estudiantes/${est.id}/boletin`}>
+                        <Button variant="outline" size="sm">
+                          <FileText className="w-4 h-4 mr-1" /> Boletín
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>

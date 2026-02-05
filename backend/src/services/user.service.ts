@@ -138,6 +138,24 @@ export const findUsersByInstitucion = async (institucionId: string, role?: strin
       fotoUrl: true,
       debeCambiarPassword: true,
       createdAt: true,
+      // Incluir nivel a través de inscripciones para estudiantes
+      ...(role === Role.ESTUDIANTE && {
+        inscripciones: {
+          take: 1,
+          select: {
+            clase: {
+              select: {
+                nivel: {
+                  select: {
+                    id: true,
+                    nombre: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      })
     },
     orderBy: { createdAt: 'desc' },
   });

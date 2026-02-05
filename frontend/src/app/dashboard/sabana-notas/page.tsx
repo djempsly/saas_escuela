@@ -277,10 +277,6 @@ export function BoletinIndividual({
   const colorClaro = nivelNombre.includes('6to') ? '#fef2f2' :
                      nivelNombre.includes('5to') ? '#f0fdf4' : '#eff6ff';
 
-  // Separar materias por tipo
-  const materiasGenerales = useMemo(() => materias.filter(m => m.tipo === 'GENERAL'), [materias]);
-  const modulosTecnicos = useMemo(() => materias.filter(m => m.tipo === 'TECNICA'), [materias]);
-
   // Calcular promedio por periodo para una materia
   const calcularPromedioPeriodo = (cal: Calificacion | undefined, periodo: 'p1' | 'p2' | 'p3' | 'p4', rp: 'rp1' | 'rp2' | 'rp3' | 'rp4') => {
     if (!cal) return 0;
@@ -307,24 +303,38 @@ export function BoletinIndividual({
     return cf >= 70 ? 'A' : 'R';
   };
 
+  // Usar asignaturas estáticas del MINERD
+  // Buscar la materia del backend que coincida con la asignatura MINERD (por código o nombre)
+  const findMateriaByAsignatura = useCallback((asignatura: { codigo: string; nombre: string }) => {
+    return materias.find(m =>
+      m.codigo === asignatura.codigo ||
+      m.nombre.toLowerCase().includes(asignatura.nombre.toLowerCase().split(' ')[0]) ||
+      asignatura.nombre.toLowerCase().includes(m.nombre.toLowerCase().split(' ')[0])
+    );
+  }, [materias]);
+
+  // Módulos técnicos del backend (estos sí vienen dinámicos según la especialidad)
+  const modulosTecnicos = useMemo(() => materias.filter(m => m.tipo === 'TECNICA'), [materias]);
+
   // Generar lista de celdas editables para navegación con Tab
   const editableCells = useMemo(() => {
     const cells: EditableCell[] = [];
 
     // Asignaturas generales
-    materiasGenerales.forEach((materia) => {
-      const cal = estudiante.calificaciones[materia.id];
-      const canEdit = canEditMateria(materia.id, cal);
+    ASIGNATURAS_GENERALES_MINERD.forEach((asignatura, asigIdx) => {
+      const materia = findMateriaByAsignatura(asignatura);
+      const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
+      const canEdit = materia ? canEditMateria(materia.id, cal) : false;
 
       if (canEdit && !isReadOnly) {
         COMPETENCIAS.forEach((comp, compIdx) => {
           PERIODOS.forEach((p, perIdx) => {
-            const cellId = `${materia.id}-${comp.id}-${p}`;
+            const cellId = `${asignatura.codigo}-${comp.id}-${p}`;
             cells.push({
               cellId,
               claseId: cal?.claseId || null,
               periodo: p.toLowerCase(),
-              asignaturaIndex: 0, // No se usa en esta versión
+              asignaturaIndex: asigIdx,
               competenciaIndex: compIdx,
               periodoIndex: perIdx,
             });
@@ -334,7 +344,7 @@ export function BoletinIndividual({
     });
 
     // Módulos técnicos
-    modulosTecnicos.forEach((modulo) => {
+    modulosTecnicos.forEach((modulo, modIdx) => {
       const cal = estudiante.calificaciones[modulo.id];
       const canEdit = canEditMateria(modulo.id, cal);
 
@@ -346,7 +356,7 @@ export function BoletinIndividual({
             cellId,
             claseId: cal?.claseId || null,
             periodo: ra, // "RA1", "RA2"...
-            asignaturaIndex: 0, // No se usa
+            asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
             competenciaIndex: 0,
             periodoIndex: raIdx,
           });
@@ -355,7 +365,7 @@ export function BoletinIndividual({
     });
 
     return cells;
-  }, [estudiante.calificaciones, canEditMateria, isReadOnly, materiasGenerales, modulosTecnicos]);
+  }, [findMateriaByAsignatura, estudiante.calificaciones, canEditMateria, isReadOnly, modulosTecnicos]);
 
   // Encontrar siguiente celda editable
   const findNextCell = useCallback((currentCellId: string, reverse: boolean = false) => {
@@ -378,25 +388,29 @@ export function BoletinIndividual({
 
   // Obtener el valor actual de una celda por su ID
   const getCellValue = useCallback((nextCell: EditableCell) => {
-    // Extraer materiaId del cellId
-    let materiaId = '';
+    // Verificar si es un módulo técnico (cellId comienza con "modulo-")
     if (nextCell.cellId.startsWith('modulo-')) {
-      materiaId = nextCell.cellId.split('-')[1];
+      // Extraer el moduloId del cellId
+      const moduloIdx = nextCell.asignaturaIndex - ASIGNATURAS_GENERALES_MINERD.length;
+      const modulo = modulosTecnicos[moduloIdx];
+      if (modulo) {
+        const cal = estudiante.calificaciones[modulo.id];
+        // Para RAs, el valor está en el mapa 'ras' con la clave del periodo ("RA1", etc)
+        const value = cal?.ras?.[nextCell.periodo];
+        return typeof value === 'number' && value !== 0 ? value : null;
+      }
     } else {
-      materiaId = nextCell.cellId.split('-')[0];
+      // Asignatura general
+      const asignatura = ASIGNATURAS_GENERALES_MINERD[nextCell.asignaturaIndex];
+      if (asignatura) {
+        const materia = findMateriaByAsignatura(asignatura);
+        const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
+        const value = cal?.[nextCell.periodo as keyof Calificacion];
+        return typeof value === 'number' && value !== 0 ? value : null;
+      }
     }
-
-    const cal = estudiante.calificaciones[materiaId];
-    if (!cal) return null;
-
-    if (nextCell.cellId.startsWith('modulo-')) {
-      const value = cal.ras?.[nextCell.periodo];
-      return typeof value === 'number' && value !== 0 ? value : null;
-    } else {
-      const value = cal[nextCell.periodo as keyof Calificacion];
-      return typeof value === 'number' && value !== 0 ? value : null;
-    }
-  }, [estudiante.calificaciones]);
+    return null;
+  }, [estudiante.calificaciones, findMateriaByAsignatura, modulosTecnicos]);
 
   // Guardar y cerrar celda actual
   const saveAndCloseCell = useCallback(async (claseId: string | null, periodo: string, moveToNext?: EditableCell | null) => {
@@ -724,15 +738,16 @@ export function BoletinIndividual({
                 </tr>
               </thead>
               <tbody>
-                {materiasGenerales.map((materia, idx) => {
-                  const isSelectedMateria = selectedMateriaId === materia.id;
-                  const cal = estudiante.calificaciones[materia.id];
-                  const canEdit = canEditMateria(materia.id, cal);
+                {ASIGNATURAS_GENERALES_MINERD.map((asignatura, idx) => {
+                  const materia = findMateriaByAsignatura(asignatura);
+                  const isSelectedMateria = materia && selectedMateriaId === materia.id;
+                  const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
+                  const canEdit = materia ? canEditMateria(materia.id, cal) : false;
                   const cf = calcularCF(cal);
                   const situacion = calcularSituacion(cf);
 
                   return (
-                    <tr key={materia.id} style={{
+                    <tr key={idx} style={{
                       backgroundColor: isSelectedMateria ? '#fff7ed' : 'transparent',
                       outline: isSelectedMateria ? '2px solid #f97316' : 'none',
                       zIndex: isSelectedMateria ? 10 : 0,
@@ -746,7 +761,7 @@ export function BoletinIndividual({
                         fontSize: '8px',
                         backgroundColor: isSelectedMateria ? '#ffedd5' : (canEdit && !isReadOnly ? '#e0f2fe' : 'transparent')
                       }}>
-                        {materia.nombre}
+                        {asignatura.nombre}
                         {isSelectedMateria && <span style={{ color: '#f97316', fontSize: '7px' }}> (Seleccionada)</span>}
                         {!isSelectedMateria && canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '7px' }}> (e)</span>}
                       </td>
@@ -754,7 +769,7 @@ export function BoletinIndividual({
                         PERIODOS.map(p => {
                           const pLower = p.toLowerCase() as 'p1' | 'rp1' | 'p2' | 'rp2' | 'p3' | 'rp3' | 'p4' | 'rp4';
                           const valor = cal?.[pLower] || 0;
-                          const cellId = `${materia.id}-${comp.id}-${p}`;
+                          const cellId = `${asignatura.codigo}-${comp.id}-${p}`;
                           const isEditing = editingCell === cellId;
 
                           return (
@@ -1047,7 +1062,10 @@ export function BoletinIndividual({
               <div style={{ border: '1px solid black', padding: '5px', textAlign: 'center', backgroundColor: '#fef3c7' }}>
                 <strong>PROMEDIO GENERAL:</strong> {
                   (() => {
-                    const cfs = materiasGenerales.map(m => calcularCF(estudiante.calificaciones[m.id])).filter((cf: number) => cf > 0);
+                    const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                      const m = findMateriaByAsignatura(a);
+                      return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                    }).filter((cf: number) => cf > 0);
                     return cfs.length > 0 ? Math.round(cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length) : '-';
                   })()
                 }
@@ -1057,7 +1075,10 @@ export function BoletinIndividual({
                 padding: '5px',
                 textAlign: 'center',
                 backgroundColor: (() => {
-                  const cfs = materiasGenerales.map(m => calcularCF(estudiante.calificaciones[m.id])).filter((cf: number) => cf > 0);
+                  const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                    const m = findMateriaByAsignatura(a);
+                    return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                  }).filter((cf: number) => cf > 0);
                   const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                   return prom >= 70 ? '#dcfce7' : prom > 0 ? '#fee2e2' : '#f3f4f6';
                 })(),
@@ -1065,7 +1086,10 @@ export function BoletinIndividual({
               }}>
                 <strong>SITUACIÓN FINAL:</strong> {
                   (() => {
-                    const cfs = materiasGenerales.map(m => calcularCF(estudiante.calificaciones[m.id])).filter((cf: number) => cf > 0);
+                    const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                      const m = findMateriaByAsignatura(a);
+                      return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                    }).filter((cf: number) => cf > 0);
                     const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                     return prom >= 70 ? (isHT ? 'ADMIS' : 'APROBADO') : prom > 0 ? (isHT ? 'ÉCHEC' : 'REPROBADO') : (isHT ? 'EN COURS' : 'PENDIENTE');
                   })()
@@ -1153,8 +1177,9 @@ export function BoletinIndividual({
                       fontSize: '16px'
                     }}>
                       {(() => {
-                        const cfs = materiasGenerales.map(m => {
-                          return calcularCF(estudiante.calificaciones[m.id]);
+                        const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                          const m = findMateriaByAsignatura(a);
+                          return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
                         }).filter((cf: number) => cf > 0);
                         const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                         return prom >= 70 ? 'X' : '';
@@ -1174,8 +1199,9 @@ export function BoletinIndividual({
                       fontSize: '16px'
                     }}>
                       {(() => {
-                        const cfs = materiasGenerales.map(m => {
-                          return calcularCF(estudiante.calificaciones[m.id]);
+                        const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                          const m = findMateriaByAsignatura(a);
+                          return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
                         }).filter((cf: number) => cf > 0);
                         const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                         return prom > 0 && prom < 70 ? 'X' : '';
@@ -1283,16 +1309,7 @@ export default function SabanaNotasPage() {
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
 
   const isDocente = user?.role === 'DOCENTE';
-  const isReadOnlyBase = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
-  
-  // Determinar si el ciclo seleccionado está activo
-  const isCicloActivo = useMemo(() => {
-    const ciclo = ciclosLectivos.find(c => c.id === selectedCiclo);
-    return ciclo ? ciclo.activo : true; // Por defecto true si no se encuentra
-  }, [ciclosLectivos, selectedCiclo]);
-
-  // Es solo lectura si el rol lo indica O si el ciclo está desactivado
-  const isReadOnly = isReadOnlyBase || !isCicloActivo;
+  const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
 
   // Obtener materias del docente para el nivel seleccionado
   const materiasDocente = useMemo(() => {

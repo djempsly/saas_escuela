@@ -45,7 +45,6 @@ interface Usuario {
 }
 
 const ROLES_DISPLAY: Record<string, string> = {
-  ADMIN: 'Administrador',
   DIRECTOR: 'Director',
   COORDINADOR: 'Coordinador',
   COORDINADOR_ACADEMICO: 'Coord. Académico',

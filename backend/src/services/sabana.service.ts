@@ -142,12 +142,9 @@ export const getSabanaByNivel = async (
   // Si se requiere trimestral (3), se debería configurar a nivel de institución, pero por defecto usaremos 4 para compatibilidad visual.
   const numeroPeriodos = 4;
 
-  // 3. Obtener Materias (Generales y Técnicas)
+  // 3. Obtener Materias (Todas las de la institución)
   const materiasDb = await prisma.materia.findMany({
-    where: {
-      institucionId,
-      OR: [{ esOficial: true }, { tipo: 'TECNICA' }]
-    },
+    where: { institucionId },
     orderBy: { orden: 'asc' },
   });
 

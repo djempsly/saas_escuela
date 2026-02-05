@@ -114,8 +114,9 @@ export default function StudentCobrosPage() {
         cobrosApi.getMetodosPago(),
       ]);
       setEstudiante(estRes.data?.data || estRes.data);
-      setCobros(cobrosRes.data || []);
-      setMetodosPago(metodosRes.data || []);
+      const cobrosData = cobrosRes.data?.data || cobrosRes.data;
+      setCobros(cobrosData?.cobros || []);
+      setMetodosPago(metodosRes.data?.data || metodosRes.data || []);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar datos de cobros');
