@@ -23,7 +23,7 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
     }
 
-    const niveles = await getNivelesParaSabana(user.institucionId, user.id, user.role);
+    const niveles = await getNivelesParaSabana(user.institucionId, user.usuarioId, user.rol);
     return res.json(niveles);
   } catch (error: any) {
     console.error('Error obteniendo niveles para sábana:', error);
@@ -81,7 +81,7 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
 const updateCalificacionSchema = z.object({
   claseId: z.string().min(1, 'claseId es requerido'),
   estudianteId: z.string().min(1, 'estudianteId es requerido'),
-  periodo: z.enum(['p1', 'p2', 'p3', 'p4', 'rp1', 'rp2', 'rp3', 'rp4']),
+  periodo: z.string().min(2, 'periodo es requerido'), // Soporta p1-p4 y RA1-RA10
   valor: z.number().min(0).max(100).nullable(),
 });
 
@@ -112,8 +112,8 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       estudianteId,
       periodo,
       valor,
-      user.id,
-      user.role,
+      user.usuarioId,
+      user.rol,
       user.institucionId
     );
 

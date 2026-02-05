@@ -45,6 +45,9 @@ export interface Calificacion {
   cex: number | null;
   promedioFinal: number | null;
   situacion: string | null;
+  // Notas Técnicas (RA)
+  ras?: { [key: string]: number };
+  
   claseId: string | null;
   docenteId: string | null;
   docenteNombre: string | null;
@@ -100,12 +103,15 @@ interface CicloLectivo {
 
 type ViewMode = 'list' | 'boletin';
 
-// ==================== SISTEMAS EDUCATIVOS ====================
+// ==================== SISTEMAS EDUCATIVOS Y RAs ====================
 
 const SISTEMAS_CON_MODULOS_TECNICOS = ['POLITECNICO_DO'];
 const SISTEMAS_PRIMARIA = ['PRIMARIA_DO', 'PRIMARIA_HT'];
 const SISTEMAS_INICIAL = ['INICIAL_DO', 'INICIAL_HT'];
 const SISTEMAS_SECUNDARIA = ['SECUNDARIA_GENERAL_DO', 'SECUNDARIA_HT', 'POLITECNICO_DO'];
+
+// Lista de RAs para mostrar en la tabla
+const RAS_DISPLAY = ['RA1', 'RA2', 'RA3', 'RA4', 'RA5', 'RA6', 'RA7'];
 
 // Determinar el tipo de formato de sábana según el sistema educativo
 const getFormatoSabana = (sistemaEducativo: string): 'politecnico' | 'secundaria' | 'primaria' | 'inicial' => {
@@ -217,7 +223,7 @@ function StudentList({
   );
 }
 
-// ==================== COMPONENTE BOLETÍN INDIVIDUAL - FORMATO MINERD ====================
+// ==================== COMPONENTE BOLETÍN INDIVIDUAL ====================
 
 // Helper para generar lista de celdas editables para navegación
 interface EditableCell {
@@ -225,7 +231,7 @@ interface EditableCell {
   claseId: string | null;
   periodo: string;
   asignaturaIndex: number;
-  competenciaIndex: number;
+  competenciaIndex: number; // 0 para RA
   periodoIndex: number;
 }
 
@@ -341,15 +347,16 @@ export function BoletinIndividual({
       const canEdit = canEditMateria(modulo.id, cal);
 
       if (canEdit && !isReadOnly) {
-        PERIODOS.forEach((p, perIdx) => {
-          const cellId = `modulo-${modulo.id}-${p}`;
+        // Para técnicos usamos RAs en lugar de PERIODOS
+        RAS_DISPLAY.forEach((ra, raIdx) => {
+          const cellId = `modulo-${modulo.id}-${ra}`;
           cells.push({
             cellId,
             claseId: cal?.claseId || null,
-            periodo: p.toLowerCase(),
+            periodo: ra, // "RA1", "RA2"...
             asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
             competenciaIndex: 0,
-            periodoIndex: perIdx,
+            periodoIndex: raIdx,
           });
         });
       }
@@ -386,7 +393,8 @@ export function BoletinIndividual({
       const modulo = modulosTecnicos[moduloIdx];
       if (modulo) {
         const cal = estudiante.calificaciones[modulo.id];
-        const value = cal?.[nextCell.periodo as keyof Calificacion];
+        // Para RAs, el valor está en el mapa 'ras' con la clave del periodo ("RA1", etc)
+        const value = cal?.ras?.[nextCell.periodo];
         return typeof value === 'number' && value !== 0 ? value : null;
       }
     } else {
@@ -466,6 +474,9 @@ export function BoletinIndividual({
 
   const handlePrint = () => window.print();
 
+  // Detectar si es sistema Haitiano
+  const isHT = sabanaData.metadatos.pais === 'HT';
+
   return (
     <>
       {/* CONTROLES (No se imprimen) */}
@@ -493,13 +504,11 @@ export function BoletinIndividual({
             <SelectTrigger className="w-[280px]">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              {estudiantes.map((est, idx) => (
+            <SelectContent>{estudiantes.map((est, idx) => (
                 <SelectItem key={est.id} value={idx.toString()}>
                   {idx + 1}. {est.apellido.toUpperCase()}, {est.nombre}
                 </SelectItem>
-              ))}
-            </SelectContent>
+              ))}</SelectContent>
           </Select>
 
           <Button
@@ -539,14 +548,14 @@ export function BoletinIndividual({
         <div
           className="boletin-page bg-white relative mx-auto"
           style={{
-            width: '35.56cm',
-            maxWidth: '35.56cm',
+            width: '38cm',
+            maxWidth: '38cm',
             minHeight: '21.59cm',
             padding: '0.8cm',
             paddingLeft: '1.5cm',
             boxSizing: 'border-box',
             fontFamily: 'Arial, sans-serif',
-            fontSize: '9px',
+            fontSize: '10px',
             border: '1px solid #ccc',
             marginBottom: '20px',
             pageBreakAfter: 'always',
@@ -568,7 +577,7 @@ export function BoletinIndividual({
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 900,
-              fontSize: '11px',
+              fontSize: '12px',
               textTransform: 'uppercase',
               letterSpacing: '1px',
             }}
@@ -581,45 +590,34 @@ export function BoletinIndividual({
             {/* Header con Logo MINERD */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
               <div style={{ textAlign: 'center', flex: 1 }}>
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
-                  alt="MINERD"
-                  style={{ width: '60px', marginBottom: '5px' }}
-                />
-                <p style={{ fontSize: '8px', margin: 0, fontWeight: 'bold' }}>Viceministerio de Servicios Técnicos y Pedagógicos</p>
-                <p style={{ fontSize: '7px', margin: 0 }}>
+                <div style={{ width: '70px', height: '70px', backgroundColor: '#f0f0f0', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', border: '1px solid #ccc' }}>
+                  {isHT ? 'MENFP' : 'MINERD'}
+                </div>
+                <p style={{ fontSize: '9px', margin: 0, fontWeight: 'bold' }}>
+                  {isHT ? 'Ministère de l\'Éducation Nationale' : 'Viceministerio de Servicios Técnicos y Pedagógicos'}
+                </p>
+                <p style={{ fontSize: '8px', margin: 0 }}>
                   {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
-                    ? 'Dirección de Educación Primaria'
-                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'inicial'
-                    ? 'Dirección de Educación Inicial'
-                    : 'Dirección de Educación Secundaria'}
+                    ? (isHT ? 'Direction de l\'Enseignement Fondamental' : 'Dirección de Educación Primaria')
+                    : (isHT ? 'Direction de l\'Enseignement Secondaire' : 'Dirección de Educación Secundaria')}
                 </p>
                 {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
-                  <p style={{ fontSize: '7px', margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
+                  <p style={{ fontSize: '8px', margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
                 )}
               </div>
               <div style={{ textAlign: 'center', flex: 1 }}>
-                <h1 style={{ fontSize: '14px', margin: 0, color: colorPrimario, fontWeight: 900 }}>
-                  BOLETÍN DE CALIFICACIONES
+                <h1 style={{ fontSize: '16px', margin: 0, color: colorPrimario, fontWeight: 900 }}>
+                  {isHT ? 'BULLETIN SCOLAIRE' : 'BOLETÍN DE CALIFICACIONES'}
                 </h1>
-                <p style={{ fontSize: '11px', margin: '3px 0', fontWeight: 'bold' }}>
+                <p style={{ fontSize: '12px', margin: '3px 0', fontWeight: 'bold' }}>
                   {nivelNombre || 'Nivel Secundario'}
                 </p>
-                <p style={{ fontSize: '9px', margin: 0 }}>
-                  {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico'
-                    ? 'Modalidad Técnico Profesional'
-                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'secundaria'
-                    ? 'Educación Secundaria General'
-                    : getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
-                    ? 'Educación Primaria'
-                    : 'Nivel Inicial'}
-                </p>
-                <p style={{ fontSize: '9px', margin: '3px 0' }}>
-                  Año Escolar: {sabanaData.cicloLectivo?.nombre || '20__ - 20__'}
+                <p style={{ fontSize: '10px', margin: '3px 0' }}>
+                  {isHT ? 'Année Académique' : 'Año Escolar'}: {sabanaData.cicloLectivo?.nombre || '20__ - 20__'}
                 </p>
               </div>
-              <div style={{ textAlign: 'right', flex: 1, fontSize: '8px' }}>
-                <p><strong>Estudiante {currentIndex + 1} de {totalEstudiantes}</strong></p>
+              <div style={{ textAlign: 'right', flex: 1, fontSize: '9px' }}>
+                <p><strong>{isHT ? 'Élève' : 'Estudiante'} {currentIndex + 1} / {totalEstudiantes}</strong></p>
               </div>
             </div>
 
@@ -627,18 +625,16 @@ export function BoletinIndividual({
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '5px',
+              gap: '8px',
               marginBottom: '10px',
-              fontSize: '9px',
+              fontSize: '10px',
               borderBottom: `2px solid ${colorPrimario}`,
               paddingBottom: '8px'
             }}>
-              <p style={{ margin: 0 }}><strong>Nombre Completo:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
-              <p style={{ margin: 0 }}><strong>Nivel/Grado:</strong> {nivelNombre}</p>
-              <p style={{ margin: 0 }}><strong>Centro Educativo:</strong> ________________</p>
-              <p style={{ margin: 0 }}><strong>Código del Centro:</strong> ____</p>
-              <p style={{ margin: 0 }}><strong>Distrito Educativo:</strong> ____</p>
-              <p style={{ margin: 0 }}><strong>Dirección Regional:</strong> ____</p>
+              <p style={{ margin: 0 }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
+              <p style={{ margin: 0 }}><strong>{isHT ? 'Niveau/Classe' : 'Nivel/Grado'}:</strong> {nivelNombre}</p>
+              <p style={{ margin: 0 }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> ________________</p>
+              <p style={{ margin: 0 }}><strong>{isHT ? 'Code' : 'Código del Centro'}:</strong> ____</p>
             </div>
 
             {/* TÍTULO ASIGNATURAS GENERALES */}
@@ -647,10 +643,10 @@ export function BoletinIndividual({
               color: 'white',
               padding: '4px 8px',
               fontWeight: 'bold',
-              fontSize: '9px',
+              fontSize: '10px',
               marginBottom: '3px'
             }}>
-              ASIGNATURAS GENERALES (FORMACIÓN FUNDAMENTAL)
+              {isHT ? 'MATIÈRES GÉNÉRALES' : 'ASIGNATURAS GENERALES (FORMACIÓN FUNDAMENTAL)'}
             </div>
 
             {/* TABLA DE COMPETENCIAS - ASIGNATURAS GENERALES */}
@@ -658,36 +654,52 @@ export function BoletinIndividual({
               width: '100%',
               borderCollapse: 'collapse',
               marginBottom: '10px',
-              fontSize: '6px'
+              fontSize: '8px'
             }}>
               <thead>
                 <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '3px', width: '12%', textAlign: 'left' }}>ASIGNATURAS</th>
+                  <th rowSpan={2} style={{ border: '1px solid black', padding: '3px', width: '12%', textAlign: 'left' }}>
+                    {isHT ? 'MATIÈRES' : 'ASIGNATURAS'}
+                  </th>
                   {COMPETENCIAS.map(comp => (
-                    <th key={comp.id} colSpan={8} style={{ border: '1px solid black', padding: '1px', fontSize: '5px' }}>
+                    <th key={comp.id} colSpan={8} style={{ border: '1px solid black', padding: '1px', fontSize: '7px' }}>
                       {comp.corto}
                     </th>
                   ))}
-                  <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', fontSize: '5px' }}>
-                    PROM. PER.
+                  <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', fontSize: '7px' }}>
+                    {isHT ? 'PÉRIODES' : 'PROM. PER.'}
                   </th>
                   <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
-                    C.F.
+                    {isHT ? 'MOY.' : 'C.F.'}
                   </th>
                   <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
                     %AA
                   </th>
-                  <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', fontSize: '5px' }}>
-                    CALIFICACIÓN COMPLETIVA
-                  </th>
-                  <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '5px' }}>
-                    CALIFICACIÓN EXTRAORDINARIA
-                  </th>
-                  <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'black', width: '2.5%' }}>
-                    C.E.
-                  </th>
+                  {/* Columnas dinámicas según país */}
+                  {isHT ? (
+                    <>
+                      <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', width: '6%' }}>
+                        REPÊCHAGE
+                      </th>
+                      <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', width: '6%' }}>
+                        SESSION EXTRA
+                      </th>
+                    </>
+                  ) : (
+                    <>
+                      <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', fontSize: '7px' }}>
+                        CALIFICACIÓN COMPLETIVA
+                      </th>
+                      <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '7px' }}>
+                        CALIFICACIÓN EXTRAORDINARIA
+                      </th>
+                      <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'black', width: '2.5%' }}>
+                        C.E.
+                      </th>
+                    </>
+                  )}
                   <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
-                    SIT.
+                    {isHT ? 'RES.' : 'SIT.'}
                   </th>
                 </tr>
                 <tr style={{ backgroundColor: colorClaro }}>
@@ -696,28 +708,31 @@ export function BoletinIndividual({
                       <th key={`${comp.id}-${p}`} style={{
                         border: '1px solid black',
                         padding: '0px',
-                        fontSize: '5px',
+                        fontSize: '6px',
                         backgroundColor: p.startsWith('RP') ? '#e5e7eb' : 'transparent',
-                        minWidth: '12px'
+                        minWidth: '18px'
                       }}>
                         {p}
                       </th>
                     ))
                   ))}
                   {['P1', 'P2', 'P3', 'P4'].map(p => (
-                    <th key={`prom-${p}`} style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#fef3c7' }}>
+                    <th key={`prom-${p}`} style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#fef3c7' }}>
                       {p}
                     </th>
                   ))}
-                  {/* Completiva Headers */}
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb' }}>50% PCP</th>
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb' }}>50% CPC</th>
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#e5e7eb', fontWeight: 'bold' }}>C.C.</th>
                   
-                  {/* Extraordinaria Headers */}
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db' }}>30% PCP</th>
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db' }}>70% CPEx</th>
-                  <th style={{ border: '1px solid black', padding: '1px', fontSize: '5px', backgroundColor: '#d1d5db', fontWeight: 'bold' }}>C.Ex.</th>
+                  {/* Headers específicos por país */}
+                  {!isHT && (
+                    <>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb' }}>50% PCP</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb' }}>50% CPC</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb', fontWeight: 'bold' }}>C.C.</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>30% PCP</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>70% CPEx</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db', fontWeight: 'bold' }}>C.Ex.</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -735,11 +750,11 @@ export function BoletinIndividual({
                         padding: '2px',
                         fontWeight: 'bold',
                         textAlign: 'left',
-                        fontSize: '6px',
+                        fontSize: '8px',
                         backgroundColor: canEdit && !isReadOnly ? '#e0f2fe' : 'transparent'
                       }}>
                         {asignatura.nombre}
-                        {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
+                        {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '7px' }}> (e)</span>}
                       </td>
                       {COMPETENCIAS.map(comp => (
                         PERIODOS.map(p => {
@@ -755,14 +770,14 @@ export function BoletinIndividual({
                                 border: '1px solid black',
                                 padding: '1px',
                                 textAlign: 'center',
-                                fontSize: '6px',
+                                fontSize: '8px',
                                 backgroundColor: isEditing ? '#fef9c3' : (p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
                                 color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
                                 fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
                                 cursor: canEdit && !isReadOnly ? 'pointer' : 'default',
                                 transition: 'background-color 0.15s ease',
-                                minWidth: '15px',
-                                height: '15px'
+                                minWidth: '22px',
+                                height: '22px'
                               }}
                               onClick={() => handleCellClick(cellId, valor || null, canEdit)}
                             >
@@ -780,12 +795,12 @@ export function BoletinIndividual({
                                   disabled={isSaving}
                                   style={{
                                     width: '100%',
-                                    border: '1px solid #2563eb',
+                                    border: 'none',
                                     textAlign: 'center',
-                                    fontSize: '6px',
+                                    fontSize: '8px',
                                     backgroundColor: '#fef9c3',
                                     outline: 'none',
-                                    padding: '0'
+                                    padding: '2px'
                                   }}
                                 />
                               ) : (
@@ -796,16 +811,16 @@ export function BoletinIndividual({
                         })
                       ))}
                       {/* Promedios por periodo */}
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '8px' }}>
                         {calcularPromedioPeriodo(cal, 'p1', 'rp1') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '8px' }}>
                         {calcularPromedioPeriodo(cal, 'p2', 'rp2') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '8px' }}>
                         {calcularPromedioPeriodo(cal, 'p3', 'rp3') || '-'}
                       </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '6px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#fef3c7', fontSize: '8px' }}>
                         {calcularPromedioPeriodo(cal, 'p4', 'rp4') || '-'}
                       </td>
                       {/* C.F. */}
@@ -815,42 +830,51 @@ export function BoletinIndividual({
                         textAlign: 'center',
                         fontWeight: 'bold',
                         backgroundColor: '#fef3c7',
-                        fontSize: '7px',
+                        fontSize: '9px',
                         color: cf > 0 && cf < 70 ? '#dc2626' : 'inherit'
                       }}>
                         {cf || '-'}
                       </td>
                       {/* %AA */}
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#fef3c7', fontSize: '6px' }}>
+                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#fef3c7', fontSize: '8px' }}>
                         -
                       </td>
                       
-                      {/* COMPLETIVA */}
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
-                        {cal?.cpc30 ? Math.round(cal.cpc30) : '-'}
-                      </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
-                        {cal?.cpcTotal ? Math.round(cal.cpcTotal) : '-'}
-                      </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '6px' }}>
-                        {cal?.cc || '-'}
-                      </td>
-
-                      {/* EXTRAORDINARIA */}
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '6px' }}>
-                        {cal?.cpex30 ? Math.round(cal.cpex30) : '-'}
-                      </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '6px' }}>
-                        {cal?.cpex70 || '-'}
-                      </td>
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '6px' }}>
-                        {cal?.cex || '-'}
-                      </td>
-
-                      {/* EVALUACION ESPECIAL */}
-                      <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '6px' }}>
-                        -
-                      </td>
+                      {/* Columnas Variables */}
+                      {isHT ? (
+                        <>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                            {cal?.cc || '-'} {/* Reusamos CC para Repêchage */}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                            {cal?.cex || '-'} {/* Reusamos CEX para Session Extra */}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                            {cal?.cpc30 ? Math.round(cal.cpc30) : '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                            {cal?.cpcTotal ? Math.round(cal.cpcTotal) : '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                            {cal?.cc || '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                            {cal?.cpex30 ? Math.round(cal.cpex30) : '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                            {cal?.cpex70 || '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                            {cal?.cex || '-'}
+                          </td>
+                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '8px' }}>
+                            -
+                          </td>
+                        </>
+                      )}
 
                       {/* Situación */}
                       <td style={{
@@ -859,7 +883,7 @@ export function BoletinIndividual({
                         textAlign: 'center',
                         fontWeight: 'bold',
                         backgroundColor: situacion === 'A' ? '#dcfce7' : situacion === 'R' ? '#fee2e2' : '#f3f4f6',
-                        fontSize: '7px'
+                        fontSize: '8px'
                       }}>
                         {situacion}
                       </td>
@@ -888,14 +912,9 @@ export function BoletinIndividual({
                   <thead>
                     <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
                       <th style={{ border: '1px solid black', padding: '4px', width: '30%', textAlign: 'left' }}>MÓDULO TÉCNICO</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P1</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP1</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P2</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP2</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P3</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP3</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%' }}>P4</th>
-                      <th style={{ border: '1px solid black', padding: '3px', width: '7%', backgroundColor: '#374151' }}>RP4</th>
+                      {RAS_DISPLAY.map(ra => (
+                        <th key={ra} style={{ border: '1px solid black', padding: '3px' }}>{ra}</th>
+                      ))}
                       <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>C.F.</th>
                       <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>SIT.</th>
                     </tr>
@@ -904,7 +923,16 @@ export function BoletinIndividual({
                     {modulosTecnicos.map((modulo, idx) => {
                       const cal = estudiante.calificaciones[modulo.id];
                       const canEdit = canEditMateria(modulo.id, cal);
-                      const cf = calcularCF(cal);
+                      
+                      // Calcular CF de los RAs (Promedio simple por ahora)
+                      let sumRa = 0;
+                      let countRa = 0;
+                      if (cal?.ras) {
+                        Object.values(cal.ras).forEach(val => {
+                          if (val > 0) { sumRa += val; countRa++; }
+                        });
+                      }
+                      const cf = countRa > 0 ? Math.round(sumRa / countRa) : 0;
                       const situacion = calcularSituacion(cf);
 
                       return (
@@ -919,10 +947,9 @@ export function BoletinIndividual({
                             {modulo.nombre || ''}
                             {canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
                           </td>
-                          {PERIODOS.map(p => {
-                            const pLower = p.toLowerCase() as 'p1' | 'rp1' | 'p2' | 'rp2' | 'p3' | 'rp3' | 'p4' | 'rp4';
-                            const valor = cal?.[pLower] || 0;
-                            const cellId = `modulo-${modulo.id}-${p}`;
+                          {RAS_DISPLAY.map(ra => {
+                            const valor = cal?.ras?.[ra] || 0;
+                            const cellId = `modulo-${modulo.id}-${ra}`;
                             const isEditingThis = editingCell === cellId;
 
                             return (
@@ -933,10 +960,12 @@ export function BoletinIndividual({
                                   padding: '3px',
                                   textAlign: 'center',
                                   fontSize: '8px',
-                                  backgroundColor: isEditingThis ? '#fef9c3' : (p.startsWith('RP') ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
+                                  backgroundColor: isEditingThis ? '#fef9c3' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent'),
                                   color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
                                   fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
-                                  cursor: canEdit && !isReadOnly ? 'pointer' : 'default'
+                                  cursor: canEdit && !isReadOnly ? 'pointer' : 'default',
+                                  minWidth: '25px',
+                                  height: '25px'
                                 }}
                                 onClick={() => handleCellClick(cellId, valor || null, canEdit)}
                               >
@@ -948,13 +977,13 @@ export function BoletinIndividual({
                                     step="1"
                                     value={tempValue}
                                     onChange={(e) => setTempValue(e.target.value)}
-                                    onBlur={() => handleCellBlur(cal?.claseId || null, pLower)}
-                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, pLower, cellId)}
+                                    onBlur={() => handleCellBlur(cal?.claseId || null, ra)}
+                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, ra, cellId)}
                                     autoFocus
                                     disabled={isSaving}
                                     style={{
                                       width: '100%',
-                                      border: '1px solid #2563eb',
+                                      border: 'none',
                                       textAlign: 'center',
                                       fontSize: '8px',
                                       backgroundColor: '#fef9c3',
@@ -1006,13 +1035,13 @@ export function BoletinIndividual({
               fontSize: '8px'
             }}>
               <div style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
-                <strong>Calificación Completiva:</strong> ____
+                <strong>{isHT ? 'Repêchage' : 'Calificación Completiva'}:</strong> ____
               </div>
               <div style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
-                <strong>Calificación Extraordinaria:</strong> ____
+                <strong>{isHT ? 'Session Extra' : 'Calificación Extraordinaria'}:</strong> ____
               </div>
               <div style={{ border: '1px solid black', padding: '5px', textAlign: 'center' }}>
-                <strong>Evaluación Especial:</strong> ____
+                <strong>{isHT ? 'Observation' : 'Evaluación Especial'}:</strong> ____
               </div>
               <div style={{ border: '1px solid black', padding: '5px', textAlign: 'center', backgroundColor: '#fef3c7' }}>
                 <strong>PROMEDIO GENERAL:</strong> {
@@ -1046,7 +1075,7 @@ export function BoletinIndividual({
                       return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
                     }).filter((cf: number) => cf > 0);
                     const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
-                    return prom >= 70 ? 'APROBADO' : prom > 0 ? 'REPROBADO' : 'PENDIENTE';
+                    return prom >= 70 ? (isHT ? 'ADMIS' : 'APROBADO') : prom > 0 ? (isHT ? 'ÉCHEC' : 'REPROBADO') : (isHT ? 'EN COURS' : 'PENDIENTE');
                   })()
                 }
               </div>
@@ -1054,9 +1083,9 @@ export function BoletinIndividual({
 
             {/* Leyenda de competencias */}
             <div style={{ fontSize: '6px', marginTop: '5px', borderTop: '1px solid #ccc', paddingTop: '5px' }}>
-              <strong>Competencias:</strong> {COMPETENCIAS.map(c => `${c.corto} = ${c.nombre}`).join(' | ')}
+              <strong>{isHT ? 'Compétences:' : 'Competencias:'}</strong> {COMPETENCIAS.map(c => `${c.corto} = ${c.nombre}`).join(' | ')}
               <br />
-              <strong>Leyenda:</strong> P = Período | RP = Recuperación | C.F. = Calificación Final | %AA = % Asistencia Acumulada | SIT. = Situación (A=Aprobado, R=Reprobado, P=Pendiente)
+              <strong>{isHT ? 'Légende:' : 'Leyenda:'}</strong> P = {isHT ? 'Période' : 'Período'} | RP = {isHT ? 'Récupération' : 'Recuperación'} | C.F. = {isHT ? 'Note Finale' : 'Calificación Final'} | %AA = % {isHT ? 'Présence' : 'Asistencia Acumulada'} | SIT. = {isHT ? 'Résultat' : 'Situación'}
             </div>
           </div>
         </div>
@@ -1065,13 +1094,12 @@ export function BoletinIndividual({
         <div
           className="boletin-page bg-white relative mx-auto"
           style={{
-            width: '35.56cm',
-            maxWidth: '35.56cm',
+            width: '38cm',
             height: '21.59cm',
             padding: '1cm',
             boxSizing: 'border-box',
             fontFamily: 'Arial, sans-serif',
-            fontSize: '10px',
+            fontSize: '11px',
             border: '1px solid #ccc',
           }}
         >
@@ -1105,23 +1133,21 @@ export function BoletinIndividual({
             <div>
               <div style={{ marginBottom: '20px' }}>
                 <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  INFORMACIÓN DEL ESTUDIANTE
+                  {isHT ? 'INFORMATION DE L\'ÉTUDIANT' : 'INFORMACIÓN DEL ESTUDIANTE'}
                 </h3>
-                <p style={{ margin: '8px 0' }}><strong>Nombre Completo:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
-                <p style={{ margin: '8px 0' }}><strong>Matrícula:</strong> ________________________</p>
-                <p style={{ margin: '8px 0' }}><strong>Nivel/Grado:</strong> {sabanaData.nivel?.nombre || '________________________'}</p>
-                <p style={{ margin: '8px 0' }}><strong>Centro Educativo:</strong> ________________________</p>
-                <p style={{ margin: '8px 0' }}><strong>Código del Centro:</strong> ________</p>
-                <p style={{ margin: '8px 0' }}><strong>Distrito Educativo:</strong> ________</p>
-                <p style={{ margin: '8px 0' }}><strong>Dirección Regional:</strong> ________</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Matricule' : 'Matrícula'}:</strong> ________________________</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Niveau' : 'Nivel/Grado'}:</strong> {sabanaData.nivel?.nombre || '________________________'}</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> ________________________</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Code' : 'Código del Centro'}:</strong> ____</p>
               </div>
 
               {/* Situación Final */}
               <div style={{ marginTop: '30px' }}>
                 <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  SITUACIÓN FINAL DEL ESTUDIANTE
+                  {isHT ? 'RÉSULTAT FINAL' : 'SITUACIÓN FINAL DEL ESTUDIANTE'}
                 </h3>
-                <p style={{ margin: '10px 0' }}>Marca con una X:</p>
+                <p style={{ margin: '10px 0' }}>{isHT ? 'Cochez avec un X:' : 'Marca con una X:'}</p>
                 <div style={{ display: 'flex', gap: '30px', marginTop: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
@@ -1143,7 +1169,7 @@ export function BoletinIndividual({
                         return prom >= 70 ? 'X' : '';
                       })()}
                     </div>
-                    <span style={{ fontWeight: 'bold' }}>PROMOVIDO</span>
+                    <span style={{ fontWeight: 'bold' }}>{isHT ? 'ADMIS' : 'PROMOVIDO'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
@@ -1165,7 +1191,7 @@ export function BoletinIndividual({
                         return prom > 0 && prom < 70 ? 'X' : '';
                       })()}
                     </div>
-                    <span style={{ fontWeight: 'bold' }}>REPROBADO</span>
+                    <span style={{ fontWeight: 'bold' }}>{isHT ? 'ÉCHEC' : 'REPROBADO'}</span>
                   </div>
                 </div>
               </div>
@@ -1173,7 +1199,7 @@ export function BoletinIndividual({
               {/* Observaciones */}
               <div style={{ marginTop: '30px' }}>
                 <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  OBSERVACIONES
+                  {isHT ? 'OBSERVATIONS' : 'OBSERVACIONES'}
                 </h3>
                 <div style={{ borderBottom: '1px solid #ccc', height: '25px', marginTop: '15px' }}></div>
                 <div style={{ borderBottom: '1px solid #ccc', height: '25px' }}></div>
@@ -1191,26 +1217,26 @@ export function BoletinIndividual({
                 fontWeight: 'bold',
                 marginBottom: '15px'
               }}>
-                FIRMA DEL PADRE, MADRE O TUTOR
+                {isHT ? 'SIGNATURE DU PARENT / TUTEUR' : 'FIRMA DEL PADRE, MADRE O TUTOR'}
               </div>
 
-              <h4 style={{ color: colorPrimario, marginBottom: '10px' }}>Período de Reportes de Calificaciones:</h4>
+              <h4 style={{ color: colorPrimario, marginBottom: '10px' }}>{isHT ? 'Périodes de Rapport:' : 'Período de Reportes de Calificaciones:'}</h4>
 
               <div style={{ marginBottom: '15px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>1er Período (Agosto - Sept - Oct):</span>
+                  <span style={{ fontWeight: 'bold' }}>{isHT ? '1ère Période / Contrôle:' : '1er Período (Agosto - Sept - Oct):'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>2do Período (Nov - Dic - Enero):</span>
+                  <span style={{ fontWeight: 'bold' }}>{isHT ? '2ème Période / Contrôle:' : '2do Período (Nov - Dic - Enero):'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>3er Período (Feb - Marzo):</span>
+                  <span style={{ fontWeight: 'bold' }}>{isHT ? '3ème Période / Contrôle:' : '3er Período (Feb - Marzo):'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>4to Período (Abril - Mayo - Jun):</span>
+                  <span style={{ fontWeight: 'bold' }}>{isHT ? '4ème Période / Contrôle:' : '4to Período (Abril - Mayo - Jun):'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px' }}>
-                  <span style={{ fontWeight: 'bold' }}>Fin de Año:</span>
+                  <span style={{ fontWeight: 'bold' }}>{isHT ? 'Fin d\'Année:' : 'Fin de Año:'}</span>
                 </div>
               </div>
             </div>
@@ -1227,65 +1253,22 @@ export function BoletinIndividual({
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ borderTop: '1px solid black', width: '200px', marginBottom: '5px' }}></div>
-              <span style={{ fontWeight: 'bold' }}>Firma del Docente / Maestro Encargado</span>
+              <span style={{ fontWeight: 'bold' }}>{isHT ? 'Signature de l\'Enseignant' : 'Firma del Docente / Maestro Encargado'}</span>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ borderTop: '1px solid black', width: '200px', marginBottom: '5px' }}></div>
-              <span style={{ fontWeight: 'bold' }}>Firma del Director(a)</span>
+              <span style={{ fontWeight: 'bold' }}>{isHT ? 'Signature du Directeur' : 'Firma del Director(a)'}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navegación inferior - solo visible en pantalla */}
-      <div className="no-print flex justify-between items-center p-4 border-t bg-white">
-        <Button
-          variant="outline"
-          onClick={onPrevious}
-          disabled={currentIndex === 0}
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Estudiante anterior
-        </Button>
-
-        <span className="text-sm text-muted-foreground">
-          {currentIndex + 1} de {totalEstudiantes}
-        </span>
-
-        <Button
-          variant="outline"
-          onClick={onNext}
-          disabled={currentIndex === totalEstudiantes - 1}
-        >
-          Siguiente estudiante
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
-
-      {/* Estilos de impresión */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: 35.56cm 21.59cm;
-            margin: 0;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .boletin-page {
-            page-break-after: always;
-            page-break-inside: avoid;
-            border: none !important;
-            max-width: 35.56cm !important;
-            min-height: 21.59cm !important;
-          }
-          .print-content {
-            padding: 0 !important;
-          }
+          @page { size: 35.56cm 21.59cm; margin: 0; }
+          body { margin: 0; padding: 0; }
+          .no-print { display: none !important; }
+          .boletin-page { page-break-after: always; border: none !important; width: 35.56cm !important; }
         }
       `}</style>
     </>
@@ -1305,16 +1288,12 @@ export default function SabanaNotasPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Estado para navegación
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
 
-  // Determinar permisos según rol
-  const isEstudiante = user?.role === 'ESTUDIANTE';
   const isDocente = user?.role === 'DOCENTE';
   const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
 
-  // Cargar niveles y ciclos
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -1324,7 +1303,6 @@ export default function SabanaNotasPage() {
         ]);
         setNiveles(nivelesRes.data);
         setCiclosLectivos(ciclosRes.data);
-
         const cicloActivo = ciclosRes.data.find((c: CicloLectivo) => c.activo);
         if (cicloActivo) setSelectedCiclo(cicloActivo.id);
       } catch {
@@ -1336,80 +1314,32 @@ export default function SabanaNotasPage() {
     loadInitialData();
   }, []);
 
-  // Cargar sábana
   const loadSabana = useCallback(async () => {
     if (!selectedNivel || !selectedCiclo) return;
     setLoading(true);
     try {
       const response = await sabanaApi.getSabana(selectedNivel, selectedCiclo);
       setSabanaData(response.data);
-
-      // Si es estudiante, ir directo a su boletín
-      if (isEstudiante && response.data.estudiantes.length > 0) {
-        const myIndex = response.data.estudiantes.findIndex(
-          (e: Estudiante) => e.id === user?.id
-        );
-        if (myIndex >= 0) {
-          setCurrentStudentIndex(myIndex);
-          setViewMode('boletin');
-        }
-      }
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      toast.error(axiosError.response?.data?.error || 'Error al cargar datos');
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al cargar datos');
       setSabanaData(null);
     } finally {
       setLoading(false);
     }
-  }, [selectedNivel, selectedCiclo, isEstudiante, user?.id]);
+  }, [selectedNivel, selectedCiclo]);
 
-  useEffect(() => {
-    loadSabana();
-  }, [loadSabana]);
+  useEffect(() => { loadSabana(); }, [loadSabana]);
 
-  // Verificar si el docente puede editar una materia específica
-  // El docente puede editar si:
-  // 1. Es DOCENTE
-  // 2. Hay una calificacion (o registro vacío con claseId) y el docenteId coincide
   const canEditMateria = useCallback((_materiaId: string, cal: Calificacion | undefined) => {
     if (!isDocente) return false;
-    // Si no hay registro de calificación con docenteId, no puede editar
-    if (!cal) return false;
-    // Si hay calificación pero no tiene docenteId asignado, no puede editar
-    if (!cal.docenteId) return false;
-    // Solo puede editar si es su clase
+    if (!cal || !cal.docenteId) return false;
     return cal.docenteId === user?.id;
   }, [isDocente, user?.id]);
 
-  // Guardar calificación
-  const handleSaveCalificacion = async (
-    claseId: string,
-    estudianteId: string,
-    periodo: string,
-    valor: number | null
-  ): Promise<void> => {
-    await sabanaApi.updateCalificacion({
-      claseId,
-      estudianteId,
-      periodo: periodo as 'p1' | 'p2' | 'p3' | 'p4' | 'rp1' | 'rp2' | 'rp3' | 'rp4',
-      valor,
-    });
+  const handleSaveCalificacion = async (claseId: string, estudianteId: string, periodo: string, valor: number | null) => {
+    await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo: periodo as any, valor });
     toast.success('Calificación guardada');
-    // Recargar datos en segundo plano sin bloquear la navegación
     loadSabana();
-  };
-
-  // Navegación entre estudiantes
-  const handlePreviousStudent = () => {
-    if (currentStudentIndex > 0) {
-      setCurrentStudentIndex(currentStudentIndex - 1);
-    }
-  };
-
-  const handleNextStudent = () => {
-    if (sabanaData && currentStudentIndex < sabanaData.estudiantes.length - 1) {
-      setCurrentStudentIndex(currentStudentIndex + 1);
-    }
   };
 
   const handleSelectStudent = (index: number) => {
@@ -1417,157 +1347,51 @@ export default function SabanaNotasPage() {
     setViewMode('boletin');
   };
 
-  const handleBackToList = () => {
-    setViewMode('list');
-    setSearchTerm('');
-  };
+  if (loadingData) return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
-  // Estudiante actual
-  const currentStudent = useMemo(() => {
-    return sabanaData?.estudiantes[currentStudentIndex];
-  }, [sabanaData, currentStudentIndex]);
-
-  if (loadingData) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Si está en modo boletín, mostrar solo el boletín
-  if (viewMode === 'boletin' && sabanaData && currentStudent) {
+  if (viewMode === 'boletin' && sabanaData && sabanaData.estudiantes[currentStudentIndex]) {
     return (
       <BoletinIndividual
-        estudiante={currentStudent}
+        estudiante={sabanaData.estudiantes[currentStudentIndex]}
         materias={sabanaData.materias}
         sabanaData={sabanaData}
         currentIndex={currentStudentIndex}
         totalEstudiantes={sabanaData.estudiantes.length}
-        onPrevious={handlePreviousStudent}
-        onNext={handleNextStudent}
-        onBack={handleBackToList}
+        onPrevious={() => currentStudentIndex > 0 && setCurrentStudentIndex(currentStudentIndex - 1)}
+        onNext={() => currentStudentIndex < sabanaData.estudiantes.length - 1 && setCurrentStudentIndex(currentStudentIndex + 1)}
+        onBack={() => setViewMode('list')}
         onStudentChange={setCurrentStudentIndex}
         estudiantes={sabanaData.estudiantes}
         canEditMateria={canEditMateria}
         onSaveCalificacion={handleSaveCalificacion}
-        isReadOnly={isReadOnly || isEstudiante}
+        isReadOnly={isReadOnly}
       />
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {isEstudiante ? 'Mi Boletín de Calificaciones' : 'Boletín de Calificaciones'}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {isDocente && 'Seleccione un estudiante para ver/editar su boletín'}
-            {isReadOnly && 'Vista de solo lectura'}
-            {isEstudiante && 'Su boletín de calificaciones del año escolar'}
-          </p>
-        </div>
-      </div>
-
-      {/* Filtros - oculto para estudiantes */}
-      {!isEstudiante && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Nivel / Grado</label>
-                <Select value={selectedNivel} onValueChange={setSelectedNivel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar nivel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {niveles.map((nivel) => (
-                      <SelectItem key={nivel.id} value={nivel.id}>
-                        {nivel.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-1 block">Año Escolar</label>
-                <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar ciclo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ciclosLectivos.map((ciclo) => (
-                      <SelectItem key={ciclo.id} value={ciclo.id}>
-                        {ciclo.nombre}
-                        {ciclo.activo && ' (Activo)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Estado vacío */}
-      {(!selectedNivel || !selectedCiclo) && !isEstudiante && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">Seleccione un nivel y año escolar</h3>
-            <p className="text-muted-foreground mt-2">
-              Para ver la lista de estudiantes
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Loading */}
-      {loading && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-4" />
-            <p className="text-muted-foreground">Cargando datos...</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Vista Lista de Estudiantes */}
-      {sabanaData && !loading && !isEstudiante && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              {sabanaData.nivel.nombre} - {sabanaData.cicloLectivo.nombre}
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              {sabanaData.estudiantes.length} estudiantes
-            </span>
+      <h1 className="text-2xl font-bold">Boletín de Calificaciones</h1>
+      <Card><CardContent className="pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Nivel / Grado</label>
+            <Select value={selectedNivel} onValueChange={setSelectedNivel}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar nivel" /></SelectTrigger>
+              <SelectContent>{niveles.map((nivel) => (<SelectItem key={nivel.id} value={nivel.id}>{nivel.nombre}</SelectItem>))}</SelectContent>
+            </Select>
           </div>
-          <StudentList
-            estudiantes={sabanaData.estudiantes}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            onSelectStudent={handleSelectStudent}
-          />
-        </>
-      )}
-
-      {/* Sin estudiantes */}
-      {sabanaData && !loading && sabanaData.estudiantes.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">Sin estudiantes</h3>
-            <p className="text-muted-foreground mt-2">
-              No hay estudiantes inscritos en este nivel.
-            </p>
-          </CardContent>
-        </Card>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Año Escolar</label>
+            <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar ciclo" /></SelectTrigger>
+              <SelectContent>{ciclosLectivos.map((ciclo) => (<SelectItem key={ciclo.id} value={ciclo.id}>{ciclo.nombre} {ciclo.activo && '(Activo)'}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardContent></Card>
+      {loading ? <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></div> : sabanaData && (
+        <StudentList estudiantes={sabanaData.estudiantes} searchTerm={searchTerm} setSearchTerm={setSearchTerm} onSelectStudent={handleSelectStudent} />
       )}
     </div>
   );

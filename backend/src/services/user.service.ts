@@ -143,6 +143,49 @@ export const findUsersByInstitucion = async (institucionId: string, role?: strin
   });
 };
 
+export const findStudentsByDocente = async (docenteId: string, institucionId: string) => {
+  // Find all classes taught by this teacher in the institution
+  const clases = await prisma.clase.findMany({
+    where: {
+      docenteId,
+      institucionId,
+    },
+    select: { id: true },
+  });
+
+  const claseIds = clases.map((c) => c.id);
+
+  if (claseIds.length === 0) {
+    return [];
+  }
+
+  // Find all students enrolled in these classes
+  // We use findMany on User directly to get unique students easily using where condition
+  return prisma.user.findMany({
+    where: {
+      institucionId,
+      role: Role.ESTUDIANTE,
+      inscripciones: {
+        some: {
+          claseId: { in: claseIds },
+        },
+      },
+    },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      username: true,
+      role: true,
+      activo: true,
+      fotoUrl: true,
+      createdAt: true,
+    },
+    orderBy: { apellido: 'asc' },
+  });
+};
+
 export const findStaffByInstitucion = async (institucionId: string, _includePasswordTemporal: boolean = false) => {
   // SEGURIDAD: passwordTemporal ya no existe en el schema
   const staffRoles: Role[] = [

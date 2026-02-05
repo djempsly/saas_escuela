@@ -3,6 +3,7 @@ import {
   createUser,
   resetUserPasswordManual,
   findUsersByInstitucion,
+  findStudentsByDocente,
   findStaffByInstitucion,
   findUserById,
   updateUserProfile,
@@ -136,6 +137,15 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
     // Usar resolvedInstitucionId (ya resuelto por el middleware)
     if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'Debe especificar una institucion' });
+    }
+
+    // Lógica especial para DOCENTES: Solo pueden ver sus estudiantes
+    if (req.user.rol === ROLES.DOCENTE) {
+      if (role && role !== ROLES.ESTUDIANTE) {
+        return res.status(403).json({ message: 'Solo puedes ver listados de estudiantes' });
+      }
+      const students = await findStudentsByDocente(req.user.usuarioId.toString(), req.resolvedInstitucionId);
+      return res.status(200).json({ data: students });
     }
 
     // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales

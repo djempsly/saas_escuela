@@ -45,7 +45,7 @@ router.post(
 router.get(
   '/',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.SECRETARIA]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.SECRETARIA, ROLES.DOCENTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
   getAllUsersHandler

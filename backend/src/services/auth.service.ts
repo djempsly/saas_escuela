@@ -82,15 +82,21 @@ export const login = async (input: LoginInput) => {
     throw new Error('Credenciales no válidas');
   }
 
-  // SEGURIDAD: Si se proporciona slug, validar que el usuario pertenezca a esa institución
-  if (slug && user.role !== Role.ADMIN) {
-    // Verificar que el usuario tenga institución y coincida con el slug
-    if (!user.institucion || user.institucion.slug !== slug) {
-      throw new Error('Credenciales no válidas'); // No revelar detalles
+  // SEGURIDAD: Validar contexto de inicio de sesión
+  if (slug) {
+    // Login desde página de institución: Validar que el usuario pertenezca
+    if (user.role !== Role.ADMIN) {
+      if (!user.institucion || user.institucion.slug !== slug) {
+        throw new Error('Credenciales no válidas para esta institución');
+      }
+      if (!user.institucion.activo) {
+        throw new Error('Esta institución está desactivada. Contacte al administrador.');
+      }
     }
-    // Verificar que la institución esté activa
-    if (!user.institucion.activo) {
-      throw new Error('Esta institución está desactivada. Contacte al administrador.');
+  } else {
+    // Login global (sin slug): Solo permitido para ADMIN
+    if (user.role !== Role.ADMIN) {
+      throw new Error('Acceso denegado. Estudiantes y personal deben iniciar sesión desde el portal de su institución.');
     }
   }
 
