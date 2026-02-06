@@ -8,6 +8,18 @@ import { calificacionesApi, clasesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { BookOpen, Loader2, Eye, Edit3, Check, X } from 'lucide-react';
 
+// CSS para quitar spinners de inputs numéricos
+const noSpinnerStyles = `
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+`;
+
 interface Calificacion {
   id?: string;
   estudianteId: string;
@@ -148,11 +160,16 @@ export default function CalificacionesPage() {
       const updated = [...calificaciones];
       updated[idx] = { ...updated[idx], [field]: value };
 
-      // Recalcular promedio
-      const notas = [updated[idx].p1, updated[idx].p2, updated[idx].p3, updated[idx].p4]
-        .filter((n): n is number => n !== null && n !== undefined);
-      updated[idx].promedio = notas.length > 0
-        ? notas.reduce((a, b) => a + b, 0) / notas.length
+      // Recalcular promedio usando Math.max(P, RP) para cada periodo
+      const notaEfectiva1 = Math.max(updated[idx].p1 || 0, updated[idx].rp1 || 0);
+      const notaEfectiva2 = Math.max(updated[idx].p2 || 0, updated[idx].rp2 || 0);
+      const notaEfectiva3 = Math.max(updated[idx].p3 || 0, updated[idx].rp3 || 0);
+      const notaEfectiva4 = Math.max(updated[idx].p4 || 0, updated[idx].rp4 || 0);
+
+      const notasEfectivas = [notaEfectiva1, notaEfectiva2, notaEfectiva3, notaEfectiva4]
+        .filter(n => n > 0);
+      updated[idx].promedio = notasEfectivas.length > 0
+        ? notasEfectivas.reduce((a, b) => a + b, 0) / notasEfectivas.length
         : null;
 
       setCalificaciones(updated);
@@ -176,8 +193,28 @@ export default function CalificacionesPage() {
     }
   };
 
-  const renderCell = (_cal: Calificacion, idx: number, field: string, value: number | null | undefined) => {
+  // Nota mínima para aprobar (70 RD, 50 Haití - por ahora usamos 70)
+  const NOTA_APROBACION = 70;
+
+  // Verificar si la celda de recuperación debe estar habilitada
+  const isRpEnabled = (cal: Calificacion, rpField: 'rp1' | 'rp2' | 'rp3' | 'rp4') => {
+    const pField = rpField.replace('rp', 'p') as 'p1' | 'p2' | 'p3' | 'p4';
+    const pValue = cal[pField];
+    // RP solo se habilita si P existe y P < 70 (reprobado)
+    return pValue !== null && pValue !== undefined && pValue < NOTA_APROBACION;
+  };
+
+  const renderCell = (cal: Calificacion, idx: number, field: string, value: number | null | undefined, isRpField: boolean = false) => {
     const isEditing = editingCell?.idx === idx && editingCell?.field === field;
+
+    // Para campos RP, verificar si está habilitado
+    if (isRpField) {
+      const rpEnabled = isRpEnabled(cal, field as 'rp1' | 'rp2' | 'rp3' | 'rp4');
+      if (!rpEnabled) {
+        // Celda deshabilitada - fondo gris, no editable
+        return <span className="text-muted-foreground bg-slate-100 px-2 py-1 rounded">-</span>;
+      }
+    }
 
     if (isEditing) {
       return (
@@ -251,6 +288,9 @@ export default function CalificacionesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Estilos para quitar spinners */}
+      <style>{noSpinnerStyles}</style>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -321,30 +361,50 @@ export default function CalificacionesPage() {
                   <th className="text-left p-4 font-medium sticky left-0 bg-slate-50">
                     {isEstudiante ? 'Materia' : 'Estudiante'}
                   </th>
-                  <th className="text-center p-4 font-medium w-20">P1</th>
-                  <th className="text-center p-4 font-medium w-20">P2</th>
-                  <th className="text-center p-4 font-medium w-20">P3</th>
-                  <th className="text-center p-4 font-medium w-20">P4</th>
+                  <th className="text-center p-2 font-medium w-16">P1</th>
+                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P1">RP1</th>
+                  <th className="text-center p-2 font-medium w-16">P2</th>
+                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P2">RP2</th>
+                  <th className="text-center p-2 font-medium w-16">P3</th>
+                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P3">RP3</th>
+                  <th className="text-center p-2 font-medium w-16">P4</th>
+                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P4">RP4</th>
                   <th className="text-center p-4 font-medium w-24 bg-slate-100">Promedio</th>
                 </tr>
               </thead>
               <tbody>
-                {calificaciones.map((cal, idx) => (
-                  <tr key={cal.estudianteId + '-' + idx} className="border-t hover:bg-slate-50">
-                    <td className="p-4 font-medium sticky left-0 bg-white">
-                      {isEstudiante
-                        ? cal.clase?.materia?.nombre || 'Sin materia'
-                        : `${cal.estudiante?.nombre || ''} ${cal.estudiante?.apellido || ''}`}
-                    </td>
-                    <td className="text-center p-2">{renderCell(cal, idx, 'p1', cal.p1)}</td>
-                    <td className="text-center p-2">{renderCell(cal, idx, 'p2', cal.p2)}</td>
-                    <td className="text-center p-2">{renderCell(cal, idx, 'p3', cal.p3)}</td>
-                    <td className="text-center p-2">{renderCell(cal, idx, 'p4', cal.p4)}</td>
-                    <td className="text-center p-4 font-bold bg-slate-50">
-                      {cal.promedio?.toFixed(1) ?? '-'}
-                    </td>
-                  </tr>
-                ))}
+                {calificaciones.map((cal, idx) => {
+                  // Calcular promedio usando notas efectivas (max de P y RP)
+                  const notaEfectiva1 = Math.max(cal.p1 || 0, cal.rp1 || 0);
+                  const notaEfectiva2 = Math.max(cal.p2 || 0, cal.rp2 || 0);
+                  const notaEfectiva3 = Math.max(cal.p3 || 0, cal.rp3 || 0);
+                  const notaEfectiva4 = Math.max(cal.p4 || 0, cal.rp4 || 0);
+                  const notasEfectivas = [notaEfectiva1, notaEfectiva2, notaEfectiva3, notaEfectiva4].filter(n => n > 0);
+                  const promedioCalculado = notasEfectivas.length > 0
+                    ? notasEfectivas.reduce((a, b) => a + b, 0) / notasEfectivas.length
+                    : null;
+
+                  return (
+                    <tr key={cal.estudianteId + '-' + idx} className="border-t hover:bg-slate-50">
+                      <td className="p-4 font-medium sticky left-0 bg-white">
+                        {isEstudiante
+                          ? cal.clase?.materia?.nombre || 'Sin materia'
+                          : `${cal.estudiante?.nombre || ''} ${cal.estudiante?.apellido || ''}`}
+                      </td>
+                      <td className="text-center p-2">{renderCell(cal, idx, 'p1', cal.p1)}</td>
+                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp1', cal.rp1, true)}</td>
+                      <td className="text-center p-2">{renderCell(cal, idx, 'p2', cal.p2)}</td>
+                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp2', cal.rp2, true)}</td>
+                      <td className="text-center p-2">{renderCell(cal, idx, 'p3', cal.p3)}</td>
+                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp3', cal.rp3, true)}</td>
+                      <td className="text-center p-2">{renderCell(cal, idx, 'p4', cal.p4)}</td>
+                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp4', cal.rp4, true)}</td>
+                      <td className="text-center p-4 font-bold bg-slate-50">
+                        {promedioCalculado?.toFixed(1) ?? '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardContent>

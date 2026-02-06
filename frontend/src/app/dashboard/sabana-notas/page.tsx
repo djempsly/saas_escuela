@@ -285,16 +285,26 @@ export function BoletinIndividual({
   };
 
   // Calcular C.F. (Calificación Final)
-  const calcularCF = (cal: Calificacion | undefined) => {
+  // SOLO se calcula cuando TODOS los periodos tienen valor
+  // Para RD: 4 periodos (P1, P2, P3, P4)
+  // Para Haití: 3 periodos (P1, P2, P3)
+  const calcularCF = (cal: Calificacion | undefined, isHaiti: boolean = false) => {
     if (!cal) return 0;
-    const valores = [
-      calcularPromedioPeriodo(cal, 'p1', 'rp1'),
-      calcularPromedioPeriodo(cal, 'p2', 'rp2'),
-      calcularPromedioPeriodo(cal, 'p3', 'rp3'),
-      calcularPromedioPeriodo(cal, 'p4', 'rp4'),
-    ].filter(v => v > 0);
-    if (valores.length === 0) return 0;
-    return Math.round(valores.reduce((a, b) => a + b, 0) / valores.length);
+
+    const p1 = calcularPromedioPeriodo(cal, 'p1', 'rp1');
+    const p2 = calcularPromedioPeriodo(cal, 'p2', 'rp2');
+    const p3 = calcularPromedioPeriodo(cal, 'p3', 'rp3');
+    const p4 = calcularPromedioPeriodo(cal, 'p4', 'rp4');
+
+    if (isHaiti) {
+      // Haití: 3 trimestres - TODOS deben tener valor
+      if (p1 === 0 || p2 === 0 || p3 === 0) return 0;
+      return Math.round((p1 + p2 + p3) / 3);
+    } else {
+      // RD: 4 periodos - TODOS deben tener valor
+      if (p1 === 0 || p2 === 0 || p3 === 0 || p4 === 0) return 0;
+      return Math.round((p1 + p2 + p3 + p4) / 4);
+    }
   };
 
   // Calcular situación
@@ -530,16 +540,15 @@ export function BoletinIndividual({
         </Button>
       </div>
 
-      {/* Mensaje para docente */}
+      {/* Instrucciones para la sábana de notas */}
       {!isReadOnly && (
         <div className="no-print bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800 mx-4 mt-4 rounded">
-          <strong>📝 Instrucciones:</strong> Solo puede editar las calificaciones de las asignaturas que usted imparte (resaltadas en azul claro).
+          <strong>📝 Instrucciones:</strong>
           <ul className="mt-2 ml-4 list-disc">
-            <li><strong>Click</strong> en una celda azul para editar</li>
-            <li><strong>Tab</strong> para guardar y pasar a la siguiente celda</li>
-            <li><strong>Shift+Tab</strong> para volver a la celda anterior</li>
-            <li><strong>Enter</strong> para guardar y avanzar</li>
-            <li><strong>Esc</strong> para cancelar sin guardar</li>
+            <li>Solo puede editar las celdas de la asignatura que usted imparte (resaltadas en azul)</li>
+            <li>Las demás asignaturas están en solo lectura</li>
+            <li>Presione <strong>Tab</strong> para avanzar a la siguiente celda</li>
+            <li>Las notas se guardan automáticamente al salir de la celda</li>
           </ul>
         </div>
       )}
@@ -743,7 +752,7 @@ export function BoletinIndividual({
                   const isSelectedMateria = materia && selectedMateriaId === materia.id;
                   const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
                   const canEdit = materia ? canEditMateria(materia.id, cal) : false;
-                  const cf = calcularCF(cal);
+                  const cf = calcularCF(cal, isHT);
                   const situacion = calcularSituacion(cf);
 
                   return (
@@ -1064,7 +1073,7 @@ export function BoletinIndividual({
                   (() => {
                     const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
                       const m = findMateriaByAsignatura(a);
-                      return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                      return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
                     }).filter((cf: number) => cf > 0);
                     return cfs.length > 0 ? Math.round(cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length) : '-';
                   })()
@@ -1077,7 +1086,7 @@ export function BoletinIndividual({
                 backgroundColor: (() => {
                   const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
                     const m = findMateriaByAsignatura(a);
-                    return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                    return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
                   }).filter((cf: number) => cf > 0);
                   const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                   return prom >= 70 ? '#dcfce7' : prom > 0 ? '#fee2e2' : '#f3f4f6';
@@ -1088,7 +1097,7 @@ export function BoletinIndividual({
                   (() => {
                     const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
                       const m = findMateriaByAsignatura(a);
-                      return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                      return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
                     }).filter((cf: number) => cf > 0);
                     const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                     return prom >= 70 ? (isHT ? 'ADMIS' : 'APROBADO') : prom > 0 ? (isHT ? 'ÉCHEC' : 'REPROBADO') : (isHT ? 'EN COURS' : 'PENDIENTE');
@@ -1179,7 +1188,7 @@ export function BoletinIndividual({
                       {(() => {
                         const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
                           const m = findMateriaByAsignatura(a);
-                          return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                          return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
                         }).filter((cf: number) => cf > 0);
                         const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                         return prom >= 70 ? 'X' : '';
@@ -1201,7 +1210,7 @@ export function BoletinIndividual({
                       {(() => {
                         const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
                           const m = findMateriaByAsignatura(a);
-                          return m ? calcularCF(estudiante.calificaciones[m.id]) : 0;
+                          return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
                         }).filter((cf: number) => cf > 0);
                         const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
                         return prom > 0 && prom < 70 ? 'X' : '';
@@ -1280,6 +1289,15 @@ export function BoletinIndividual({
       </div>
 
       <style jsx global>{`
+        /* Quitar spinners/flechas de inputs numéricos */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
         @media print {
           @page { size: 35.56cm 21.59cm; margin: 0; }
           body { margin: 0; padding: 0; }
@@ -1359,11 +1377,23 @@ export default function SabanaNotasPage() {
 
   useEffect(() => { loadSabana(); }, [loadSabana]);
 
-  const canEditMateria = useCallback((_materiaId: string, cal: Calificacion | undefined) => {
+  const canEditMateria = useCallback((materiaId: string, cal: Calificacion | undefined) => {
+    // Debug: descomentar para diagnosticar problemas de edición
+    console.log('canEditMateria check:', {
+      materiaId,
+      userRole: user?.role,
+      userId: user?.id,
+      isDocente,
+      calExists: !!cal,
+      calDocenteId: cal?.docenteId,
+      calClaseId: cal?.claseId,
+      match: cal?.docenteId === user?.id
+    });
+
     if (!isDocente) return false;
     if (!cal || !cal.docenteId) return false;
     return cal.docenteId === user?.id;
-  }, [isDocente, user?.id]);
+  }, [isDocente, user?.id, user?.role]);
 
   const handleSaveCalificacion = async (claseId: string, estudianteId: string, periodo: string, valor: number | null) => {
     await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo: periodo as any, valor });
