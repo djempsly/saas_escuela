@@ -4,6 +4,22 @@ import prisma from '../config/db';
 import { CrearUsuarioInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 
+/**
+ * Genera contraseña por defecto basada en el rol del usuario
+ */
+const getDefaultPasswordByRole = (rol: string): string => {
+  const passwordMap: Record<string, string> = {
+    ESTUDIANTE: 'estudiante123',
+    DOCENTE: 'docente123',
+    COORDINADOR: 'coordinador123',
+    COORDINADOR_ACADEMICO: 'academico123',
+    SECRETARIA: 'secretaria123',
+    DIRECTOR: 'director123',
+    ADMIN: 'admin123',
+  };
+  return passwordMap[rol] || 'usuario123';
+};
+
 export const createUser = async (input: CrearUsuarioInput, institucionId: string | null) => {
   const { email, nombre, segundoNombre, apellido, segundoApellido, rol } = input;
 
@@ -14,7 +30,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
     }
   }
 
-  const tempPassword = generateSecurePassword();
+  const tempPassword = getDefaultPasswordByRole(rol);
   const hashedPassword = await bcrypt.hash(tempPassword, 12);
   // Username: primer nombre + primer apellido + 4 dígitos
   const username = generateUsername(nombre, apellido);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { sabanaApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -277,13 +277,14 @@ export function BoletinIndividual({
   onStudentChange: (index: number) => void;
   estudiantes: Estudiante[];
   canEditMateria: (materiaId: string, cal: Calificacion | undefined) => boolean;
-  onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null) => Promise<void>;
+  onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null, competenciaId?: string) => Promise<void>;
   isReadOnly: boolean;
   selectedMateriaId?: string;
 }) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const printContentRef = useRef<HTMLDivElement>(null);
 
   // Colores dinámicos según el grado
   const nivelNombre = sabanaData.nivel?.nombre || '';
@@ -451,7 +452,8 @@ export function BoletinIndividual({
         const materia = findMateriaByAsignatura(asignatura);
         const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
         // Buscar en el map de competencias
-        const value = cal?.competencias?.[competencia.id]?.[nextCell.periodo as keyof Calificacion['competencias'][string]];
+        const compData = cal?.competencias?.[competencia.id];
+        const value = compData?.[nextCell.periodo as keyof typeof compData];
         return typeof value === 'number' && value !== 0 ? value : null;
       }
     }
@@ -525,7 +527,51 @@ export function BoletinIndividual({
     }
   }, [findNextCell, saveAndCloseCell]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (!printContentRef.current) return;
+
+    const contenido = printContentRef.current.innerHTML;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Boletín - ${estudiante.apellido.toUpperCase()}, ${estudiante.nombre}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: Arial, sans-serif;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            table { border-collapse: collapse; }
+            @page {
+              size: 35.56cm 21.59cm;
+              margin: 0;
+            }
+            .boletin-page {
+              page-break-after: always;
+              border: none !important;
+              width: 35.56cm !important;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+              .boletin-page {
+                page-break-after: always;
+                border: none !important;
+                width: 35.56cm !important;
+              }
+            }
+          </style>
+        </head>
+        <body>${contenido}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   // Detectar si es sistema Haitiano
   const isHT = sabanaData.metadatos.pais === 'HT';
@@ -595,7 +641,7 @@ export function BoletinIndividual({
       )}
 
       {/* BOLETÍN PARA IMPRESIÓN - Formato Legal Horizontal */}
-      <div className="print-content p-4">
+      <div ref={printContentRef} className="print-content p-4">
         {/* ==================== LADO A: CALIFICACIONES ==================== */}
         <div
           className="boletin-page bg-white relative mx-auto"
@@ -1044,7 +1090,7 @@ export function BoletinIndividual({
                                     step="1"
                                     value={tempValue}
                                     onChange={(e) => setTempValue(e.target.value)}
-                                    onBlur={() => handleCellBlur(cal?.claseId || null, ra)}
+                                    onBlur={() => handleCellBlur(cal?.claseId || null, ra, cellId)}
                                     onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, ra, cellId)}
                                     autoFocus
                                     disabled={isSaving}

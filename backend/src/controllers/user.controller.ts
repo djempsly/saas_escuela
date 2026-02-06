@@ -16,7 +16,7 @@ import {
 import { crearUsuarioSchema } from '../utils/zod.schemas';
 import { ROLES } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
-import { getFileUrl } from '../middleware/upload.middleware';
+import { uploadToS3 } from '../services/s3.service';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
@@ -215,7 +215,7 @@ export const updateProfileHandler = async (req: Request, res: Response) => {
 
     // Si hay archivo subido
     if (req.file) {
-      fotoUrl = getFileUrl(req.file);
+      fotoUrl = await uploadToS3(req.file, 'perfiles');
     }
 
     const updatedUser = await updateUserProfile(req.user.usuarioId, {
@@ -280,7 +280,7 @@ export const uploadPhotoHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No se proporciono ninguna imagen' });
     }
 
-    const fotoUrl = getFileUrl(req.file);
+    const fotoUrl = await uploadToS3(req.file, 'perfiles');
 
     const updatedUser = await updateUserProfile(req.user.usuarioId, { fotoUrl });
 

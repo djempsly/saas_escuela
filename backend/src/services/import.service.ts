@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
-import { generateSecurePassword, generateUsername } from '../utils/security';
+import { generateUsername } from '../utils/security';
 
 interface StudentRow {
   nombre: string;
@@ -141,7 +141,7 @@ export const importStudents = async (
 
     try {
       // Generate credentials
-      const tempPassword = generateSecurePassword();
+      const tempPassword = 'estudiante123';
       const hashedPassword = await bcrypt.hash(tempPassword, 12);
       const username = generateUsername(row.nombre, row.apellido);
 

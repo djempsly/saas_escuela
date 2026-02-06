@@ -16,7 +16,7 @@ import {
   checkDominioAvailability,
   updateSistemasEducativos,
 } from '../services/institucion.service';
-import { getFileUrl } from '../middleware/upload.middleware';
+import { uploadToS3, deleteFromS3, isS3Url } from '../services/s3.service';
 import { institucionSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { z } from 'zod';
@@ -157,21 +157,36 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
     let logoUrl: string | undefined;
     let fondoLoginUrl: string | undefined;
 
+    // Obtener datos actuales para borrar archivos anteriores de S3
+    const existing = await prisma.institucion.findUnique({
+      where: { id },
+      select: { logoUrl: true, fondoLoginUrl: true },
+    });
+
     // Manejar múltiples archivos (cuando se usa upload.fields())
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     if (files && typeof files === 'object') {
       if (files.logo && files.logo[0]) {
-        logoUrl = getFileUrl(files.logo[0]);
+        if (existing?.logoUrl && isS3Url(existing.logoUrl)) {
+          await deleteFromS3(existing.logoUrl);
+        }
+        logoUrl = await uploadToS3(files.logo[0], 'logos', id);
       }
       if (files.fondoLogin && files.fondoLogin[0]) {
-        fondoLoginUrl = getFileUrl(files.fondoLogin[0]);
+        if (existing?.fondoLoginUrl && isS3Url(existing.fondoLoginUrl)) {
+          await deleteFromS3(existing.fondoLoginUrl);
+        }
+        fondoLoginUrl = await uploadToS3(files.fondoLogin[0], 'login-bgs', id);
       }
     }
 
     // También manejar archivo único (backwards compatibility con upload.single())
     if (req.file) {
-      logoUrl = getFileUrl(req.file);
+      if (existing?.logoUrl && isS3Url(existing.logoUrl)) {
+        await deleteFromS3(existing.logoUrl);
+      }
+      logoUrl = await uploadToS3(req.file, 'logos', id);
     }
 
     const config = await updateInstitucionConfig(id, {
@@ -336,7 +351,16 @@ export const uploadFaviconHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No se proporcionó archivo de favicon' });
     }
 
-    const faviconUrl = getFileUrl(req.file);
+    // Borrar favicon anterior de S3 si existe
+    const existingFavicon = await prisma.institucion.findUnique({
+      where: { id },
+      select: { faviconUrl: true },
+    });
+    if (existingFavicon?.faviconUrl && isS3Url(existingFavicon.faviconUrl)) {
+      await deleteFromS3(existingFavicon.faviconUrl);
+    }
+
+    const faviconUrl = await uploadToS3(req.file, 'favicons', id);
 
     const result = await prisma.institucion.update({
       where: { id },
@@ -360,7 +384,16 @@ export const uploadHeroHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No se proporcionó imagen hero' });
     }
 
-    const heroImageUrl = getFileUrl(req.file);
+    // Borrar hero anterior de S3 si existe
+    const existingHero = await prisma.institucion.findUnique({
+      where: { id },
+      select: { heroImageUrl: true },
+    });
+    if (existingHero?.heroImageUrl && isS3Url(existingHero.heroImageUrl)) {
+      await deleteFromS3(existingHero.heroImageUrl);
+    }
+
+    const heroImageUrl = await uploadToS3(req.file, 'heroes', id);
 
     const result = await prisma.institucion.update({
       where: { id },
@@ -384,7 +417,16 @@ export const uploadLoginLogoHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No se proporcionó logo de login' });
     }
 
-    const loginLogoUrl = getFileUrl(req.file);
+    // Borrar login logo anterior de S3 si existe
+    const existingLoginLogo = await prisma.institucion.findUnique({
+      where: { id },
+      select: { loginLogoUrl: true },
+    });
+    if (existingLoginLogo?.loginLogoUrl && isS3Url(existingLoginLogo.loginLogoUrl)) {
+      await deleteFromS3(existingLoginLogo.loginLogoUrl);
+    }
+
+    const loginLogoUrl = await uploadToS3(req.file, 'login-logos', id);
 
     const result = await prisma.institucion.update({
       where: { id },

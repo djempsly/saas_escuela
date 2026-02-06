@@ -1,50 +1,9 @@
 import multer from 'multer';
 import path from 'path';
-import crypto from 'crypto';
 import fs from 'fs';
 
-// Crear directorio uploads si no existe
-const uploadDir = path.join(process.cwd(), 'uploads');
-const imagesDir = path.join(uploadDir, 'images');
-const videosDir = path.join(uploadDir, 'videos');
-const logosDir = path.join(uploadDir, 'logos');
-
-[uploadDir, imagesDir, videosDir, logosDir].forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Directorio para fotos de perfil
-const fotosDir = path.join(uploadDir, 'fotos');
-
-[fotosDir].forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Configuración de almacenamiento
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (file.fieldname === 'foto') {
-      cb(null, fotosDir);
-    } else if (file.fieldname === 'logo' || file.fieldname === 'fondoLogin' || file.fieldname === 'favicon' || file.fieldname === 'hero' || file.fieldname === 'loginLogo') {
-      cb(null, logosDir); // Guardamos assets de institución en logos
-    } else if (file.fieldname === 'imagen' || file.fieldname === 'imagenes' || file.mimetype.startsWith('image/')) {
-      cb(null, imagesDir);
-    } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
-      cb(null, videosDir);
-    } else {
-      cb(null, uploadDir);
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = crypto.randomBytes(8).toString('hex');
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${file.fieldname}-${Date.now()}-${uniqueSuffix}${ext}`);
-  },
-});
+// Usar memoryStorage para que los archivos se suban a S3
+const storage = multer.memoryStorage();
 
 // Filtro de tipos de archivo
 const fileFilter = (
@@ -110,12 +69,6 @@ export const uploadInstitucionMedia = upload.fields([
   { name: 'fondoLogin', maxCount: 1 },
 ]);
 
-// Función helper para obtener URL del archivo
-export const getFileUrl = (file: Express.Multer.File): string => {
-  const subdir = path.basename(path.dirname(file.path));
-  return `/uploads/${subdir}/${file.filename}`;
-};
-
 // Middleware para subir foto de perfil
 export const uploadFoto = upload.single('foto');
 
@@ -128,7 +81,7 @@ export const uploadHero = upload.single('hero');
 // Middleware para subir login logo de institución
 export const uploadLoginLogo = upload.single('loginLogo');
 
-// Función para eliminar archivo
+// Función para eliminar archivo local (fallback para archivos legacy en disco)
 export const deleteFile = (filePath: string): void => {
   const fullPath = path.join(process.cwd(), filePath);
   if (fs.existsSync(fullPath)) {

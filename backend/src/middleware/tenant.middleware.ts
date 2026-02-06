@@ -20,7 +20,7 @@ export const resolveTenantMiddleware = async (req: Request, res: Response, next:
 
     // Para ADMIN: puede especificar institucionId como query param o en el body (para peticiones POST)
     if (rol === Role.ADMIN) {
-      const queryInstitucionId = (req.query.institucionId as string) || (req.body.institucionId as string);
+      const queryInstitucionId = (req.query.institucionId as string) || (req.body?.institucionId as string);
 
       if (queryInstitucionId) {
         // Verificar que la institución existe
@@ -47,6 +47,7 @@ export const resolveTenantMiddleware = async (req: Request, res: Response, next:
 
     next();
   } catch (error) {
+    console.error('Error al resolver institución:', error);
     return res.status(500).json({ message: 'Error al resolver institución' });
   }
 };

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createActividadHandler,
   getActividadesHandler,
+  getActividadesAdminHandler,
   getActividadByIdHandler,
   updateActividadHandler,
   deleteActividadHandler,
@@ -30,6 +31,9 @@ router.get('/institucion/:slug', getActividadesBySlugHandler);
 
 // Obtener actividades por ID de institución
 router.get('/institucion-id/:id', getActividadesByInstitucionHandler);
+
+// Listar todas las actividades para admin (DEBE ir antes de /:id)
+router.get('/admin', authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), resolveTenantMiddleware, getActividadesAdminHandler);
 
 // Obtener actividad por ID
 router.get('/:id', getActividadByIdHandler);

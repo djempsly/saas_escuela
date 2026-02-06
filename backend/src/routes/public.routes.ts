@@ -203,11 +203,7 @@ router.get('/actividades', async (req: Request, res: Response) => {
     const actividades = await prisma.actividad.findMany({
       where: {
         publicado: true,
-        // Actividades globales (sin institución) o de cualquier institución activa
-        OR: [
-          { institucionId: null },
-          { institucion: { activo: true } },
-        ],
+        institucionId: null,
       },
       orderBy: [{ createdAt: 'desc' }],
       take,

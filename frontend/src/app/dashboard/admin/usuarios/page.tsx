@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { adminApi, institucionesApi } from '@/lib/api';
+import { adminApi, institucionesApi, usersApi } from '@/lib/api';
+import { Label } from '@/components/ui/label';
 import {
   Users,
   Search,
@@ -15,6 +16,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Printer,
+  Loader2,
 } from 'lucide-react';
 
 interface User {
@@ -53,6 +57,38 @@ interface Stats {
   usuariosPorRol: Record<string, number>;
 }
 
+const ROLES_DISPLAY: Record<string, string> = {
+  ADMIN: 'Admin',
+  DIRECTOR: 'Director',
+  COORDINADOR: 'Coordinador',
+  COORDINADOR_ACADEMICO: 'Coord. Académico',
+  DOCENTE: 'Docente',
+  ESTUDIANTE: 'Estudiante',
+  SECRETARIA: 'Secretaria',
+};
+
+const ROLES_CREABLES = [
+  { value: 'DIRECTOR', label: 'Director' },
+  { value: 'DOCENTE', label: 'Docente' },
+  { value: 'ESTUDIANTE', label: 'Estudiante' },
+  { value: 'SECRETARIA', label: 'Secretaria' },
+  { value: 'COORDINADOR', label: 'Coordinador' },
+  { value: 'COORDINADOR_ACADEMICO', label: 'Coordinador Académico' },
+];
+
+const getDefaultPasswordByRole = (role: string): string => {
+  const passwordMap: Record<string, string> = {
+    ESTUDIANTE: 'estudiante123',
+    DOCENTE: 'docente123',
+    COORDINADOR: 'coordinador123',
+    COORDINADOR_ACADEMICO: 'academico123',
+    SECRETARIA: 'secretaria123',
+    DIRECTOR: 'director123',
+    ADMIN: 'admin123',
+  };
+  return passwordMap[role] || 'usuario123';
+};
+
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [instituciones, setInstituciones] = useState<Institucion[]>([]);
@@ -71,6 +107,18 @@ export default function AdminUsuariosPage() {
     tempPassword: string | null;
   }>({ isOpen: false, userId: '', userName: '', tempPassword: null });
   const [copied, setCopied] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newUser, setNewUser] = useState({
+    nombre: '',
+    segundoNombre: '',
+    apellido: '',
+    segundoApellido: '',
+    email: '',
+    rol: 'ESTUDIANTE',
+    institucionId: '',
+  });
+  const [createdCredentials, setCreatedCredentials] = useState<{ username: string; tempPassword: string } | null>(null);
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -163,6 +211,98 @@ export default function AdminUsuariosPage() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    try {
+      const response = await usersApi.create({
+        ...newUser,
+        institucionId: newUser.institucionId || undefined,
+      });
+      const createdUser = response.data.data?.user;
+      setCreatedCredentials({
+        username: createdUser?.username || '',
+        tempPassword: response.data.data?.tempPassword || '',
+      });
+      setShowCreateModal(false);
+      setNewUser({ nombre: '', segundoNombre: '', apellido: '', segundoApellido: '', email: '', rol: 'ESTUDIANTE', institucionId: '' });
+      fetchUsers();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Error al crear usuario');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (filteredUsers.length === 0) {
+      alert('No hay usuarios para imprimir');
+      return;
+    }
+
+    const rolLabel = filters.role ? (ROLES_DISPLAY[filters.role] || filters.role) : 'Todos los roles';
+    const instLabel = filters.institucionId
+      ? instituciones.find(i => i.id === filters.institucionId)?.nombre || ''
+      : 'Todas';
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Lista de Usuarios</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            .subtitle { color: #666; margin-bottom: 16px; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+            th { background: #f0f0f0; font-weight: bold; }
+            tr:nth-child(even) { background: #fafafa; }
+            .footer { margin-top: 16px; font-size: 10px; color: #999; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de Usuarios</h1>
+          <div class="subtitle">
+            Rol: ${rolLabel} | Institución: ${instLabel} | Total: ${filteredUsers.length}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre Completo</th>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Rol</th>
+                <th>Institución</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredUsers.map((u, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${u.nombre} ${u.apellido}</td>
+                  <td>${u.username}</td>
+                  <td>${getDefaultPasswordByRole(u.role)}</td>
+                  <td>${ROLES_DISPLAY[u.role] || u.role}</td>
+                  <td>${u.institucion?.nombre || 'Sin institución'}</td>
+                  <td>${u.activo ? 'Activo' : 'Inactivo'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">Impreso el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const filteredUsers = filters.search
     ? users.filter(
         (u) =>
@@ -186,11 +326,23 @@ export default function AdminUsuariosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Usuarios del Sistema</h1>
-        <p className="text-muted-foreground">
-          Gestiona todos los usuarios de todas las instituciones
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Usuarios del Sistema</h1>
+          <p className="text-muted-foreground">
+            Gestiona todos los usuarios de todas las instituciones
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="w-4 h-4 mr-2" />
+            Imprimir
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -425,6 +577,157 @@ export default function AdminUsuariosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Credenciales del usuario creado */}
+      {createdCredentials && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="font-medium text-green-800">Usuario creado exitosamente</p>
+                <div className="text-sm text-green-700 space-y-1">
+                  <p>
+                    Usuario: <strong className="font-mono bg-green-100 px-2 py-0.5 rounded">{createdCredentials.username}</strong>
+                  </p>
+                  <p>
+                    Contraseña temporal: <strong className="font-mono bg-green-100 px-2 py-0.5 rounded">{createdCredentials.tempPassword}</strong>
+                  </p>
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  Guarda estas credenciales. El usuario deberá cambiar su contraseña en el primer inicio de sesión.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setCreatedCredentials(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <h2 className="text-lg font-semibold mb-4">Crear Nuevo Usuario</h2>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nombre">Primer Nombre *</Label>
+                    <Input
+                      id="nombre"
+                      value={newUser.nombre}
+                      onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
+                      placeholder="Juan"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="segundoNombre">Segundo Nombre</Label>
+                    <Input
+                      id="segundoNombre"
+                      value={newUser.segundoNombre}
+                      onChange={(e) => setNewUser({ ...newUser, segundoNombre: e.target.value })}
+                      placeholder="Carlos (opcional)"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido">Primer Apellido *</Label>
+                    <Input
+                      id="apellido"
+                      value={newUser.apellido}
+                      onChange={(e) => setNewUser({ ...newUser, apellido: e.target.value })}
+                      placeholder="Pérez"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="segundoApellido">Segundo Apellido</Label>
+                    <Input
+                      id="segundoApellido"
+                      value={newUser.segundoApellido}
+                      onChange={(e) => setNewUser({ ...newUser, segundoApellido: e.target.value })}
+                      placeholder="García (opcional)"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email (opcional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    placeholder="usuario@ejemplo.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="institucion">Institución *</Label>
+                  <select
+                    id="institucion"
+                    value={newUser.institucionId}
+                    onChange={(e) => setNewUser({ ...newUser, institucionId: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md"
+                    required
+                  >
+                    <option value="">Seleccionar institución...</option>
+                    {instituciones.map((inst) => (
+                      <option key={inst.id} value={inst.id}>
+                        {inst.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rol">Rol *</Label>
+                  <select
+                    id="rol"
+                    value={newUser.rol}
+                    onChange={(e) => setNewUser({ ...newUser, rol: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-md"
+                    required
+                  >
+                    {ROLES_CREABLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
+                  <p className="font-medium">Credenciales generadas:</p>
+                  <p className="text-xs mt-1">
+                    Usuario: primer_nombre.primer_apellido + 4 dígitos
+                  </p>
+                  <p className="text-xs mt-2">
+                    Contraseña por defecto: <strong className="font-mono bg-blue-100 px-2 py-0.5 rounded">{getDefaultPasswordByRole(newUser.rol)}</strong>
+                  </p>
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowCreateModal(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={isCreating}>
+                    {isCreating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Crear Usuario'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Reset Password Modal */}
       {resetPasswordModal.isOpen && (

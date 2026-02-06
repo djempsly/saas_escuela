@@ -83,7 +83,7 @@ export default function AdminActividadesPage() {
     try {
       setIsLoading(true);
       const [actividadesRes, institucionesRes] = await Promise.all([
-        actividadesApi.getAll(100),
+        actividadesApi.getAllAdmin(100),
         institucionesApi.getAll(),
       ]);
 

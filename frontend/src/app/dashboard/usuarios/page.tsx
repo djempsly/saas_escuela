@@ -21,6 +21,7 @@ import {
   EyeOff,
   Copy,
   GraduationCap,
+  Printer,
 } from 'lucide-react';
 
 interface ApiError {
@@ -72,6 +73,19 @@ const ROLES_CREABLES = [
   { value: 'COORDINADOR_ACADEMICO', label: 'Coordinador Académico' },
 ];
 
+const getDefaultPasswordByRole = (role: string): string => {
+  const passwordMap: Record<string, string> = {
+    ESTUDIANTE: 'estudiante123',
+    DOCENTE: 'docente123',
+    COORDINADOR: 'coordinador123',
+    COORDINADOR_ACADEMICO: 'academico123',
+    SECRETARIA: 'secretaria123',
+    DIRECTOR: 'director123',
+    ADMIN: 'admin123',
+  };
+  return passwordMap[role] || 'usuario123';
+};
+
 export default function UsuariosPage() {
   const { user } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -111,6 +125,72 @@ export default function UsuariosPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     alert('Copiado al portapapeles');
+  };
+
+  const handlePrint = () => {
+    const usersToPrint = filteredUsuarios;
+    if (usersToPrint.length === 0) {
+      alert('No hay usuarios para imprimir');
+      return;
+    }
+
+    const rolLabel = filterRole ? (ROLES_DISPLAY[filterRole] || filterRole) : 'Todos los roles';
+    const nivelLabel = filterNivel ? niveles.find(n => n.id === filterNivel)?.nombre || '' : '';
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Lista de Usuarios</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            .subtitle { color: #666; margin-bottom: 16px; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+            th { background: #f0f0f0; font-weight: bold; }
+            tr:nth-child(even) { background: #fafafa; }
+            .footer { margin-top: 16px; font-size: 10px; color: #999; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de Usuarios</h1>
+          <div class="subtitle">
+            Rol: ${rolLabel}${nivelLabel ? ' | Nivel: ' + nivelLabel : ''} | Total: ${usersToPrint.length}
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre Completo</th>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Rol</th>
+                ${filterRole === 'ESTUDIANTE' ? '<th>Nivel</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${usersToPrint.map((u, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${u.nombre} ${u.apellido}</td>
+                  <td>${u.username}</td>
+                  <td>${u.debeCambiarPassword ? getDefaultPasswordByRole(u.role) : '(personalizada)'}</td>
+                  <td>${ROLES_DISPLAY[u.role] || u.role}</td>
+                  ${filterRole === 'ESTUDIANTE' ? `<td>${u.inscripciones?.[0]?.clase?.nivel?.nombre || 'Sin asignar'}</td>` : ''}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">Impreso el ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   useEffect(() => {
@@ -194,10 +274,18 @@ export default function UsuariosPage() {
             Gestiona los usuarios de tu institución
           </p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
-        </Button>
+        <div className="flex gap-2">
+          {canSeePasswords && (
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-2" />
+              Imprimir
+            </Button>
+          )}
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -318,11 +406,11 @@ export default function UsuariosPage() {
                     <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
                       {ROLES_DISPLAY[u.role] || u.role}
                     </span>
-                    {/* Contraseña temporal - solo visible para ADMIN/DIRECTOR */}
-                    {canSeePasswords && u.passwordTemporal && (
+                    {/* Contraseña por defecto - solo visible para ADMIN/DIRECTOR */}
+                    {canSeePasswords && u.debeCambiarPassword && (
                       <div className="flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
                         <span className="text-xs text-yellow-700">
-                          {visiblePasswords.has(u.id) ? u.passwordTemporal : '******'}
+                          {visiblePasswords.has(u.id) ? getDefaultPasswordByRole(u.role) : '******'}
                         </span>
                         <Button
                           variant="ghost"
@@ -341,7 +429,7 @@ export default function UsuariosPage() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => copyToClipboard(u.passwordTemporal!)}
+                          onClick={() => copyToClipboard(getDefaultPasswordByRole(u.role))}
                           title="Copiar"
                         >
                           <Copy className="w-3 h-3 text-yellow-600" />
@@ -454,12 +542,15 @@ export default function UsuariosPage() {
                   </select>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
-                  <p className="font-medium">Formato del usuario generado:</p>
+                  <p className="font-medium">Credenciales generadas:</p>
                   <p className="text-xs mt-1">
-                    primer_nombre.primer_apellido + 4 dígitos
+                    Usuario: primer_nombre.primer_apellido + 4 dígitos
                   </p>
                   <p className="text-xs mt-1 font-mono bg-blue-100 px-2 py-1 rounded">
                     {(newUser.nombre.toLowerCase().replace(/\s+/g, '') || 'juan')}.{(newUser.apellido.toLowerCase().replace(/\s+/g, '') || 'perez')}1234
+                  </p>
+                  <p className="text-xs mt-2">
+                    Contraseña por defecto: <strong className="font-mono bg-blue-100 px-2 py-0.5 rounded">{getDefaultPasswordByRole(newUser.rol)}</strong>
                   </p>
                 </div>
                 <div className="flex gap-2 pt-4">

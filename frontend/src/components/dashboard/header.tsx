@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, LogOut, User as UserIcon, Settings, Bell } from 'lucide-react';
+import { getMediaUrl } from '@/lib/api';
 
 interface HeaderProps {
   branding: InstitutionBranding | null;
@@ -28,23 +29,15 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
 
   const handleLogout = () => {
     const slug = branding?.slug;
-    const customDomain = branding?.dominioPersonalizado;
-    const currentHost = typeof window !== 'undefined' ? window.location.hostname : '';
-    
-    // Si estamos en un dominio personalizado, la redirección a /login
-    // nos mantendrá en ese dominio y el backend resolverá el tenant.
-    // Si estamos en el dominio principal (localhost, etc), usamos el slug.
-    const isCustomDomain = customDomain && currentHost === customDomain;
 
     logout();
     clearBranding();
 
-    if (isCustomDomain) {
-      router.push('/login');
-    } else if (slug) {
-      router.push(`/${slug}/login`);
+    // Siempre redirigir al landing de la institución
+    if (slug) {
+      router.push(`/${slug}`);
     } else {
-      router.push('/login');
+      router.push('/');
     }
   };
 
@@ -97,6 +90,12 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 gap-2 px-2">
               <Avatar className="h-8 w-8">
+                {user?.fotoUrl && (
+                  <AvatarImage
+                    src={getMediaUrl(user.fotoUrl)}
+                    alt={`${user.nombre} ${user.apellido}`}
+                  />
+                )}
                 <AvatarFallback
                   style={{ backgroundColor: branding?.colorPrimario || '#1a365d' }}
                   className="text-white text-xs"

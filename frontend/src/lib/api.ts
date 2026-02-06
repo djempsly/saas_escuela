@@ -51,9 +51,19 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
+        // Leer slug de la institución antes de limpiar el storage
+        let slug: string | undefined;
+        try {
+          const stored = localStorage.getItem('institution-storage');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            slug = parsed?.state?.branding?.slug;
+          }
+        } catch {}
+
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = slug ? `/${slug}` : '/';
       }
     }
     return Promise.reject(error);
@@ -217,6 +227,8 @@ export const dominiosApi = {
 export const actividadesApi = {
   getAll: (limit?: number) =>
     api.get('/actividades', { params: { limit } }),
+  getAllAdmin: (limit?: number) =>
+    api.get('/actividades/admin', { params: { limit } }),
   getById: (id: string) =>
     api.get(`/actividades/${id}`),
   search: (q: string, institucionId?: string) =>

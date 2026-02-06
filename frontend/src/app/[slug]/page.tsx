@@ -35,6 +35,9 @@ interface Branding {
   pais?: string;
   idiomaPrincipal?: string;
   autogestionActividades: boolean;
+  heroImageUrl?: string | null;
+  heroTitle?: string | null;
+  heroSubtitle?: string | null;
 }
 
 interface Actividad {
@@ -604,40 +607,87 @@ export default function InstitucionLandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 px-4" style={{ backgroundColor: `${primaryColor}10` }}>
-        <div className={`container mx-auto max-w-4xl flex flex-col ${logoPositionClasses[logoPosicion]}`}>
-          {branding.logoUrl && (
-            <div className="mb-6">
-              <Image
-                src={getMediaUrl(branding.logoUrl)}
-                alt={branding.nombre}
-                width={120}
-                height={120}
-                className="rounded-lg shadow-lg"
-                unoptimized
-              />
+      {branding.heroImageUrl ? (
+        <section
+          className="relative pt-16 min-h-[70vh] flex items-center justify-center px-4"
+          style={{
+            backgroundImage: `url(${getMediaUrl(branding.heroImageUrl)})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <div className={`relative container mx-auto max-w-4xl flex flex-col ${logoPositionClasses[logoPosicion]}`}>
+            {branding.logoUrl && (
+              <div className="mb-6">
+                <Image
+                  src={getMediaUrl(branding.logoUrl)}
+                  alt={branding.nombre}
+                  width={120}
+                  height={120}
+                  className="rounded-lg shadow-lg"
+                  unoptimized
+                />
+              </div>
+            )}
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
+              {branding.heroTitle || branding.nombre}
+            </h1>
+            {(branding.heroSubtitle || branding.lema) && (
+              <p className="text-xl text-white/80 mb-8 italic">
+                {branding.heroSubtitle || `\u201C${branding.lema}\u201D`}
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link href={`/${slug}/login`}>
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {t.landing.accessPortal}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
             </div>
-          )}
-          <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: primaryColor }}>
-            {branding.nombre}
-          </h1>
-          {branding.lema && (
-            <p className="text-xl text-muted-foreground mb-8 italic">&ldquo;{branding.lema}&rdquo;</p>
-          )}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link href={`/${slug}/login`}>
-              <Button
-                size="lg"
-                className="w-full sm:w-auto"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {t.landing.accessPortal}
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="pt-32 pb-16 px-4" style={{ backgroundColor: `${primaryColor}10` }}>
+          <div className={`container mx-auto max-w-4xl flex flex-col ${logoPositionClasses[logoPosicion]}`}>
+            {branding.logoUrl && (
+              <div className="mb-6">
+                <Image
+                  src={getMediaUrl(branding.logoUrl)}
+                  alt={branding.nombre}
+                  width={120}
+                  height={120}
+                  className="rounded-lg shadow-lg"
+                  unoptimized
+                />
+              </div>
+            )}
+            <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: primaryColor }}>
+              {branding.nombre}
+            </h1>
+            {branding.lema && (
+              <p className="text-xl text-muted-foreground mb-8 italic">&ldquo;{branding.lema}&rdquo;</p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link href={`/${slug}/login`}>
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {t.landing.accessPortal}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Actividades Section */}
       {actividades.length > 0 && (

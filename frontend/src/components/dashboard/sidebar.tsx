@@ -30,6 +30,7 @@ import {
   FileText,
   Clock,
   Table2,
+  Upload,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -57,6 +58,7 @@ const menuItems = {
     { href: '/dashboard/usuarios', label: 'Usuarios', icon: Users },
     { href: '/dashboard/personal', label: 'Personal', icon: Briefcase },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/estudiantes/importar', label: 'Importar Estudiantes', icon: Upload },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
@@ -129,6 +131,7 @@ const menuItems = {
   SECRETARIA: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/estudiantes/importar', label: 'Importar Estudiantes', icon: Upload },
     { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
     { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },

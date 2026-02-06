@@ -43,14 +43,11 @@ export const useInstitutionStore = create<InstitutionState>()(
         set({ branding });
         // Aplicar variables CSS cuando se actualiza el branding
         if (typeof window !== 'undefined' && branding) {
-          document.documentElement.style.setProperty(
-            '--color-primary',
-            branding.colorPrimario || defaultBranding.colorPrimario!
-          );
-          document.documentElement.style.setProperty(
-            '--color-secondary',
-            branding.colorSecundario || defaultBranding.colorSecundario!
-          );
+          const primary = branding.colorPrimario || defaultBranding.colorPrimario!;
+          const secondary = branding.colorSecundario || defaultBranding.colorSecundario!;
+          // Setear --primary para que Tailwind (bg-primary, text-primary, etc.) lo use
+          document.documentElement.style.setProperty('--primary', primary);
+          document.documentElement.style.setProperty('--secondary', secondary);
         }
       },
 
@@ -59,14 +56,8 @@ export const useInstitutionStore = create<InstitutionState>()(
       clearBranding: () => {
         set({ branding: null });
         if (typeof window !== 'undefined') {
-          document.documentElement.style.setProperty(
-            '--color-primary',
-            defaultBranding.colorPrimario!
-          );
-          document.documentElement.style.setProperty(
-            '--color-secondary',
-            defaultBranding.colorSecundario!
-          );
+          document.documentElement.style.setProperty('--primary', defaultBranding.colorPrimario!);
+          document.documentElement.style.setProperty('--secondary', defaultBranding.colorSecundario!);
         }
       },
     }),

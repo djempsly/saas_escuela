@@ -1307,20 +1307,22 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
                 <div className="space-y-2 pt-4 border-t">
                   <Label>Preview del Hero</Label>
                   <div
-                    className="relative h-48 rounded-lg overflow-hidden flex items-center justify-center"
+                    className="relative rounded-lg overflow-hidden flex items-center justify-center"
                     style={{
                       backgroundColor: formData.colorPrimario,
                       backgroundImage: heroPreview ? `url(${heroPreview})` : undefined,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
+                      minHeight: '280px',
+                      aspectRatio: '16/7',
                     }}
                   >
-                    <div className="absolute inset-0 bg-black/40" />
-                    <div className="relative text-center text-white p-4">
-                      <h2 className="text-2xl font-bold mb-2">
+                    <div className="absolute inset-0 bg-black/50" />
+                    <div className="relative text-center text-white p-6">
+                      <h2 className="text-3xl font-bold mb-3">
                         {formData.heroTitle || formData.nombre || 'Nombre de la Institución'}
                       </h2>
-                      <p className="text-white/80">
+                      <p className="text-white/80 text-lg">
                         {formData.heroSubtitle || 'Bienvenidos a nuestra plataforma educativa'}
                       </p>
                     </div>

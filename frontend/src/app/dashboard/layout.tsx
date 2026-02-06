@@ -34,9 +34,10 @@ export default function DashboardLayout({
   useEffect(() => {
     if (hydrated && !isAuthenticated && !hasRedirected.current) {
       hasRedirected.current = true;
-      router.push('/login');
+      const slug = branding?.slug;
+      router.push(slug ? `/${slug}` : '/');
     }
-  }, [hydrated, isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router, branding?.slug]);
 
   // GUARD: Forzar cambio de contraseña si es requerido
   useEffect(() => {
@@ -53,8 +54,8 @@ export default function DashboardLayout({
   // Aplicar colores de branding
   useLayoutEffect(() => {
     if (branding) {
-      document.documentElement.style.setProperty('--color-primary', branding.colorPrimario);
-      document.documentElement.style.setProperty('--color-secondary', branding.colorSecundario);
+      document.documentElement.style.setProperty('--primary', branding.colorPrimario);
+      document.documentElement.style.setProperty('--secondary', branding.colorSecundario);
     }
   }, [branding]);
 

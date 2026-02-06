@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import {
   createActividad,
   findAllActividades,
+  findAllActividadesAdmin,
   findActividadById,
   updateActividad,
   deleteActividad,
@@ -13,7 +14,7 @@ import {
 } from '../services/actividad.service';
 import { actividadSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
-import { getFileUrl } from '../middleware/upload.middleware';
+import { uploadToS3 } from '../services/s3.service';
 
 export const createActividadHandler = async (req: Request, res: Response) => {
   try {
@@ -56,13 +57,15 @@ export const createActividadHandler = async (req: Request, res: Response) => {
     if (files) {
       // Procesar múltiples imágenes subidas
       if (files.imagenes) {
-        files.imagenes.forEach((file) => {
-          fotos.push(getFileUrl(file));
-        });
+        for (const file of files.imagenes) {
+          const url = await uploadToS3(file, 'imagenes', institucionId);
+          fotos.push(url);
+        }
       }
       // Procesar video subido
       if (files.video && files.video[0]) {
-        videos.push(getFileUrl(files.video[0]));
+        const url = await uploadToS3(files.video[0], 'videos', institucionId);
+        videos.push(url);
       }
     }
 
@@ -106,6 +109,7 @@ export const createActividadHandler = async (req: Request, res: Response) => {
 
     return res.status(201).json(actividad);
   } catch (error: any) {
+    console.error('Error creating actividad:', error);
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
@@ -117,6 +121,29 @@ export const getActividadesHandler = async (req: Request, res: Response) => {
   try {
     const { limit } = req.query as { limit?: string };
     const actividades = await findAllActividades(limit ? parseInt(limit) : undefined);
+    return res.status(200).json(actividades);
+  } catch (error: any) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getActividadesAdminHandler = async (req: Request, res: Response) => {
+  try {
+    const { limit, institucionId, publicado } = req.query as {
+      limit?: string;
+      institucionId?: string;
+      publicado?: string;
+    };
+
+    const filters: { institucionId?: string; publicado?: boolean } = {};
+    if (institucionId !== undefined) {
+      filters.institucionId = institucionId;
+    }
+    if (publicado !== undefined) {
+      filters.publicado = publicado === 'true';
+    }
+
+    const actividades = await findAllActividadesAdmin(filters, limit ? parseInt(limit) : undefined);
     return res.status(200).json(actividades);
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -148,16 +175,21 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
     const fotos: string[] = [];
     const videos: string[] = [];
 
+    // Determinar institucionId para la key de S3
+    const institucionId = req.resolvedInstitucionId || null;
+
     if (files) {
       // Procesar múltiples imágenes subidas
       if (files.imagenes) {
-        files.imagenes.forEach((file) => {
-          fotos.push(getFileUrl(file));
-        });
+        for (const file of files.imagenes) {
+          const url = await uploadToS3(file, 'imagenes', institucionId);
+          fotos.push(url);
+        }
       }
       // Procesar video subido
       if (files.video && files.video[0]) {
-        videos.push(getFileUrl(files.video[0]));
+        const url = await uploadToS3(files.video[0], 'videos', institucionId);
+        videos.push(url);
       }
     }
 
