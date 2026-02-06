@@ -45,6 +45,21 @@ export interface Calificacion {
   cex: number | null;
   promedioFinal: number | null;
   situacion: string | null;
+  
+  // NUEVO: Soporte para múltiples competencias independientes
+  competencias?: {
+    [competenciaId: string]: {
+      p1: number | null;
+      p2: number | null;
+      p3: number | null;
+      p4: number | null;
+      rp1: number | null;
+      rp2: number | null;
+      rp3: number | null;
+      rp4: number | null;
+    }
+  };
+
   // Notas Técnicas (RA)
   ras?: { [key: string]: number };
   
@@ -277,10 +292,32 @@ export function BoletinIndividual({
   const colorClaro = nivelNombre.includes('6to') ? '#fef2f2' :
                      nivelNombre.includes('5to') ? '#f0fdf4' : '#eff6ff';
 
-  // Calcular promedio por periodo para una materia
-  const calcularPromedioPeriodo = (cal: Calificacion | undefined, periodo: 'p1' | 'p2' | 'p3' | 'p4', rp: 'rp1' | 'rp2' | 'rp3' | 'rp4') => {
+  // Calcular promedio por periodo para una materia (PROMEDIO DE COMPETENCIAS)
+  const calcularPromedioPeriodo = (cal: Calificacion | undefined, periodo: string, rp: string) => {
     if (!cal) return 0;
-    const nota = Math.max(cal[periodo] || 0, cal[rp] || 0);
+
+    // Si existen competencias, el promedio del periodo es el promedio de las notas de cada competencia
+    if (cal.competencias && Object.keys(cal.competencias).length > 0) {
+      let suma = 0;
+      let count = 0;
+      
+      Object.values(cal.competencias).forEach(comp => {
+        const pVal = comp[periodo as keyof typeof comp] as number || 0;
+        const rpVal = comp[rp as keyof typeof comp] as number || 0;
+        const notaMaxComp = Math.max(pVal, rpVal);
+        
+        if (notaMaxComp > 0) {
+          suma += notaMaxComp;
+          count++;
+        }
+      });
+      
+      // Retornar promedio redondeado (estándar MINERD)
+      return count > 0 ? Math.round(suma / count) : 0;
+    }
+
+    // Fallback: Si no hay competencias (sistema simple o legacy), usar nivel superior
+    const nota = Math.max((cal as any)[periodo] || 0, (cal as any)[rp] || 0);
     return nota;
   };
 
@@ -353,19 +390,18 @@ export function BoletinIndividual({
       }
     });
 
-    // Módulos técnicos
+    // ... (módulos técnicos igual)
     modulosTecnicos.forEach((modulo, modIdx) => {
       const cal = estudiante.calificaciones[modulo.id];
       const canEdit = canEditMateria(modulo.id, cal);
 
       if (canEdit && !isReadOnly) {
-        // Para técnicos usamos RAs en lugar de PERIODOS
         RAS_DISPLAY.forEach((ra, raIdx) => {
           const cellId = `modulo-${modulo.id}-${ra}`;
           cells.push({
             cellId,
             claseId: cal?.claseId || null,
-            periodo: ra, // "RA1", "RA2"...
+            periodo: ra,
             asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
             competenciaIndex: 0,
             periodoIndex: raIdx,
@@ -396,34 +432,34 @@ export function BoletinIndividual({
     setTempValue(currentValue !== null && currentValue !== 0 ? currentValue.toString() : '');
   };
 
-  // Obtener el valor actual de una celda por su ID
+  // Obtener el valor actual de una celda por su ID (Mejorado para competencias)
   const getCellValue = useCallback((nextCell: EditableCell) => {
-    // Verificar si es un módulo técnico (cellId comienza con "modulo-")
     if (nextCell.cellId.startsWith('modulo-')) {
-      // Extraer el moduloId del cellId
       const moduloIdx = nextCell.asignaturaIndex - ASIGNATURAS_GENERALES_MINERD.length;
       const modulo = modulosTecnicos[moduloIdx];
       if (modulo) {
         const cal = estudiante.calificaciones[modulo.id];
-        // Para RAs, el valor está en el mapa 'ras' con la clave del periodo ("RA1", etc)
         const value = cal?.ras?.[nextCell.periodo];
         return typeof value === 'number' && value !== 0 ? value : null;
       }
     } else {
-      // Asignatura general
+      // Asignatura general con COMPETENCIA
       const asignatura = ASIGNATURAS_GENERALES_MINERD[nextCell.asignaturaIndex];
-      if (asignatura) {
+      const competencia = COMPETENCIAS[nextCell.competenciaIndex];
+      
+      if (asignatura && competencia) {
         const materia = findMateriaByAsignatura(asignatura);
         const cal = materia ? estudiante.calificaciones[materia.id] : undefined;
-        const value = cal?.[nextCell.periodo as keyof Calificacion];
+        // Buscar en el map de competencias
+        const value = cal?.competencias?.[competencia.id]?.[nextCell.periodo as keyof Calificacion['competencias'][string]];
         return typeof value === 'number' && value !== 0 ? value : null;
       }
     }
     return null;
   }, [estudiante.calificaciones, findMateriaByAsignatura, modulosTecnicos]);
 
-  // Guardar y cerrar celda actual
-  const saveAndCloseCell = useCallback(async (claseId: string | null, periodo: string, moveToNext?: EditableCell | null) => {
+  // Guardar y cerrar celda actual (Mejorado para competencias)
+  const saveAndCloseCell = useCallback(async (claseId: string | null, periodo: string, cellId: string, moveToNext?: EditableCell | null) => {
     if (!claseId) {
       setEditingCell(null);
       if (moveToNext) {
@@ -440,12 +476,18 @@ export function BoletinIndividual({
       return;
     }
 
+    // Extraer competenciaId del cellId si no es un módulo
+    let compId: string | undefined = undefined;
+    if (!cellId.startsWith('modulo-')) {
+      const parts = cellId.split('-');
+      if (parts.length >= 2) compId = parts[1]; // El ID de la competencia está en la segunda parte
+    }
+
     setIsSaving(true);
     try {
-      await onSaveCalificacion(claseId, estudiante.id, periodo, num);
+      await onSaveCalificacion(claseId, estudiante.id, periodo, num, compId);
       setEditingCell(null);
 
-      // Mover a la siguiente celda si se especificó
       if (moveToNext) {
         setTimeout(() => {
           const nextValue = getCellValue(moveToNext);
@@ -460,11 +502,10 @@ export function BoletinIndividual({
     }
   }, [tempValue, onSaveCalificacion, estudiante.id, getCellValue]);
 
-  // Manejar blur de celda (sin navegación)
-  const handleCellBlur = useCallback((claseId: string | null, periodo: string) => {
-    // Solo guardar si no estamos en proceso de navegación con Tab/Enter
+  // Manejar blur de celda
+  const handleCellBlur = useCallback((claseId: string | null, periodo: string, cellId: string) => {
     if (!isSaving) {
-      saveAndCloseCell(claseId, periodo);
+      saveAndCloseCell(claseId, periodo, cellId);
     }
   }, [isSaving, saveAndCloseCell]);
 
@@ -473,11 +514,11 @@ export function BoletinIndividual({
     if (e.key === 'Tab') {
       e.preventDefault();
       const nextCell = findNextCell(currentCellId, e.shiftKey);
-      saveAndCloseCell(claseId, periodo, nextCell);
+      saveAndCloseCell(claseId, periodo, currentCellId, nextCell);
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const nextCell = findNextCell(currentCellId, false);
-      saveAndCloseCell(claseId, periodo, nextCell);
+      saveAndCloseCell(claseId, periodo, currentCellId, nextCell);
     } else if (e.key === 'Escape') {
       setEditingCell(null);
       setTempValue('');
@@ -777,7 +818,8 @@ export function BoletinIndividual({
                       {COMPETENCIAS.map(comp => (
                         PERIODOS.map(p => {
                           const pLower = p.toLowerCase() as 'p1' | 'rp1' | 'p2' | 'rp2' | 'p3' | 'rp3' | 'p4' | 'rp4';
-                          const valor = cal?.[pLower] || 0;
+                          // NUEVO: Buscar valor específico de ESTA competencia
+                          const valor = cal?.competencias?.[comp.id]?.[pLower] || 0;
                           const cellId = `${asignatura.codigo}-${comp.id}-${p}`;
                           const isEditing = editingCell === cellId;
 
@@ -807,7 +849,7 @@ export function BoletinIndividual({
                                   step="1"
                                   value={tempValue}
                                   onChange={(e) => setTempValue(e.target.value)}
-                                  onBlur={() => handleCellBlur(cal?.claseId || null, pLower)}
+                                  onBlur={() => handleCellBlur(cal?.claseId || null, pLower, cellId)}
                                   onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, pLower, cellId)}
                                   autoFocus
                                   disabled={isSaving}
@@ -1395,8 +1437,8 @@ export default function SabanaNotasPage() {
     return cal.docenteId === user?.id;
   }, [isDocente, user?.id, user?.role]);
 
-  const handleSaveCalificacion = async (claseId: string, estudianteId: string, periodo: string, valor: number | null) => {
-    await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo: periodo as any, valor });
+  const handleSaveCalificacion = async (claseId: string, estudianteId: string, periodo: string, valor: number | null, competenciaId?: string) => {
+    await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo: periodo as any, valor, competenciaId });
     toast.success('Calificación guardada');
     loadSabana();
   };

@@ -205,9 +205,11 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
 export const getBrandingBySlugHandler = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params as { slug: string };
+    console.log(`[DEBUG] Buscando branding para slug: "${slug}"`);
     const branding = await getInstitucionBrandingBySlug(slug);
 
     if (!branding) {
+      console.log(`[DEBUG] Institución no encontrada para slug: "${slug}"`);
       return res.status(404).json({ message: 'Institución no encontrada' });
     }
 

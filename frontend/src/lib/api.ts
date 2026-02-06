@@ -328,8 +328,8 @@ export const boletinesApi = {
 
 // Usuarios API
 export const usersApi = {
-  getAll: () =>
-    api.get('/users'),
+  getAll: (filters?: { role?: string; nivelId?: string }) =>
+    api.get('/users', { params: filters }),
   getStaff: () =>
     api.get('/users/staff'),
   getById: (id: string) =>
@@ -425,7 +425,8 @@ export const materiasApi = {
 
 // Estudiantes API
 export const estudiantesApi = {
-  getAll: () => api.get('/users?role=ESTUDIANTE'),
+  getAll: (filters?: { nivelId?: string }) => 
+    usersApi.getAll({ role: ROLES.ESTUDIANTE, ...filters }),
   getById: (id: string) => api.get(`/users/${id}`),
   getByClase: (claseId: string) => api.get(`/inscripciones/clase/${claseId}`),
   getBoletin: (estudianteId: string, cicloId: string) =>
@@ -434,7 +435,7 @@ export const estudiantesApi = {
 
 // Docentes API
 export const docentesApi = {
-  getAll: () => api.get('/users?role=DOCENTE'),
+  getAll: () => usersApi.getAll({ role: ROLES.DOCENTE }),
   getById: (id: string) => api.get(`/users/${id}`),
   getClases: (docenteId: string) => api.get(`/clases?docenteId=${docenteId}`),
 };
@@ -616,6 +617,7 @@ export const sabanaApi = {
     estudianteId: string;
     periodo: string; // Permitir p1..p4, rp1..rp4 y RA1..RA10
     valor: number | null;
+    competenciaId?: string;
   }) => api.patch('/sabana/calificacion', data),
 };
 

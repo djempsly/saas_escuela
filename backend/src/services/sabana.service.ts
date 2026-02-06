@@ -29,6 +29,20 @@ export interface SabanaCalificacion {
   promedioFinal: number | null;
   situacion: string | null;
 
+  // Notas por Competencia (Map dinámico por ID de competencia)
+  competencias: {
+    [competenciaId: string]: {
+      p1: number | null;
+      p2: number | null;
+      p3: number | null;
+      p4: number | null;
+      rp1: number | null;
+      rp2: number | null;
+      rp3: number | null;
+      rp4: number | null;
+    }
+  };
+
   // Notas Técnicas (RA) - Map dinámico: "RA1": 85, "RA2": 90
   ras: { [key: string]: number };
 
@@ -120,7 +134,8 @@ const detectarSistemaEducativo = (
 export const getSabanaByNivel = async (
   nivelId: string,
   cicloLectivoId: string,
-  institucionId: string
+  institucionId: string,
+  userId?: string
 ): Promise<SabanaData> => {
   // 1. Obtener el nivel y ciclo
   const nivel = await prisma.nivel.findUnique({
@@ -199,7 +214,7 @@ export const getSabanaByNivel = async (
     }
   }
 
-  // 5. Obtener Calificaciones (Generales y Técnicas)
+  // 5. Obtener Calificaciones (Generales, Técnicas y Competencias)
   const claseIds = clases.map(c => c.id);
 
   // A. Calificaciones Generales
@@ -208,20 +223,24 @@ export const getSabanaByNivel = async (
   });
 
   // B. Calificaciones Técnicas (RA)
-  // Nota: CalificacionTecnica no tiene cicloLectivoId directo, se infiere por la clase -> ciclo
   const calificacionesTecnicas = await prisma.calificacionTecnica.findMany({
     where: { claseId: { in: claseIds } }
   });
 
+  // C. Calificaciones por Competencia (NUEVO)
+  const calificacionesCompetencia = await prisma.calificacionCompetencia.findMany({
+    where: { claseId: { in: claseIds }, cicloLectivoId }
+  });
+
   // Organizar Calificaciones
-  // Map<EstudianteId, Map<MateriaId, { general: Calificacion?, tecnicas: CalificacionTecnica[] }>>
-  const notasMap = new Map<string, Map<string, { general?: any, tecnicas: any[] }>>();
+  // Map<EstudianteId, Map<MateriaId, { general: Calificacion?, tecnicas: any[], competencias: any[] }>>
+  const notasMap = new Map<string, Map<string, { general?: any, tecnicas: any[], competencias: any[] }>>();
 
   // Helper para inicializar mapa
   const getNotaEntry = (estId: string, matId: string) => {
     if (!notasMap.has(estId)) notasMap.set(estId, new Map());
     if (!notasMap.get(estId)!.has(matId)) {
-      notasMap.get(estId)!.set(matId, { general: undefined, tecnicas: [] });
+      notasMap.get(estId)!.set(matId, { general: undefined, tecnicas: [], competencias: [] });
     }
     return notasMap.get(estId)!.get(matId)!;
   };
@@ -242,6 +261,14 @@ export const getSabanaByNivel = async (
     entry.tecnicas.push(cal);
   }
 
+  // Llenar Competencias (NUEVO)
+  for (const comp of calificacionesCompetencia) {
+    const clase = claseById.get(comp.claseId);
+    if (!clase) continue;
+    const entry = getNotaEntry(comp.estudianteId, clase.materia.id);
+    entry.competencias.push(comp);
+  }
+
   // 6. Construir Respuesta Final
   const estudiantes: SabanaEstudiante[] = Array.from(estudiantesMap.values())
     .sort((a, b) => a.apellido.localeCompare(b.apellido))
@@ -249,11 +276,8 @@ export const getSabanaByNivel = async (
       const califsEst: SabanaEstudiante['calificaciones'] = {};
 
       for (const materia of materias) {
-        // 1. Buscar si hay una clase para esta materia en este nivel (independiente del estudiante)
-        // Esto permite saber quién es el docente de esta materia en este nivel
+        // ... (lógica de detección de clase igual)
         const claseNivelMateria = clases.find(c => c.materia.id === materia.id);
-
-        // 2. Buscar si el estudiante está explícitamente inscrito en esa clase
         let claseEstudiante = null;
         for (const cid of est.clases) {
           const c = claseById.get(cid);
@@ -266,47 +290,76 @@ export const getSabanaByNivel = async (
         const notas = notasMap.get(est.id)?.get(materia.id);
         const general = notas?.general;
         const tecnicas = notas?.tecnicas || [];
+        const competenciasRaw = notas?.competencias || [];
 
-        // Calcular promedio general si existe
-        let promedio = null;
-        if (general) {
-          let suma = 0, count = 0;
-          if (general.p1) { suma += general.p1; count++; }
-          if (general.p2) { suma += general.p2; count++; }
-          if (general.p3) { suma += general.p3; count++; }
-          if (numeroPeriodos === 4 && general.p4) { suma += general.p4; count++; }
-          if (count > 0) promedio = Math.round((suma / count) * 10) / 10;
-        }
+        // 1. Mapear Competencias (ID -> objeto notas)
+        const competenciasMap: SabanaCalificacion['competencias'] = {};
+        competenciasRaw.forEach((c: any) => {
+          competenciasMap[c.competencia] = {
+            p1: c.p1 ?? null,
+            p2: c.p2 ?? null,
+            p3: c.p3 ?? null,
+            p4: c.p4 ?? null,
+            rp1: c.rp1 ?? null,
+            rp2: c.rp2 ?? null,
+            rp3: c.rp3 ?? null,
+            rp4: c.rp4 ?? null,
+          };
+        });
 
-        // Mapear RAs (RA1, RA2...) -> valor
+        // 2. CALCULAR PROMEDIOS GENERALES DE LA MATERIA (Basado en competencias)
+        // Esto asegura que p1, p2, p3, p4 de la materia sean el promedio de sus competencias
+        const periodos = ['p1', 'p2', 'p3', 'p4', 'rp1', 'rp2', 'rp3', 'rp4'];
+        const mPromedios: any = {};
+        
+        periodos.forEach(p => {
+          let suma = 0;
+          let count = 0;
+          Object.values(competenciasMap).forEach(comp => {
+            const val = comp[p as keyof typeof comp];
+            if (val !== null && val > 0) {
+              suma += val;
+              count++;
+            }
+          });
+          mPromedios[p] = count > 0 ? Math.round(suma / count) : null;
+        });
+
+        // Calcular promedio general de la materia (promedio de los promedios de periodos)
+        let promedioMateria = null;
+        let sumaP = 0, countP = 0;
+        ['p1', 'p2', 'p3', 'p4'].forEach(p => {
+          const valP = Math.max(mPromedios[p] || 0, mPromedios[`r${p}`] || 0);
+          if (valP > 0) { sumaP += valP; countP++; }
+        });
+        if (countP > 0) promedioMateria = Math.round((sumaP / countP) * 10) / 10;
+
         const rasMap: { [key: string]: number } = {};
         tecnicas.forEach((t: any) => {
-          // Asumimos t.ra_codigo es algo como "RA1", "RA2"
-          // O normalizamos el código para que sea clave válida
           rasMap[t.ra_codigo] = t.valor;
         });
 
-        // Clase final para metadata (inscripción, clase del nivel o la de la nota)
         const claseFinal = claseEstudiante || claseNivelMateria || (general ? claseById.get(general.claseId) : null);
 
         califsEst[materia.id] = {
-          p1: general?.p1 ?? null,
-          p2: general?.p2 ?? null,
-          p3: general?.p3 ?? null,
-          p4: numeroPeriodos === 4 ? general?.p4 : null,
-          rp1: general?.rp1 ?? null,
-          rp2: general?.rp2 ?? null,
-          rp3: general?.rp3 ?? null,
-          rp4: numeroPeriodos === 4 ? general?.rp4 : null,
-          promedio: general?.promedio || promedio, // Usar promedio pre-calculado si existe en DB o calculado aquí
+          p1: mPromedios.p1,
+          p2: mPromedios.p2,
+          p3: mPromedios.p3,
+          p4: numeroPeriodos === 4 ? mPromedios.p4 : null,
+          rp1: mPromedios.rp1,
+          rp2: mPromedios.rp2,
+          rp3: mPromedios.rp3,
+          rp4: numeroPeriodos === 4 ? mPromedios.rp4 : null,
+          promedio: promedioMateria,
           cpc30: general?.cpc_30 ?? null,
           cpcTotal: general?.cpc_total ?? null,
           cc: general?.cpc_total ?? null,
-          cpex30: general?.cpex_70 ? (promedio ?? 0) * 0.3 : null,
+          cpex30: general?.cpex_70 ? (promedioMateria ?? 0) * 0.3 : null,
           cpex70: general?.cpex_70 ?? null,
           cex: general?.cpex_total ?? null,
           promedioFinal: general?.promedioFinal ?? null,
           situacion: general?.situacion ?? null,
+          competencias: competenciasMap,
           ras: rasMap,
           claseId: claseFinal?.id || null,
           docenteId: claseFinal?.docente?.id || null,
@@ -379,7 +432,8 @@ export const updateCalificacionSabana = async (
   valor: number | null,
   userId: string,
   userRole: string,
-  userInstitucionId: string
+  userInstitucionId: string,
+  competenciaId?: string
 ) => {
   const clase = await prisma.clase.findUnique({
     where: { id: claseId },
@@ -441,6 +495,35 @@ export const updateCalificacionSabana = async (
       }
     });
 
+  } else if (competenciaId) {
+    // NUEVO: Actualizar Calificación por Competencia
+    const calificacionExistente = await prisma.calificacionCompetencia.findUnique({
+      where: {
+        estudianteId_claseId_cicloLectivoId_competencia: {
+          estudianteId,
+          claseId,
+          cicloLectivoId: clase.cicloLectivoId,
+          competencia: competenciaId
+        },
+      },
+    });
+
+    if (calificacionExistente) {
+      return prisma.calificacionCompetencia.update({
+        where: { id: calificacionExistente.id },
+        data: { [periodo.toLowerCase()]: valor },
+      });
+    } else {
+      return prisma.calificacionCompetencia.create({
+        data: {
+          estudianteId,
+          claseId,
+          cicloLectivoId: clase.cicloLectivoId,
+          competencia: competenciaId,
+          [periodo.toLowerCase()]: valor,
+        },
+      });
+    }
   } else {
     // Actualizar Calificacion General (P1, P2...)
     const calificacionExistente = await prisma.calificacion.findUnique({

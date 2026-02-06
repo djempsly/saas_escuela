@@ -18,9 +18,9 @@ export const resolveTenantMiddleware = async (req: Request, res: Response, next:
 
     const { rol, institucionId: jwtInstitucionId } = req.user;
 
-    // Para ADMIN: puede especificar institucionId como query param
+    // Para ADMIN: puede especificar institucionId como query param o en el body (para peticiones POST)
     if (rol === Role.ADMIN) {
-      const queryInstitucionId = req.query.institucionId as string | undefined;
+      const queryInstitucionId = (req.query.institucionId as string) || (req.body.institucionId as string);
 
       if (queryInstitucionId) {
         // Verificar que la institución existe

@@ -5,7 +5,7 @@ import { CrearUsuarioInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 
 export const createUser = async (input: CrearUsuarioInput, institucionId: string | null) => {
-  const { email, nombre, apellido, rol } = input;
+  const { email, nombre, segundoNombre, apellido, segundoApellido, rol } = input;
 
   if (email) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -16,12 +16,15 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
 
   const tempPassword = generateSecurePassword();
   const hashedPassword = await bcrypt.hash(tempPassword, 12);
+  // Username: primer nombre + primer apellido + 4 dígitos
   const username = generateUsername(nombre, apellido);
 
   const user = await prisma.user.create({
     data: {
       nombre,
+      segundoNombre: segundoNombre || null,
       apellido,
+      segundoApellido: segundoApellido || null,
       username,
       email: email || null,
       password: hashedPassword,
@@ -120,12 +123,27 @@ export const findUserById = async (id: string) => {
   });
 };
 
-export const findUsersByInstitucion = async (institucionId: string, role?: string, _includePasswordTemporal: boolean = false) => {
+export const findUsersByInstitucion = async (
+  institucionId: string,
+  role?: string,
+  _includePasswordTemporal: boolean = false,
+  nivelId?: string
+) => {
   // SEGURIDAD: passwordTemporal ya no existe en el schema
   return prisma.user.findMany({
     where: {
       institucionId,
-      ...(role && { role: role as Role })
+      ...(role && { role: role as Role }),
+      // Filtrar por nivel si se proporciona y es rol ESTUDIANTE
+      ...(nivelId && (role === Role.ESTUDIANTE || !role) && {
+        inscripciones: {
+          some: {
+            clase: {
+              nivelId: nivelId
+            }
+          }
+        }
+      })
     },
     select: {
       id: true,

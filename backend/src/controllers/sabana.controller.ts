@@ -69,7 +69,7 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Debe proporcionar nivelId y cicloLectivoId' });
     }
 
-    const sabana = await getSabanaByNivel(nivelId, cicloLectivoId, user.institucionId);
+    const sabana = await getSabanaByNivel(nivelId, cicloLectivoId, user.institucionId, user.usuarioId);
     return res.json(sabana);
   } catch (error: any) {
     console.error('Error obteniendo sábana de notas:', error);
@@ -83,6 +83,7 @@ const updateCalificacionSchema = z.object({
   estudianteId: z.string().min(1, 'estudianteId es requerido'),
   periodo: z.string().min(2, 'periodo es requerido'), // Soporta p1-p4 y RA1-RA10
   valor: z.number().min(0).max(100).nullable(),
+  competenciaId: z.string().optional(),
 });
 
 /**
@@ -105,7 +106,7 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       });
     }
 
-    const { claseId, estudianteId, periodo, valor } = validation.data;
+    const { claseId, estudianteId, periodo, valor, competenciaId } = validation.data;
 
     const calificacion = await updateCalificacionSabana(
       claseId,
@@ -114,7 +115,8 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       valor,
       user.usuarioId,
       user.rol,
-      user.institucionId
+      user.institucionId,
+      competenciaId
     );
 
     return res.json(calificacion);

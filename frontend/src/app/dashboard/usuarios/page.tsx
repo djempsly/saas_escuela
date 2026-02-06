@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usersApi, ROLES } from '@/lib/api';
+import { usersApi, ROLES, nivelesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import {
   Users,
@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   Copy,
+  GraduationCap,
 } from 'lucide-react';
 
 interface ApiError {
@@ -34,7 +35,9 @@ interface ApiError {
 interface Usuario {
   id: string;
   nombre: string;
+  segundoNombre?: string;
   apellido: string;
+  segundoApellido?: string;
   email?: string;
   username: string;
   role: string;
@@ -42,6 +45,14 @@ interface Usuario {
   debeCambiarPassword?: boolean;
   passwordTemporal?: string | null;
   createdAt: string;
+  inscripciones?: Array<{
+    clase: {
+      nivel: {
+        id: string;
+        nombre: string;
+      }
+    }
+  }>;
 }
 
 const ROLES_DISPLAY: Record<string, string> = {
@@ -64,13 +75,17 @@ const ROLES_CREABLES = [
 export default function UsuariosPage() {
   const { user } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [niveles, setNiveles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
+  const [filterNivel, setFilterNivel] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [newUser, setNewUser] = useState({
     nombre: '',
+    segundoNombre: '',
     apellido: '',
+    segundoApellido: '',
     email: '',
     rol: 'ESTUDIANTE',
   });
@@ -100,11 +115,25 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     fetchUsuarios();
-  }, []);
+    fetchNiveles();
+  }, [filterRole, filterNivel]);
+
+  const fetchNiveles = async () => {
+    try {
+      const response = await nivelesApi.getAll();
+      setNiveles(response.data.data || []);
+    } catch (error) {
+      console.error('Error cargando niveles:', error);
+    }
+  };
 
   const fetchUsuarios = async () => {
+    setIsLoading(true);
     try {
-      const response = await usersApi.getAll();
+      const response = await usersApi.getAll({ 
+        role: filterRole || undefined, 
+        nivelId: filterNivel || undefined 
+      });
       setUsuarios(response.data.data || response.data || []);
     } catch (error) {
       console.error('Error cargando usuarios:', error);
@@ -123,7 +152,7 @@ export default function UsuariosPage() {
       setTempPassword(response.data.data?.tempPassword || '');
       setCreatedUsername(createdUser?.username || '');
       setUsuarios([createdUser, ...usuarios]);
-      setNewUser({ nombre: '', apellido: '', email: '', rol: 'ESTUDIANTE' });
+      setNewUser({ nombre: '', segundoNombre: '', apellido: '', segundoApellido: '', email: '', rol: 'ESTUDIANTE' });
       setShowModal(false);
     } catch (error) {
       const apiError = error as ApiError;
@@ -186,7 +215,10 @@ export default function UsuariosPage() {
             </div>
             <select
               value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
+              onChange={(e) => {
+                setFilterRole(e.target.value);
+                if (e.target.value !== 'ESTUDIANTE') setFilterNivel('');
+              }}
               className="px-3 py-2 border rounded-md w-full md:w-48"
             >
               <option value="">Todos los roles</option>
@@ -196,6 +228,21 @@ export default function UsuariosPage() {
                 </option>
               ))}
             </select>
+
+            {filterRole === 'ESTUDIANTE' && (
+              <select
+                value={filterNivel}
+                onChange={(e) => setFilterNivel(e.target.value)}
+                className="px-3 py-2 border rounded-md w-full md:w-48"
+              >
+                <option value="">Todos los niveles</option>
+                {niveles.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -260,6 +307,12 @@ export default function UsuariosPage() {
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                         <span>@{u.username}</span>
                         {u.email && <span>• {u.email}</span>}
+                        {u.role === 'ESTUDIANTE' && u.inscripciones && u.inscripciones[0] && (
+                          <span className="flex items-center gap-1 text-primary font-medium">
+                            • <GraduationCap className="w-3 h-3" />
+                            {u.inscripciones[0].clase.nivel.nombre}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span className="text-xs px-2 py-1 bg-slate-100 rounded-full">
@@ -334,21 +387,43 @@ export default function UsuariosPage() {
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre *</Label>
+                    <Label htmlFor="nombre">Primer Nombre *</Label>
                     <Input
                       id="nombre"
                       value={newUser.nombre}
                       onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
+                      placeholder="Juan"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="apellido">Apellido *</Label>
+                    <Label htmlFor="segundoNombre">Segundo Nombre</Label>
+                    <Input
+                      id="segundoNombre"
+                      value={newUser.segundoNombre}
+                      onChange={(e) => setNewUser({ ...newUser, segundoNombre: e.target.value })}
+                      placeholder="Carlos (opcional)"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="apellido">Primer Apellido *</Label>
                     <Input
                       id="apellido"
                       value={newUser.apellido}
                       onChange={(e) => setNewUser({ ...newUser, apellido: e.target.value })}
+                      placeholder="Pérez"
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="segundoApellido">Segundo Apellido</Label>
+                    <Input
+                      id="segundoApellido"
+                      value={newUser.segundoApellido}
+                      onChange={(e) => setNewUser({ ...newUser, segundoApellido: e.target.value })}
+                      placeholder="García (opcional)"
                     />
                   </div>
                 </div>
@@ -381,7 +456,10 @@ export default function UsuariosPage() {
                 <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
                   <p className="font-medium">Formato del usuario generado:</p>
                   <p className="text-xs mt-1">
-                    nombre.apellido + 4 dígitos (ej: {newUser.nombre.toLowerCase() || 'juan'}.{newUser.apellido.toLowerCase() || 'perez'}1234)
+                    primer_nombre.primer_apellido + 4 dígitos
+                  </p>
+                  <p className="text-xs mt-1 font-mono bg-blue-100 px-2 py-1 rounded">
+                    {(newUser.nombre.toLowerCase().replace(/\s+/g, '') || 'juan')}.{(newUser.apellido.toLowerCase().replace(/\s+/g, '') || 'perez')}1234
                   </p>
                 </div>
                 <div className="flex gap-2 pt-4">

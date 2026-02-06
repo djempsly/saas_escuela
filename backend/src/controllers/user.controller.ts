@@ -132,7 +132,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Accion no permitida' });
     }
 
-    const { role } = req.query as { role?: string };
+    const { role, nivelId } = req.query as { role?: string; nivelId?: string };
 
     // Usar resolvedInstitucionId (ya resuelto por el middleware)
     if (!req.resolvedInstitucionId) {
@@ -150,7 +150,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
 
     // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
-    const users = await findUsersByInstitucion(req.resolvedInstitucionId, role, canSeePasswords);
+    const users = await findUsersByInstitucion(req.resolvedInstitucionId, role, canSeePasswords, nivelId);
 
     return res.status(200).json({ data: users });
   } catch (error: any) {

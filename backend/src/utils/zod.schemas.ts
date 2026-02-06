@@ -92,8 +92,10 @@ export const institucionSchema = z.object({
 
 export const crearUsuarioSchema = z.object({
   body: z.object({
-    nombre: z.string().min(1, 'Nombre requerido'),
-    apellido: z.string().min(1, 'Apellido requerido'),
+    nombre: z.string().min(1, 'Primer nombre requerido'),
+    segundoNombre: z.string().optional().or(z.literal('')),
+    apellido: z.string().min(1, 'Primer apellido requerido'),
+    segundoApellido: z.string().optional().or(z.literal('')),
     email: z.string().email().optional().or(z.literal('')),
     rol: z.nativeEnum(Role),
     institucionId: z.string().optional()

@@ -1,6 +1,6 @@
 generator client {
-  provider      = "prisma-client-js"
-  engineType    = "binary"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -8,12 +8,532 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- ENUMS (Aquí definimos las diferencias de país y sistema) ---
+model User {
+  id                          String                     @id @default(cuid())
+  username                    String                     @unique
+  email                       String?                    @unique
+  password                    String
+  nombre                      String                     // Primer nombre
+  segundoNombre               String?                    // Segundo nombre (opcional)
+  apellido                    String                     // Primer apellido
+  segundoApellido             String?                    // Segundo apellido (opcional)
+  role                        Role                       @default(ESTUDIANTE)
+  activo                      Boolean                    @default(true)
+  debeCambiarPassword         Boolean                    @default(true)
+  fotoUrl                     String?
+  telefono                    String?
+  direccion                   String?
+  institucionId               String?
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+  actividades                 Actividad[]
+  asistencias                 Asistencia[]
+  calificaciones              Calificacion[]
+  calificacionesCompetencia   CalificacionCompetencia[]  @relation("CalificacionesCompetencia")
+  calificacionesTec           CalificacionTecnica[]
+  clasesDictadas              Clase[]                    @relation("DocenteClase")
+  cobros                      Cobro[]                    @relation("CobrosEstudiante")
+  conversacionesCreadas       Conversacion[]             @relation("ConversacionesCreadas")
+  entregasTareas              EntregaTarea[]             @relation("EntregasTareas")
+  eventosCreados              Evento[]                   @relation("EventosCreados")
+  historialDirector           HistorialDirector[]        @relation("HistorialDirectores")
+  inscripciones               Inscripcion[]
+  directorDe                  Institucion?               @relation("DirectorInstitucion")
+  mensajesEnviados            Mensaje[]                  @relation("MensajesEnviados")
+  coordinadorDe               Nivel[]                    @relation("CoordinadorNivel")
+  notificaciones              Notificacion[]
+  pagosRegistrados            Pago[]                     @relation("PagosRegistrados")
+  participaciones             ParticipanteConversacion[]
+  tareasCreadas               Tarea[]                    @relation("TareasCreadas")
+  institucion                 Institucion?               @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
+  coordinadorCiclosEducativos CicloEducativo[]           @relation("CoordinadorCicloEducativo")
+}
+
+model Institucion {
+  id                     String                        @id @default(cuid())
+  nombre                 String
+  lema                   String?
+  direccion              String?
+  logoUrl                String?
+  colorPrimario          String                        @default("#1a56db")
+  colorSecundario        String                        @default("#7c3aed")
+  pais                   Pais                          @default(DO)
+  sistema                SistemaEducativo
+  idiomaPrincipal        Idioma                        @default(ESPANOL)
+  codigoCentro           String?
+  distritoEducativo      String?
+  regionalEducacion      String?
+  directorId             String                        @unique
+  activo                 Boolean                       @default(true)
+  autogestionActividades Boolean                       @default(false)
+  dominioPersonalizado   String?                       @unique
+  slug                   String                        @unique
+  logoPosicion           String                        @default("center")
+  fondoLoginUrl          String?
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+  municipio              String?
+  provincia              String?
+  sector                 String?
+  accentColor            String                        @default("#059669")
+  faviconUrl             String?
+  heroImageUrl           String?
+  heroSubtitle           String?
+  heroTitle              String?
+  loginBgColor           String                        @default("#f3f4f6")
+  loginBgGradient        String?
+  loginBgType            String                        @default("color")
+  loginLogoUrl           String?
+  logoHeight             Int?                          @default(60)
+  logoWidth              Int?                          @default(120)
+  nombreMostrar          String?
+  actividades            Actividad[]
+  ciclosEducativos       CicloEducativo[]
+  ciclos                 CicloLectivo[]
+  clases                 Clase[]
+  cobros                 Cobro[]
+  conversaciones         Conversacion[]
+  eventos                Evento[]
+  historialDirectores    HistorialDirector[]
+  director               User                          @relation("DirectorInstitucion", fields: [directorId], references: [id])
+  dominios               InstitucionDominio[]
+  sistemasEducativos     InstitucionSistemaEducativo[]
+  materias               Materia[]
+  niveles                Nivel[]
+  usuarios               User[]                        @relation("UsuariosInstitucion")
+}
+
+model InstitucionDominio {
+  id            String      @id @default(cuid())
+  institucionId String
+  dominio       String      @unique
+  verificado    Boolean     @default(false)
+  sslActivo     Boolean     @default(false)
+  verificadoAt  DateTime?
+  ultimoCheck   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  institucion   Institucion @relation(fields: [institucionId], references: [id], onDelete: Cascade)
+
+  @@index([dominio])
+  @@index([institucionId])
+}
+
+model HistorialDirector {
+  id            String      @id @default(cuid())
+  institucionId String
+  directorId    String
+  fechaInicio   DateTime    @default(now())
+  fechaFin      DateTime?
+  motivo        String?
+  director      User        @relation("HistorialDirectores", fields: [directorId], references: [id])
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+
+  @@index([institucionId])
+  @@index([directorId])
+}
+
+model InstitucionSistemaEducativo {
+  id            String           @id @default(cuid())
+  institucionId String
+  sistema       SistemaEducativo
+  activo        Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  institucion   Institucion      @relation(fields: [institucionId], references: [id], onDelete: Cascade)
+
+  @@unique([institucionId, sistema])
+  @@index([institucionId])
+}
+
+model Nivel {
+  id               String          @id @default(cuid())
+  nombre           String
+  institucionId    String
+  coordinadorId    String?
+  cicloEducativoId String?
+  gradoNumero      Int?
+  clases           Clase[]
+  cicloEducativo   CicloEducativo? @relation("NivelCicloEducativo", fields: [cicloEducativoId], references: [id])
+  coordinador      User?           @relation("CoordinadorNivel", fields: [coordinadorId], references: [id])
+  institucion      Institucion     @relation(fields: [institucionId], references: [id])
+}
+
+model CicloLectivo {
+  id                        String                    @id @default(cuid())
+  nombre                    String
+  fechaInicio               DateTime
+  fechaFin                  DateTime
+  activo                    Boolean                   @default(true)
+  institucionId             String
+  calificaciones            Calificacion[]
+  calificacionesCompetencia CalificacionCompetencia[] @relation("CicloCalificacionesCompetencia")
+  institucion               Institucion               @relation(fields: [institucionId], references: [id])
+  clases                    Clase[]
+  cobros                    Cobro[]
+  diasLaborables            DiasLaborables[]
+}
+
+model CicloEducativo {
+  id            String      @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  orden         Int         @default(1)
+  institucionId String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+  niveles       Nivel[]     @relation("NivelCicloEducativo")
+  coordinadores User[]      @relation("CoordinadorCicloEducativo")
+
+  @@unique([nombre, institucionId])
+}
+
+model Materia {
+  id            String      @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  tipo          TipoMateria @default(GENERAL)
+  institucionId String
+  codigo        String?
+  esOficial     Boolean     @default(false)
+  orden         Int         @default(0)
+  pais          String?
+  provisional   Boolean     @default(false)
+  clases        Clase[]
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+
+  @@unique([nombre, institucionId])
+  @@index([institucionId, esOficial])
+}
+
+model Clase {
+  id                        String                    @id @default(cuid())
+  codigo                    String                    @unique
+  materiaId                 String
+  nivelId                   String
+  docenteId                 String
+  cicloLectivoId            String
+  institucionId             String
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  seccion                   String?
+  tanda                     Tanda                     @default(MATUTINA)
+  asistencias               Asistencia[]
+  calificaciones            Calificacion[]
+  calificacionesCompetencia CalificacionCompetencia[] @relation("ClaseCalificacionesCompetencia")
+  calificacionesTec         CalificacionTecnica[]
+  cicloLectivo              CicloLectivo              @relation(fields: [cicloLectivoId], references: [id])
+  docente                   User                      @relation("DocenteClase", fields: [docenteId], references: [id])
+  institucion               Institucion               @relation(fields: [institucionId], references: [id])
+  materia                   Materia                   @relation(fields: [materiaId], references: [id])
+  nivel                     Nivel                     @relation(fields: [nivelId], references: [id])
+  diasLaborables            DiasLaborables[]
+  eventos                   Evento[]
+  inscripciones             Inscripcion[]
+  tareas                    Tarea[]
+}
+
+model Inscripcion {
+  id           String   @id @default(cuid())
+  fecha        DateTime @default(now())
+  estudianteId String
+  claseId      String
+  clase        Clase    @relation(fields: [claseId], references: [id])
+  estudiante   User     @relation(fields: [estudianteId], references: [id])
+
+  @@unique([estudianteId, claseId])
+}
+
+model Calificacion {
+  id             String       @id @default(cuid())
+  p1             Float?       @default(0)
+  p2             Float?       @default(0)
+  p3             Float?       @default(0)
+  p4             Float?       @default(0)
+  rp1            Float?       @default(0)
+  rp2            Float?       @default(0)
+  rp3            Float?       @default(0)
+  rp4            Float?       @default(0)
+  cpc_30         Float?       @default(0)
+  cpc_total      Float?       @default(0)
+  cpex_70        Float?       @default(0)
+  cpex_total     Float?       @default(0)
+  promedioFinal  Float?       @default(0)
+  situacion      String?      @default("PENDIENTE")
+  estudianteId   String
+  claseId        String
+  cicloLectivoId String
+  updatedAt      DateTime     @updatedAt
+  cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+  clase          Clase        @relation(fields: [claseId], references: [id])
+  estudiante     User         @relation(fields: [estudianteId], references: [id])
+
+  @@unique([estudianteId, claseId, cicloLectivoId])
+}
+
+model CalificacionCompetencia {
+  id             String       @id @default(cuid())
+  competencia    String
+  p1             Float?       @default(0)
+  p2             Float?       @default(0)
+  p3             Float?       @default(0)
+  p4             Float?       @default(0)
+  rp1            Float?       @default(0)
+  rp2            Float?       @default(0)
+  rp3            Float?       @default(0)
+  rp4            Float?       @default(0)
+  estudianteId   String
+  claseId        String
+  cicloLectivoId String
+  updatedAt      DateTime     @updatedAt
+  cicloLectivo   CicloLectivo @relation("CicloCalificacionesCompetencia", fields: [cicloLectivoId], references: [id])
+  clase          Clase        @relation("ClaseCalificacionesCompetencia", fields: [claseId], references: [id])
+  estudiante     User         @relation("CalificacionesCompetencia", fields: [estudianteId], references: [id])
+
+  @@unique([estudianteId, claseId, cicloLectivoId, competencia])
+}
+
+model CalificacionTecnica {
+  id           String @id @default(cuid())
+  ra_codigo    String
+  valor        Float  @default(0)
+  estudianteId String
+  claseId      String
+  clase        Clase  @relation(fields: [claseId], references: [id])
+  estudiante   User   @relation(fields: [estudianteId], references: [id])
+
+  @@unique([estudianteId, claseId, ra_codigo])
+}
+
+model Asistencia {
+  id           String           @id @default(cuid())
+  fecha        DateTime         @default(now())
+  estado       EstadoAsistencia
+  estudianteId String
+  claseId      String
+  clase        Clase            @relation(fields: [claseId], references: [id])
+  estudiante   User             @relation(fields: [estudianteId], references: [id])
+}
+
+model Actividad {
+  id            String       @id @default(cuid())
+  titulo        String
+  contenido     String
+  urlArchivo    String?
+  autorId       String
+  createdAt     DateTime     @default(now())
+  institucionId String?
+  publicado     Boolean      @default(true)
+  fotos         Json?
+  tipoMedia     String       @default("mixed")
+  videos        Json?
+  autor         User         @relation(fields: [autorId], references: [id])
+  institucion   Institucion? @relation(fields: [institucionId], references: [id])
+
+  @@index([institucionId])
+}
+
+model Notificacion {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensaje   String
+  leida     Boolean  @default(false)
+  usuarioId String
+  createdAt DateTime @default(now())
+  usuario   User     @relation(fields: [usuarioId], references: [id])
+}
+
+model Tarea {
+  id               String         @id @default(cuid())
+  titulo           String
+  descripcion      String
+  instrucciones    String?
+  fechaPublicacion DateTime?
+  fechaVencimiento DateTime
+  puntajeMaximo    Float?
+  estado           EstadoTarea    @default(BORRADOR)
+  claseId          String
+  docenteId        String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  entregas         EntregaTarea[]
+  recursos         RecursoTarea[]
+  clase            Clase          @relation(fields: [claseId], references: [id])
+  docente          User           @relation("TareasCreadas", fields: [docenteId], references: [id])
+}
+
+model EntregaTarea {
+  id                   String           @id @default(cuid())
+  contenido            String?
+  comentarioEstudiante String?
+  estado               EstadoEntrega    @default(PENDIENTE)
+  fechaEntrega         DateTime?
+  calificacion         Float?
+  comentarioDocente    String?
+  tareaId              String
+  estudianteId         String
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  archivos             ArchivoEntrega[]
+  estudiante           User             @relation("EntregasTareas", fields: [estudianteId], references: [id])
+  tarea                Tarea            @relation(fields: [tareaId], references: [id])
+
+  @@unique([tareaId, estudianteId])
+}
+
+model RecursoTarea {
+  id        String      @id @default(cuid())
+  tipo      TipoRecurso
+  titulo    String
+  url       String
+  tareaId   String
+  createdAt DateTime    @default(now())
+  tarea     Tarea       @relation(fields: [tareaId], references: [id])
+}
+
+model ArchivoEntrega {
+  id        String       @id @default(cuid())
+  nombre    String
+  url       String
+  tipo      String
+  entregaId String
+  createdAt DateTime     @default(now())
+  entrega   EntregaTarea @relation(fields: [entregaId], references: [id])
+}
+
+model Evento {
+  id            String      @id @default(cuid())
+  titulo        String
+  descripcion   String?
+  ubicacion     String?
+  tipo          TipoEvento
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  todoElDia     Boolean     @default(false)
+  color         String?
+  creadorId     String
+  institucionId String
+  claseId       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  clase         Clase?      @relation(fields: [claseId], references: [id])
+  creador       User        @relation("EventosCreados", fields: [creadorId], references: [id])
+  institucion   Institucion @relation(fields: [institucionId], references: [id])
+}
+
+model Conversacion {
+  id            String                     @id @default(cuid())
+  titulo        String?
+  esGrupal      Boolean                    @default(false)
+  creadorId     String
+  institucionId String
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  creador       User                       @relation("ConversacionesCreadas", fields: [creadorId], references: [id])
+  institucion   Institucion                @relation(fields: [institucionId], references: [id])
+  mensajes      Mensaje[]
+  participantes ParticipanteConversacion[]
+}
+
+model ParticipanteConversacion {
+  id             String       @id @default(cuid())
+  conversacionId String
+  usuarioId      String
+  ultimoLeido    DateTime?
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id])
+  usuario        User         @relation(fields: [usuarioId], references: [id])
+
+  @@unique([conversacionId, usuarioId])
+}
+
+model Mensaje {
+  id             String           @id @default(cuid())
+  contenido      String
+  conversacionId String
+  remitenteId    String
+  createdAt      DateTime         @default(now())
+  archivos       ArchivoMensaje[]
+  conversacion   Conversacion     @relation(fields: [conversacionId], references: [id])
+  remitente      User             @relation("MensajesEnviados", fields: [remitenteId], references: [id])
+}
+
+model ArchivoMensaje {
+  id        String  @id @default(cuid())
+  nombre    String
+  url       String
+  tipo      String
+  mensajeId String
+  mensaje   Mensaje @relation(fields: [mensajeId], references: [id])
+}
+
+model Cobro {
+  id               String        @id @default(cuid())
+  concepto         ConceptoCobro
+  descripcion      String?
+  monto            Decimal       @db.Decimal(10, 2)
+  fechaVencimiento DateTime
+  estado           EstadoPago    @default(PENDIENTE)
+  estudianteId     String
+  institucionId    String
+  cicloLectivoId   String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  cicloLectivo     CicloLectivo  @relation(fields: [cicloLectivoId], references: [id])
+  estudiante       User          @relation("CobrosEstudiante", fields: [estudianteId], references: [id])
+  institucion      Institucion   @relation(fields: [institucionId], references: [id])
+  pagos            Pago[]
+}
+
+model Pago {
+  id              String     @id @default(cuid())
+  monto           Decimal    @db.Decimal(10, 2)
+  metodoPago      MetodoPago
+  referencia      String?
+  fechaPago       DateTime   @default(now())
+  comprobanteUrl  String?
+  cobroId         String
+  registradoPorId String
+  createdAt       DateTime   @default(now())
+  cobro           Cobro      @relation(fields: [cobroId], references: [id])
+  registradoPor   User       @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
+}
+
+model DiasLaborables {
+  id             String       @id @default(cuid())
+  agosto         Int          @default(0)
+  septiembre     Int          @default(0)
+  octubre        Int          @default(0)
+  noviembre      Int          @default(0)
+  diciembre      Int          @default(0)
+  enero          Int          @default(0)
+  febrero        Int          @default(0)
+  marzo          Int          @default(0)
+  abril          Int          @default(0)
+  mayo           Int          @default(0)
+  junio          Int          @default(0)
+  claseId        String
+  cicloLectivoId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
+  clase          Clase        @relation(fields: [claseId], references: [id], onDelete: Cascade)
+
+  @@unique([claseId, cicloLectivoId])
+}
+
+model SystemSettings {
+  id                      String   @id @default("system")
+  maintenanceMode         Boolean  @default(false)
+  allowPublicRegistration Boolean  @default(false)
+  maxInstitutionsPerPlan  Int      @default(10)
+  defaultSessionTimeout   Int      @default(24)
+  updatedAt               DateTime @updatedAt
+}
 
 enum Role {
-  ADMIN                 // Superadmin de la plataforma
-  DIRECTOR              // Director de la escuela
-  COORDINADOR_ACADEMICO // ✅ Agregado: Coordinador
+  ADMIN
+  DIRECTOR
+  COORDINADOR_ACADEMICO
   COORDINADOR
   DOCENTE
   ESTUDIANTE
@@ -21,22 +541,18 @@ enum Role {
 }
 
 enum Pais {
-  DO // República Dominicana
-  HT // Haití
+  DO
+  HT
 }
 
-// ✅ Aquí diferenciamos los tipos de evaluación
 enum SistemaEducativo {
-  // Dominicana
-  INICIAL_DO          // Nivel Inicial (Preescolar)
   PRIMARIA_DO
   SECUNDARIA_GENERAL_DO
-  POLITECNICO_DO // Lleva Calificación Técnica (RA)
-
-  // Haití
-  INICIAL_HT          // Nivel Inicial (Préscolaire)
+  POLITECNICO_DO
   PRIMARIA_HT
   SECUNDARIA_HT
+  INICIAL_DO
+  INICIAL_HT
 }
 
 enum Idioma {
@@ -61,7 +577,6 @@ enum EstadoAsistencia {
   JUSTIFICADO
 }
 
-// ========== TASKS/ASSIGNMENTS ENUMS ==========
 enum EstadoTarea {
   BORRADOR
   PUBLICADA
@@ -82,7 +597,6 @@ enum TipoRecurso {
   IMAGEN
 }
 
-// ========== EVENTS ENUMS ==========
 enum TipoEvento {
   ACADEMICO
   CULTURAL
@@ -93,7 +607,6 @@ enum TipoEvento {
   OTRO
 }
 
-// ========== PAYMENTS ENUMS ==========
 enum ConceptoCobro {
   MATRICULA
   MENSUALIDAD
@@ -118,613 +631,6 @@ enum MetodoPago {
 }
 
 enum TipoMateria {
-  GENERAL // Materias normales (Matemáticas, Historia)
-  TECNICA // Módulos técnicos (Solo para Politécnicos)
-}
-
-// --- MODELOS ---
-
-model User {
-  id                  String   @id @default(cuid())
-  username            String   @unique
-  email               String?  @unique
-  password            String
-  // SEGURIDAD: passwordTemporal eliminado - nunca guardar contraseñas en texto plano
-  nombre              String
-  apellido            String
-  role                Role     @default(ESTUDIANTE)
-  activo              Boolean  @default(true)
-  debeCambiarPassword Boolean  @default(true)
-  fotoUrl             String?
-  telefono            String?
-  direccion           String?
-
-  // Relación con Institución (Multi-tenant)
-  institucionId String?
-  institucion   Institucion? @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
-
-  // Roles Jerárquicos
-  directorDe              Institucion?              @relation("DirectorInstitucion")
-  coordinadorDe           Nivel[]                   @relation("CoordinadorNivel")
-  coordinadorCiclosEducativos CicloEducativo[]      @relation("CoordinadorCicloEducativo")
-
-  // Relaciones Académicas
-  clasesDictadas          Clase[]                   @relation("DocenteClase")
-  inscripciones           Inscripcion[]
-  calificaciones          Calificacion[]
-  calificacionesTec       CalificacionTecnica[]
-  asistencias             Asistencia[]
-  actividades             Actividad[]
-  notificaciones          Notificacion[]
-
-  // Relaciones de nuevos módulos
-  tareasCreadas           Tarea[]                   @relation("TareasCreadas")
-  entregasTareas          EntregaTarea[]            @relation("EntregasTareas")
-  eventosCreados          Evento[]                  @relation("EventosCreados")
-  conversacionesCreadas   Conversacion[]            @relation("ConversacionesCreadas")
-  mensajesEnviados        Mensaje[]                 @relation("MensajesEnviados")
-  participaciones         ParticipanteConversacion[]
-  cobros                  Cobro[]                   @relation("CobrosEstudiante")
-  pagosRegistrados        Pago[]                    @relation("PagosRegistrados")
-
-  // ✅ Super Admin - Historial de directores
-  historialDirector       HistorialDirector[]       @relation("HistorialDirectores")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Institucion {
-  id                String           @id @default(cuid())
-  nombre            String
-  nombreMostrar     String?          // Nombre que se muestra en la UI (puede diferir del oficial)
-  lema              String?
-  direccion         String?
-
-  // ✅ Super Admin - URL y dominio personalizado
-  slug                    String    @unique  // URL amigable interno (ej: "politecnico-olga")
-  dominioPersonalizado    String?   @unique  // Dominio externo (ej: "politecnicoolgamodestamartinez.com")
-  activo                  Boolean   @default(true)
-  autogestionActividades  Boolean   @default(false)  // Permite al director subir actividades
-
-  // ✅ Branding / Marca (Personalización desde Dashboard)
-  logoUrl           String?
-  logoWidth         Int?             @default(120)
-  logoHeight        Int?             @default(60)
-  logoPosicion      String           @default("center") // center, left, right - posición del logo en landing
-  faviconUrl        String?          // Favicon personalizado
-  colorPrimario     String           @default("#1a56db") // Para el header/botones
-  colorSecundario   String           @default("#7c3aed") // Para fondos/textos
-  accentColor       String           @default("#059669") // Color de acento
-
-  // Landing page
-  heroImageUrl      String?          // Imagen principal del hero section
-  heroTitle         String?          // Título del hero
-  heroSubtitle      String?          // Subtítulo del hero
-
-  // Login page
-  loginBgType       String           @default("color")  // "color" | "image" | "gradient"
-  loginBgColor      String           @default("#f3f4f6")
-  fondoLoginUrl     String?          // Imagen de fondo para la página de login (legacy)
-  loginBgGradient   String?          // CSS gradient para fondo de login
-  loginLogoUrl      String?          // Logo específico para página de login
-
-  // ✅ Configuración Regional
-  pais              Pais             @default(DO)
-  sistema           SistemaEducativo // Sistema principal (para compatibilidad)
-  idiomaPrincipal   Idioma           @default(ESPANOL)
-
-  // ✅ Sistemas educativos que ofrece (permite múltiples: inicial, primaria, secundaria)
-  sistemasEducativos InstitucionSistemaEducativo[]
-
-  // Datos Ministeriales y Ubicación
-  codigoCentro      String?
-  distritoEducativo String?
-  regionalEducacion String?
-  provincia         String?
-  municipio         String?
-  sector            String?
-
-  directorId String @unique
-  director   User   @relation("DirectorInstitucion", fields: [directorId], references: [id])
-
-  usuarios User[]         @relation("UsuariosInstitucion")
-  niveles  Nivel[]
-  materias Materia[]
-  ciclos   CicloLectivo[]
-  ciclosEducativos CicloEducativo[]
-  clases   Clase[]
-
-  // Relaciones de nuevos módulos
-  eventos             Evento[]
-  conversaciones      Conversacion[]
-  cobros              Cobro[]
-  historialDirectores HistorialDirector[]
-  actividades         Actividad[]
-  dominios            InstitucionDominio[]  // Dominios personalizados verificados
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ✅ Gestión de dominios personalizados (para multi-tenant con dominios propios)
-model InstitucionDominio {
-  id              String      @id @default(cuid())
-  institucionId   String
-  institucion     Institucion @relation(fields: [institucionId], references: [id], onDelete: Cascade)
-
-  dominio         String      @unique  // "politecnicoolga.com"
-  verificado      Boolean     @default(false)
-  sslActivo       Boolean     @default(false)
-  verificadoAt    DateTime?
-  ultimoCheck     DateTime?
-
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  @@index([dominio])
-  @@index([institucionId])
-}
-
-// ✅ Super Admin - Historial de directores por institución
-model HistorialDirector {
-  id              String      @id @default(cuid())
-  institucionId   String
-  institucion     Institucion @relation(fields: [institucionId], references: [id])
-  directorId      String
-  director        User        @relation("HistorialDirectores", fields: [directorId], references: [id])
-  fechaInicio     DateTime    @default(now())
-  fechaFin        DateTime?
-  motivo          String?
-
-  @@index([institucionId])
-  @@index([directorId])
-}
-
-// ✅ Relación muchos a muchos: Una institución puede ofrecer múltiples sistemas educativos
-// Ejemplo: Colegio ABC puede tener INICIAL_DO, PRIMARIA_DO y SECUNDARIA_GENERAL_DO
-model InstitucionSistemaEducativo {
-  id              String           @id @default(cuid())
-  institucionId   String
-  institucion     Institucion      @relation(fields: [institucionId], references: [id], onDelete: Cascade)
-  sistema         SistemaEducativo
-  activo          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-
-  @@unique([institucionId, sistema])
-  @@index([institucionId])
-}
-
-model Nivel {
-  id            String      @id @default(cuid())
-  nombre        String      // Ej: "1ro Secundaria", "6to Primaria"
-  gradoNumero   Int?        // Número del grado (1-12) para evitar regex frágiles
-  institucionId String
-  institucion   Institucion @relation(fields: [institucionId], references: [id])
-
-  coordinadorId String?
-  coordinador   User?       @relation("CoordinadorNivel", fields: [coordinadorId], references: [id])
-
-  cicloEducativoId String?
-  cicloEducativo   CicloEducativo? @relation("NivelCicloEducativo", fields: [cicloEducativoId], references: [id])
-
-  clases        Clase[]
-}
-
-model CicloLectivo {
-  id            String      @id @default(cuid())
-  nombre        String      // Ej: "2023-2024"
-  fechaInicio   DateTime
-  fechaFin      DateTime
-  activo        Boolean     @default(true)
-  institucionId String
-  institucion   Institucion @relation(fields: [institucionId], references: [id])
-
-  clases         Clase[]
-  calificaciones Calificacion[]
-  cobros         Cobro[]
-  diasLaborables DiasLaborables[]
-}
-
-// CicloEducativo: Agrupa niveles en ciclos educativos (diferente de CicloLectivo que es año académico)
-// Ej: "1er Ciclo" (1ro-3ro), "2do Ciclo" (4to-6to) para Primaria
-model CicloEducativo {
-  id              String       @id @default(cuid())
-  nombre          String       // "1er Ciclo", "2do Ciclo"
-  descripcion     String?
-  orden           Int          @default(1)
-
-  institucionId   String
-  institucion     Institucion  @relation(fields: [institucionId], references: [id])
-
-  niveles         Nivel[]      @relation("NivelCicloEducativo")
-  coordinadores   User[]       @relation("CoordinadorCicloEducativo")
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  @@unique([nombre, institucionId])
-}
-
-model Materia {
-  id            String      @id @default(cuid())
-  nombre        String
-  codigo        String?     // Código corto (ES, MA, CN, etc.)
-  descripcion   String?
-  tipo          TipoMateria @default(GENERAL) // Si es TÉCNICA, usará CalificaciónTecnica
-  esOficial     Boolean     @default(false)  // true = materia del MINERD/MENFP (no editable)
-  orden         Int         @default(0)       // Orden en la sábana de notas
-  pais          String?     // "DO" o "HT" para materias oficiales
-  provisional   Boolean     @default(false)  // true = materia provisional (Haití)
-  institucionId String
-  institucion   Institucion @relation(fields: [institucionId], references: [id])
-  clases        Clase[]
-
-  @@unique([nombre, institucionId])
-  @@index([institucionId, esOficial])
-}
-
-model Clase {
-  id             String       @id @default(cuid())
-  codigo         String       @unique // Código único para inscribirse
-  tanda          Tanda        @default(MATUTINA) // Turno de la clase
-  seccion        String?      // Sección (A, B, C, etc.)
-  materiaId      String
-  materia        Materia      @relation(fields: [materiaId], references: [id])
-  nivelId        String
-  nivel          Nivel        @relation(fields: [nivelId], references: [id])
-  docenteId      String
-  docente        User         @relation("DocenteClase", fields: [docenteId], references: [id])
-  cicloLectivoId String
-  cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
-  institucionId  String
-  institucion    Institucion  @relation(fields: [institucionId], references: [id])
-
-  inscripciones           Inscripcion[]
-  asistencias             Asistencia[]
-  calificaciones          Calificacion[]
-  calificacionesTec       CalificacionTecnica[]
-
-  // Relaciones de nuevos módulos
-  tareas                  Tarea[]
-  eventos                 Evento[]
-  diasLaborables          DiasLaborables[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Inscripcion {
-  id           String   @id @default(cuid())
-  fecha        DateTime @default(now())
-  estudianteId String
-  estudiante   User     @relation(fields: [estudianteId], references: [id])
-  claseId      String
-  clase        Clase    @relation(fields: [claseId], references: [id])
-
-  @@unique([estudianteId, claseId])
-}
-
-// ✅ CALIFICACIÓN GENERAL (Sirve para Primaria/Secundaria DO y HT)
-// La lógica de cálculo se hará en el Backend dependiendo del Institucion.sistema
-model Calificacion {
-  id            String       @id @default(cuid())
-  
-  // Periodos (Haití usa 3 o 4 periodos, RD usa 4)
-  p1            Float?       @default(0)
-  p2            Float?       @default(0)
-  p3            Float?       @default(0)
-  p4            Float?       @default(0)
-  
-  // Recuperaciones
-  rp1           Float?       @default(0)
-  rp2           Float?       @default(0)
-  rp3           Float?       @default(0)
-  rp4           Float?       @default(0)
-  
-  // Campos específicos de la adecuación curricular RD (Pueden quedar null en HT)
-  cpc_30        Float?       @default(0)
-  cpc_total     Float?       @default(0)
-  cpex_70       Float?       @default(0)
-  cpex_total    Float?       @default(0)
-  
-  promedioFinal Float?       @default(0)
-  situacion     String?      @default("PENDIENTE") // Aprobado, Reprobado, Aplazado
-  
-  estudianteId  String
-  estudiante    User         @relation(fields: [estudianteId], references: [id])
-  claseId       String
-  clase         Clase        @relation(fields: [claseId], references: [id])
-  cicloLectivoId String
-  cicloLectivo  CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
-
-  updatedAt DateTime @updatedAt
-  @@unique([estudianteId, claseId, cicloLectivoId])
-}
-
-// ✅ CALIFICACIÓN TÉCNICA (Solo para Politécnicos DO)
-// Se basa en Resultados de Aprendizaje (RA)
-model CalificacionTecnica {
-  id           String @id @default(cuid())
-  ra_codigo    String // Ej: "RA1.1"
-  valor        Float  @default(0) // Nota del RA
-  
-  estudianteId String
-  estudiante   User   @relation(fields: [estudianteId], references: [id])
-  claseId      String
-  clase        Clase  @relation(fields: [claseId], references: [id])
-
-  @@unique([estudianteId, claseId, ra_codigo])
-}
-
-model Asistencia {
-  id           String           @id @default(cuid())
-  fecha        DateTime         @default(now())
-  estado       EstadoAsistencia
-  estudianteId String
-  estudiante   User             @relation(fields: [estudianteId], references: [id])
-  claseId      String
-  clase        Clase            @relation(fields: [claseId], references: [id])
-}
-
-model Actividad {
-  id              String       @id @default(cuid())
-  titulo          String
-  contenido       String       @db.Text
-  urlArchivo      String?      // Imagen principal (legacy - compatibilidad)
-  fotos           Json?        // Array de URLs de fotos ["url1", "url2", ...]
-  videos          Json?        // Array de URLs de videos ["url1", "url2", ...]
-  tipoMedia       String       @default("mixed") // foto, video, mixed
-  autorId         String
-  autor           User         @relation(fields: [autorId], references: [id])
-
-  // ✅ Super Admin - Actividades por institución
-  institucionId   String?       // NULL = actividad global (landing pública)
-  institucion     Institucion?  @relation(fields: [institucionId], references: [id])
-  publicado       Boolean       @default(true)
-
-  createdAt       DateTime      @default(now())
-
-  @@index([institucionId])
-}
-
-model Notificacion {
-  id            String   @id @default(cuid())
-  titulo        String
-  mensaje       String
-  leida         Boolean  @default(false)
-  usuarioId     String
-  usuario       User     @relation(fields: [usuarioId], references: [id])
-  createdAt     DateTime @default(now())
-}
-
-// ========== TASKS/ASSIGNMENTS MODELS ==========
-
-model Tarea {
-  id              String       @id @default(cuid())
-  titulo          String
-  descripcion     String       @db.Text
-  instrucciones   String?      @db.Text
-  fechaPublicacion DateTime?
-  fechaVencimiento DateTime
-  puntajeMaximo   Float?
-  estado          EstadoTarea  @default(BORRADOR)
-
-  claseId         String
-  clase           Clase        @relation(fields: [claseId], references: [id])
-  docenteId       String
-  docente         User         @relation("TareasCreadas", fields: [docenteId], references: [id])
-
-  entregas        EntregaTarea[]
-  recursos        RecursoTarea[]
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-model EntregaTarea {
-  id              String       @id @default(cuid())
-  contenido       String?      @db.Text
-  comentarioEstudiante String? @db.Text
-  estado          EstadoEntrega @default(PENDIENTE)
-  fechaEntrega    DateTime?
-  calificacion    Float?
-  comentarioDocente String?    @db.Text
-
-  tareaId         String
-  tarea           Tarea        @relation(fields: [tareaId], references: [id])
-  estudianteId    String
-  estudiante      User         @relation("EntregasTareas", fields: [estudianteId], references: [id])
-
-  archivos        ArchivoEntrega[]
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  @@unique([tareaId, estudianteId])
-}
-
-model RecursoTarea {
-  id              String       @id @default(cuid())
-  tipo            TipoRecurso
-  titulo          String
-  url             String
-
-  tareaId         String
-  tarea           Tarea        @relation(fields: [tareaId], references: [id])
-
-  createdAt       DateTime     @default(now())
-}
-
-model ArchivoEntrega {
-  id              String       @id @default(cuid())
-  nombre          String
-  url             String
-  tipo            String       // mime type
-
-  entregaId       String
-  entrega         EntregaTarea @relation(fields: [entregaId], references: [id])
-
-  createdAt       DateTime     @default(now())
-}
-
-// ========== EVENTS/CALENDAR MODELS ==========
-
-model Evento {
-  id              String       @id @default(cuid())
-  titulo          String
-  descripcion     String?      @db.Text
-  ubicacion       String?
-  tipo            TipoEvento
-  fechaInicio     DateTime
-  fechaFin        DateTime
-  todoElDia       Boolean      @default(false)
-  color           String?
-
-  creadorId       String
-  creador         User         @relation("EventosCreados", fields: [creadorId], references: [id])
-  institucionId   String
-  institucion     Institucion  @relation(fields: [institucionId], references: [id])
-  claseId         String?
-  clase           Clase?       @relation(fields: [claseId], references: [id])
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-// ========== MESSAGING MODELS ==========
-
-model Conversacion {
-  id              String       @id @default(cuid())
-  titulo          String?
-  esGrupal        Boolean      @default(false)
-
-  creadorId       String
-  creador         User         @relation("ConversacionesCreadas", fields: [creadorId], references: [id])
-  institucionId   String
-  institucion     Institucion  @relation(fields: [institucionId], references: [id])
-
-  participantes   ParticipanteConversacion[]
-  mensajes        Mensaje[]
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-model ParticipanteConversacion {
-  id              String       @id @default(cuid())
-
-  conversacionId  String
-  conversacion    Conversacion @relation(fields: [conversacionId], references: [id])
-  usuarioId       String
-  usuario         User         @relation(fields: [usuarioId], references: [id])
-
-  ultimoLeido     DateTime?
-
-  @@unique([conversacionId, usuarioId])
-}
-
-model Mensaje {
-  id              String       @id @default(cuid())
-  contenido       String       @db.Text
-
-  conversacionId  String
-  conversacion    Conversacion @relation(fields: [conversacionId], references: [id])
-  remitenteId     String
-  remitente       User         @relation("MensajesEnviados", fields: [remitenteId], references: [id])
-
-  archivos        ArchivoMensaje[]
-
-  createdAt       DateTime     @default(now())
-}
-
-model ArchivoMensaje {
-  id              String       @id @default(cuid())
-  nombre          String
-  url             String
-  tipo            String
-
-  mensajeId       String
-  mensaje         Mensaje      @relation(fields: [mensajeId], references: [id])
-}
-
-// ========== PAYMENTS MODELS ==========
-
-model Cobro {
-  id              String       @id @default(cuid())
-  concepto        ConceptoCobro
-  descripcion     String?
-  monto           Decimal      @db.Decimal(10, 2)
-  fechaVencimiento DateTime
-  estado          EstadoPago   @default(PENDIENTE)
-
-  estudianteId    String
-  estudiante      User         @relation("CobrosEstudiante", fields: [estudianteId], references: [id])
-  institucionId   String
-  institucion     Institucion  @relation(fields: [institucionId], references: [id])
-  cicloLectivoId  String
-  cicloLectivo    CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
-
-  pagos           Pago[]
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-model Pago {
-  id              String       @id @default(cuid())
-  monto           Decimal      @db.Decimal(10, 2)
-  metodoPago      MetodoPago
-  referencia      String?
-  fechaPago       DateTime     @default(now())
-  comprobanteUrl  String?
-
-  cobroId         String
-  cobro           Cobro        @relation(fields: [cobroId], references: [id])
-  registradoPorId String
-  registradoPor   User         @relation("PagosRegistrados", fields: [registradoPorId], references: [id])
-
-  createdAt       DateTime     @default(now())
-}
-
-// ========== ATTENDANCE TRACKING ==========
-
-// Dias laborables por mes para calcular porcentaje de asistencia
-model DiasLaborables {
-  id              String       @id @default(cuid())
-
-  // Meses del año escolar (1=Agosto, 2=Septiembre, ..., 11=Junio)
-  agosto          Int          @default(0)
-  septiembre      Int          @default(0)
-  octubre         Int          @default(0)
-  noviembre       Int          @default(0)
-  diciembre       Int          @default(0)
-  enero           Int          @default(0)
-  febrero         Int          @default(0)
-  marzo           Int          @default(0)
-  abril           Int          @default(0)
-  mayo            Int          @default(0)
-  junio           Int          @default(0)
-
-  claseId         String
-  clase           Clase        @relation(fields: [claseId], references: [id], onDelete: Cascade)
-  cicloLectivoId  String
-  cicloLectivo    CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
-
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  @@unique([claseId, cicloLectivoId])
-}
-
-// ========== SYSTEM CONFIGURATION ==========
-
-model SystemSettings {
-  id                      String   @id @default("system")
-  maintenanceMode         Boolean  @default(false)
-  allowPublicRegistration Boolean  @default(false)
-  maxInstitutionsPerPlan  Int      @default(10)
-  defaultSessionTimeout   Int      @default(24) // horas
-
-  updatedAt               DateTime @updatedAt
+  GENERAL
+  TECNICA
 }
