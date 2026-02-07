@@ -23,7 +23,9 @@ import {
 interface Estudiante {
   id: string;
   nombre: string;
+  segundoNombre?: string | null;
   apellido: string;
+  segundoApellido?: string | null;
   email?: string;
   username: string;
   debeCambiarPassword?: boolean;
@@ -63,7 +65,9 @@ export default function EstudiantesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
+    segundoNombre: '',
     apellido: '',
+    segundoApellido: '',
     email: '',
   });
   const [createdCredentials, setCreatedCredentials] = useState<{
@@ -161,7 +165,7 @@ export default function EstudiantesPage() {
         password: tempPassword || '',
       });
       setEstudiantes([createdUser, ...estudiantes]);
-      setFormData({ nombre: '', apellido: '', email: '' });
+      setFormData({ nombre: '', segundoNombre: '', apellido: '', segundoApellido: '', email: '' });
       setShowModal(false);
     } catch (error) {
       const apiError = error as ApiError;
@@ -172,7 +176,7 @@ export default function EstudiantesPage() {
   };
 
   const resetForm = () => {
-    setFormData({ nombre: '', apellido: '', email: '' });
+    setFormData({ nombre: '', segundoNombre: '', apellido: '', segundoApellido: '', email: '' });
     setShowModal(false);
   };
 
@@ -280,7 +284,7 @@ export default function EstudiantesPage() {
                       {est.nombre[0]}{est.apellido[0]}
                     </div>
                     <div>
-                      <p className="font-medium">{est.nombre} {est.apellido}</p>
+                      <p className="font-medium">{est.nombre} {est.segundoNombre ? est.segundoNombre + ' ' : ''}{est.apellido} {est.segundoApellido || ''}</p>
                       <div className="flex items-center gap-2">
                         <p className="text-sm text-muted-foreground">@{est.username}</p>
                         {nivelName && (
@@ -381,7 +385,7 @@ export default function EstudiantesPage() {
                         {est.nombre[0]}{est.apellido[0]}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{est.nombre} {est.apellido}</p>
+                        <p className="font-medium text-foreground">{est.nombre} {est.segundoNombre ? est.segundoNombre + ' ' : ''}{est.apellido} {est.segundoApellido || ''}</p>
                         <p className="text-xs text-muted-foreground">@{est.username}</p>
                       </div>
                     </div>
@@ -427,6 +431,15 @@ export default function EstudiantesPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="segundoNombre">Segundo Nombre</Label>
+                    <Input
+                      id="segundoNombre"
+                      value={formData.segundoNombre}
+                      onChange={(e) => setFormData({ ...formData, segundoNombre: e.target.value })}
+                      placeholder="Segundo nombre (opcional)"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="apellido">Apellido *</Label>
                     <Input
                       id="apellido"
@@ -434,6 +447,15 @@ export default function EstudiantesPage() {
                       onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
                       placeholder="Apellido"
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="segundoApellido">Segundo Apellido</Label>
+                    <Input
+                      id="segundoApellido"
+                      value={formData.segundoApellido}
+                      onChange={(e) => setFormData({ ...formData, segundoApellido: e.target.value })}
+                      placeholder="Segundo apellido (opcional)"
                     />
                   </div>
                 </div>

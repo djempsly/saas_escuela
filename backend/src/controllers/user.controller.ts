@@ -43,7 +43,9 @@ export const createUserHandler = async (req: Request, res: Response) => {
           user: {
             id: result.user.id,
             nombre: result.user.nombre,
+            segundoNombre: result.user.segundoNombre,
             apellido: result.user.apellido,
+            segundoApellido: result.user.segundoApellido,
             email: result.user.email,
             username: result.user.username,
             role: result.user.role,
@@ -75,7 +77,9 @@ export const createUserHandler = async (req: Request, res: Response) => {
         user: {
           id: result.user.id,
           nombre: result.user.nombre,
+          segundoNombre: result.user.segundoNombre,
           apellido: result.user.apellido,
+          segundoApellido: result.user.segundoApellido,
           email: result.user.email,
           username: result.user.username,
           role: result.user.role,
@@ -246,11 +250,11 @@ export const updateUserHandler = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'No autenticado' });
     }
 
-    const { nombre, apellido, email, activo } = req.body;
+    const { nombre, segundoNombre, apellido, segundoApellido, email, activo } = req.body;
 
     const updatedUser = await updateUserById(
       id,
-      { nombre, apellido, email, activo },
+      { nombre, segundoNombre, apellido, segundoApellido, email, activo },
       req.resolvedInstitucionId || null,
       req.user.rol
     );

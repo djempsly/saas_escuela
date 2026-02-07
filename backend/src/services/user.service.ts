@@ -128,7 +128,9 @@ export const findUserById = async (id: string) => {
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -164,7 +166,9 @@ export const findUsersByInstitucion = async (
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -226,7 +230,9 @@ export const findStudentsByDocente = async (docenteId: string, institucionId: st
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -255,7 +261,9 @@ export const findStaffByInstitucion = async (institucionId: string, _includePass
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -274,7 +282,7 @@ export const findStaffByInstitucion = async (institucionId: string, _includePass
 
 export const updateUserProfile = async (
   userId: string,
-  data: { nombre?: string; apellido?: string; email?: string; fotoUrl?: string }
+  data: { nombre?: string; segundoNombre?: string; apellido?: string; segundoApellido?: string; email?: string; fotoUrl?: string }
 ) => {
   // Verificar si el email ya está en uso por otro usuario
   if (data.email) {
@@ -293,14 +301,18 @@ export const updateUserProfile = async (
     where: { id: userId },
     data: {
       ...(data.nombre && { nombre: data.nombre }),
+      ...(data.segundoNombre !== undefined && { segundoNombre: data.segundoNombre || null }),
       ...(data.apellido && { apellido: data.apellido }),
+      ...(data.segundoApellido !== undefined && { segundoApellido: data.segundoApellido || null }),
       ...(data.email !== undefined && { email: data.email || null }),
       ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl }),
     },
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -312,7 +324,7 @@ export const updateUserProfile = async (
 
 export const updateUserById = async (
   userId: string,
-  data: { nombre?: string; apellido?: string; email?: string; activo?: boolean },
+  data: { nombre?: string; segundoNombre?: string; apellido?: string; segundoApellido?: string; email?: string; activo?: boolean },
   requesterInstitucionId: string | null,
   requesterRole: string
 ) => {
@@ -344,14 +356,18 @@ export const updateUserById = async (
     where: { id: userId },
     data: {
       ...(data.nombre && { nombre: data.nombre }),
+      ...(data.segundoNombre !== undefined && { segundoNombre: data.segundoNombre || null }),
       ...(data.apellido && { apellido: data.apellido }),
+      ...(data.segundoApellido !== undefined && { segundoApellido: data.segundoApellido || null }),
       ...(data.email !== undefined && { email: data.email || null }),
       ...(data.activo !== undefined && { activo: data.activo }),
     },
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,
@@ -399,7 +415,9 @@ export const findCoordinadores = async (institucionId: string) => {
     select: {
       id: true,
       nombre: true,
+      segundoNombre: true,
       apellido: true,
+      segundoApellido: true,
       email: true,
       username: true,
       role: true,

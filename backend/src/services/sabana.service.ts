@@ -55,7 +55,9 @@ export interface SabanaCalificacion {
 export interface SabanaEstudiante {
   id: string;
   nombre: string;
+  segundoNombre: string | null;
   apellido: string;
+  segundoApellido: string | null;
   fotoUrl: string | null;
   calificaciones: {
     [materiaId: string]: SabanaCalificacion;
@@ -180,7 +182,7 @@ export const getSabanaByNivel = async (
       docente: { select: { id: true, nombre: true, apellido: true } },
       inscripciones: {
         include: {
-          estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } }
+          estudiante: { select: { id: true, nombre: true, segundoNombre: true, apellido: true, segundoApellido: true, fotoUrl: true } }
         }
       }
     }
@@ -193,7 +195,9 @@ export const getSabanaByNivel = async (
   const estudiantesMap = new Map<string, {
     id: string;
     nombre: string;
+    segundoNombre: string | null;
     apellido: string;
+    segundoApellido: string | null;
     fotoUrl: string | null;
     clases: Set<string>; // IDs de clases donde está inscrito
   }>();
@@ -204,7 +208,9 @@ export const getSabanaByNivel = async (
         estudiantesMap.set(insc.estudianteId, {
           id: insc.estudiante.id,
           nombre: insc.estudiante.nombre,
+          segundoNombre: insc.estudiante.segundoNombre,
           apellido: insc.estudiante.apellido,
+          segundoApellido: insc.estudiante.segundoApellido,
           fotoUrl: insc.estudiante.fotoUrl,
           clases: new Set([clase.id])
         });
@@ -370,7 +376,9 @@ export const getSabanaByNivel = async (
       return {
         id: est.id,
         nombre: est.nombre,
+        segundoNombre: est.segundoNombre,
         apellido: est.apellido,
+        segundoApellido: est.segundoApellido,
         fotoUrl: est.fotoUrl,
         calificaciones: califsEst
       };

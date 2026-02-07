@@ -71,7 +71,9 @@ export interface Calificacion {
 export interface Estudiante {
   id: string;
   nombre: string;
+  segundoNombre: string | null;
   apellido: string;
+  segundoApellido: string | null;
   fotoUrl: string | null;
   calificaciones: {
     [materiaId: string]: Calificacion;
@@ -178,7 +180,7 @@ function StudentList({
   onSelectStudent: (index: number) => void;
 }) {
   const filteredEstudiantes = estudiantes.filter((est) => {
-    const nombreCompleto = `${est.nombre} ${est.apellido}`.toLowerCase();
+    const nombreCompleto = `${est.nombre} ${est.segundoNombre || ''} ${est.apellido} ${est.segundoApellido || ''}`.toLowerCase();
     return nombreCompleto.includes(searchTerm.toLowerCase());
   });
 
@@ -217,7 +219,7 @@ function StudentList({
                   </div>
                   <div>
                     <p className="font-medium">
-                      {estudiante.apellido.toUpperCase()}, {estudiante.nombre}
+                      {estudiante.apellido.toUpperCase()} {estudiante.segundoApellido ? estudiante.segundoApellido.toUpperCase() : ''}, {estudiante.nombre} {estudiante.segundoNombre || ''}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Click para ver boletín
@@ -537,7 +539,7 @@ export function BoletinIndividual({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Boletín - ${estudiante.apellido.toUpperCase()}, ${estudiante.nombre}</title>
+          <title>Boletín - ${estudiante.apellido.toUpperCase()} ${estudiante.segundoApellido ? estudiante.segundoApellido.toUpperCase() : ''}, ${estudiante.nombre} ${estudiante.segundoNombre || ''}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -605,7 +607,7 @@ export function BoletinIndividual({
             </SelectTrigger>
             <SelectContent>{estudiantes.map((est, idx) => (
                 <SelectItem key={est.id} value={idx.toString()}>
-                  {idx + 1}. {est.apellido.toUpperCase()}, {est.nombre}
+                  {idx + 1}. {est.apellido.toUpperCase()} {est.segundoApellido ? est.segundoApellido.toUpperCase() : ''}, {est.nombre} {est.segundoNombre || ''}
                 </SelectItem>
               ))}</SelectContent>
           </Select>
@@ -650,7 +652,6 @@ export function BoletinIndividual({
             maxWidth: '38cm',
             minHeight: '21.59cm',
             padding: '0.8cm',
-            paddingLeft: '1.5cm',
             boxSizing: 'border-box',
             fontFamily: 'Arial, sans-serif',
             fontSize: '10px',
@@ -659,80 +660,140 @@ export function BoletinIndividual({
             pageBreakAfter: 'always',
           }}
         >
-          {/* Franja Lateral Vertical */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: '1.2cm',
-              height: '100%',
-              backgroundColor: colorPrimario,
-              color: 'white',
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '1px',
-            }}
-          >
-            INSTITUCIÓN EDUCATIVA | La visión del futuro
-          </div>
-
           {/* Contenido Principal */}
-          <div style={{ marginLeft: '0.5cm' }}>
-            {/* Header con Logo MINERD */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <div style={{ width: '70px', height: '70px', backgroundColor: '#f0f0f0', margin: '0 auto 5px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', border: '1px solid #ccc' }}>
-                  {isHT ? 'MENFP' : 'MINERD'}
-                </div>
-                <p style={{ fontSize: '9px', margin: 0, fontWeight: 'bold' }}>
-                  {isHT ? 'Ministère de l\'Éducation Nationale' : 'Viceministerio de Servicios Técnicos y Pedagógicos'}
-                </p>
-                <p style={{ fontSize: '8px', margin: 0 }}>
-                  {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria'
-                    ? (isHT ? 'Direction de l\'Enseignement Fondamental' : 'Dirección de Educación Primaria')
-                    : (isHT ? 'Direction de l\'Enseignement Secondaire' : 'Dirección de Educación Secundaria')}
-                </p>
-                {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
-                  <p style={{ fontSize: '8px', margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
-                )}
-              </div>
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <h1 style={{ fontSize: '16px', margin: 0, color: colorPrimario, fontWeight: 900 }}>
-                  {isHT ? 'BULLETIN SCOLAIRE' : 'BOLETÍN DE CALIFICACIONES'}
-                </h1>
-                <p style={{ fontSize: '12px', margin: '3px 0', fontWeight: 'bold' }}>
-                  {nivelNombre || 'Nivel Secundario'}
-                </p>
-                <p style={{ fontSize: '10px', margin: '3px 0' }}>
-                  {isHT ? 'Année Académique' : 'Año Escolar'}: {sabanaData.cicloLectivo?.nombre || '20__ - 20__'}
-                </p>
-              </div>
-              <div style={{ textAlign: 'right', flex: 1, fontSize: '9px' }}>
-                <p><strong>{isHT ? 'Élève' : 'Estudiante'} {currentIndex + 1} / {totalEstudiantes}</strong></p>
-              </div>
+          <div>
+            {/* Franja negra: CALIFICACIONES DE RENDIMIENTO */}
+            <div style={{
+              backgroundColor: 'black',
+              color: 'white',
+              textAlign: 'center',
+              padding: '7px 15px',
+              fontWeight: 'bold',
+              fontSize: '13px',
+              letterSpacing: '3px',
+              textTransform: 'uppercase',
+              marginBottom:'40px'
+            }}>
+              CALIFICACIONES DE RENDIMIENTO
             </div>
 
-            {/* Info del Estudiante */}
+           
+            {(() => {
+              // const gn = sabanaData.nivel?.gradoNumero || 0;
+              const gn = sabanaData.nivel?.gradoNumero || (() => {
+  const match = sabanaData.nivel?.nombre?.match(/(\d+)/);
+  return match ? parseInt(match[1]) : 0;
+})();
+              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'ro' : 'to';
+              const gradoColores: Record<number, string> = {
+                1: '#2563eb', 2: '#16a34a', 3: '#9333ea',
+                4: '#dc2626', 5: '#ea580c', 6: '#0891b2',
+              };
+              const gradoColor = gradoColores[gn] || '#1e3a8a';
+              console.log('gradoNumero:', sabanaData.nivel?.gradoNumero, typeof sabanaData.nivel?.gradoNumero);
+
+              return (
+                <div style={{ display: 'flex', alignItems: 'flex-end', marginTop: '10px', marginBottom: '0' }}>
+                  {/* Cuadro: Nombres y Apellidos */}
+                  <div style={{
+                    border: '2px solid black',
+                    padding: '4px 8px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    whiteSpace: 'nowrap',
+                    lineHeight: '1.3',
+                  }}>
+                    Nombres y Apellidos
+                  </div>
+
+                  {/* Nombre sobre la raya */}
+                  <div style={{
+                    flex: 1,
+                    borderBottom: '2px solid black',
+                    paddingBottom: '2px',
+                    paddingLeft: '8px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                  }}>
+                    {estudiante.nombre} {estudiante.segundoNombre ? estudiante.segundoNombre + ' ' : ''}{estudiante.apellido} {estudiante.segundoApellido || ''}
+                  </div>
+
+                
+
+                  {/* Bloque: Número + GRADO */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
+                    {/* Numero del grado - posicionado para superponerse sobre el cuadro GRADO */}
+                    {gn > 0 && (
+                      <div style={{
+                        position: 'relative',
+                        zIndex: 1,
+                        lineHeight: '1',
+                        paddingLeft: '6px',
+                        paddingRight: '2px',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        marginRight: '-10px',
+                      }}>
+                        <span style={{
+                          fontSize: '100px',
+                          fontWeight: '900',
+                          color: gradoColor,
+                          lineHeight: '0.20',
+                        }}>
+                          {gn}
+                        </span>
+                        {/* Sufijo tocando el borde superior del cuadro GRADO */}
+                        <sup style={{
+                          fontSize: '30px',
+                          fontWeight: 'bold',
+                          color: gradoColor,
+                          position: 'absolute',
+                          right: '-34px',
+                          bottom: '10px',
+                          marginTop:'-10px'
+                        }}>
+                          {sufijo}
+                        </sup>
+                      </div>
+                    )}
+
+                    {/* Cuadro negro: GRADO */}
+                    <div style={{
+                      backgroundColor: 'black',
+                      color: 'white',
+                      padding: '8px 16px',
+                      fontWeight: 'bold',
+                      fontSize: '17px',
+                      lineHeight: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      letterSpacing: '2px',
+                      
+                    }}>
+                      GRADO
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Ciclo educativo y nivel debajo del grado */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '8px',
-              marginBottom: '10px',
-              fontSize: '10px',
-              borderBottom: `2px solid ${colorPrimario}`,
-              paddingBottom: '8px'
+              textAlign: 'right',
+              fontSize: '9px',
+              marginBottom: '8px',
+              lineHeight: '1.5',
             }}>
-              <p style={{ margin: 0 }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
-              <p style={{ margin: 0 }}><strong>{isHT ? 'Niveau/Classe' : 'Nivel/Grado'}:</strong> {nivelNombre}</p>
-              <p style={{ margin: 0 }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> ________________</p>
-              <p style={{ margin: 0 }}><strong>{isHT ? 'Code' : 'Código del Centro'}:</strong> ____</p>
+              <p style={{ margin: 0 }}>
+                {(() => {
+                  const gn = sabanaData.nivel?.gradoNumero || 0;
+                  return gn >= 1 && gn <= 3 ? 'Primer Ciclo' : 'Segundo Ciclo';
+                })()}
+              </p>
+              <p style={{ margin: 0 }}>
+                {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria' ? 'Nivel Primario' :
+                 getFormatoSabana(sabanaData.sistemaEducativo) === 'inicial' ? 'Nivel Inicial' : 'Nivel Secundario'}
+              </p>
             </div>
 
             {/* TÍTULO ASIGNATURAS GENERALES */}
@@ -1010,7 +1071,7 @@ export function BoletinIndividual({
                   fontSize: '9px',
                   marginBottom: '3px'
                 }}>
-                  MÓDULOS FORMATIVOS (FORMACIÓN TÉCNICO PROFESIONAL)
+                  BLOQUE DE LOS MÓDULOS FORMATIVOS
                 </div>
 
                 {/* TABLA DE MÓDULOS TÉCNICOS */}
@@ -1248,7 +1309,7 @@ export function BoletinIndividual({
                 <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
                   {isHT ? 'INFORMATION DE L\'ÉTUDIANT' : 'INFORMACIÓN DEL ESTUDIANTE'}
                 </h3>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()}, {estudiante.nombre}</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()} {estudiante.segundoApellido ? estudiante.segundoApellido.toUpperCase() : ''}, {estudiante.nombre} {estudiante.segundoNombre || ''}</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Matricule' : 'Matrícula'}:</strong> ________________________</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Niveau' : 'Nivel/Grado'}:</strong> {sabanaData.nivel?.nombre || '________________________'}</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> ________________________</p>
