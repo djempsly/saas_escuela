@@ -208,7 +208,7 @@ model Materia {
 
 model Clase {
   id                        String                    @id @default(cuid())
-  codigo                    String                    @unique
+  codigo                    String
   materiaId                 String
   nivelId                   String
   docenteId                 String
@@ -231,6 +231,8 @@ model Clase {
   eventos                   Evento[]
   inscripciones             Inscripcion[]
   tareas                    Tarea[]
+
+  @@unique([codigo, nivelId, seccion, institucionId])
 }
 
 model Inscripcion {

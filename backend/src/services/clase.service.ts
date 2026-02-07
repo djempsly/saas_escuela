@@ -47,11 +47,14 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
   // Usar codigo proporcionado o generar uno automaticamente
   let codigo = input.codigo || generateCodigoClase();
 
-  // Verificar que el codigo no exista
+  // Verificar que el codigo+nivel+seccion no exista en la misma institucion
   if (input.codigo) {
-    const existente = await prisma.clase.findUnique({ where: { codigo } });
+    const existente = await prisma.clase.findFirst({
+      where: { codigo, nivelId: input.nivelId, seccion: input.seccion || null, institucionId },
+    });
     if (existente) {
-      throw new Error('El codigo de clase ya existe. Use otro codigo.');
+      const seccionMsg = input.seccion ? ` seccion ${input.seccion}` : '';
+      throw new Error(`Ya existe una clase con codigo "${codigo}" en este nivel${seccionMsg}.`);
     }
   }
 
@@ -106,7 +109,7 @@ export const findClaseById = async (id: string, institucionId: string) => {
 };
 
 export const findClaseByCodigo = async (codigo: string) => {
-  return prisma.clase.findUnique({
+  return prisma.clase.findFirst({
     where: { codigo },
     include: {
       materia: true,

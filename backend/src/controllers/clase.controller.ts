@@ -24,7 +24,7 @@ export const createClaseHandler = async (req: Request, res: Response) => {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrad') || error.message.includes('no pertenece')) {
+    if (error.message.includes('no encontrad') || error.message.includes('no pertenece') || error.message.includes('Ya existe') || error.message.includes('ya existe')) {
       return res.status(400).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

@@ -72,7 +72,7 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
 
 export const inscribirPorCodigo = async (codigoClase: string, estudianteId: string) => {
   // Buscar clase por código
-  const clase = await prisma.clase.findUnique({
+  const clase = await prisma.clase.findFirst({
     where: { codigo: codigoClase },
     include: { cicloLectivo: true, institucion: true },
   });
