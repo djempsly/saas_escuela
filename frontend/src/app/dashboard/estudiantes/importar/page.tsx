@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { importApi, nivelesApi } from '@/lib/api';
+import { importApi, nivelesApi, estudiantesApi } from '@/lib/api';
 import {
   Upload,
   Download,
@@ -15,7 +16,19 @@ import {
   Printer,
   Users,
   AlertCircle,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 interface Nivel {
   id: string;
@@ -45,6 +58,13 @@ interface ApiError {
   message?: string;
 }
 
+interface DuplicateMatch {
+  filaExcel: number;
+  nombreExcel: string;
+  apellidoExcel: string;
+  existente: { nombre: string; apellido: string; username: string };
+}
+
 export default function ImportarEstudiantesPage() {
   const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [selectedNivel, setSelectedNivel] = useState('');
@@ -55,6 +75,8 @@ export default function ImportarEstudiantesPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   useEffect(() => {
     const fetchNiveles = async () => {
@@ -120,12 +142,78 @@ export default function ImportarEstudiantesPage() {
     }
   };
 
+  const parseFileForDuplicateCheck = (fileToCheck: File): Promise<{ nombre: string; apellido: string; fila: number }[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+
+          const parsed = rows.map((row, idx) => ({
+            nombre: String(row.nombre || row.Nombre || row.NOMBRE || '').trim(),
+            apellido: String(row.apellido || row.Apellido || row.APELLIDO || '').trim(),
+            fila: idx + 2,
+          })).filter((r) => r.nombre && r.apellido);
+
+          resolve(parsed);
+        } catch {
+          reject(new Error('No se pudo leer el archivo Excel'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      reader.readAsArrayBuffer(fileToCheck);
+    });
+  };
+
   const handleImport = async () => {
     if (!file) {
       alert('Selecciona un archivo Excel');
       return;
     }
 
+    try {
+      // Parse file and check for duplicates
+      const excelRows = await parseFileForDuplicateCheck(file);
+      const existingRes = await estudiantesApi.getAll();
+      const existingStudents: { nombre: string; apellido: string; username: string }[] =
+        (existingRes.data.data || existingRes.data || []);
+
+      const matches: DuplicateMatch[] = [];
+      for (const row of excelRows) {
+        const found = existingStudents.find(
+          (est) =>
+            est.nombre.toLowerCase() === row.nombre.toLowerCase() &&
+            est.apellido.toLowerCase() === row.apellido.toLowerCase()
+        );
+        if (found) {
+          matches.push({
+            filaExcel: row.fila,
+            nombreExcel: row.nombre,
+            apellidoExcel: row.apellido,
+            existente: found,
+          });
+        }
+      }
+
+      if (matches.length > 0) {
+        setDuplicateMatches(matches);
+        setShowDuplicateWarning(true);
+        return;
+      }
+    } catch {
+      // If parsing fails, proceed anyway — backend will validate
+    }
+
+    await proceedWithImport();
+  };
+
+  const proceedWithImport = async () => {
+    if (!file) return;
+    setShowDuplicateWarning(false);
+    setDuplicateMatches([]);
     setIsUploading(true);
     try {
       const response = await importApi.importEstudiantes(
@@ -277,6 +365,70 @@ export default function ImportarEstudiantesPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Formato requerido */}
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+                <Info className="w-5 h-5" />
+                Formato del archivo Excel
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-blue-700">
+                El archivo debe ser <strong>.xlsx</strong> o <strong>.xls</strong> con las siguientes columnas en la primera fila (encabezados):
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border border-blue-200 rounded">
+                  <thead>
+                    <tr className="bg-blue-100">
+                      <th className="text-left py-2 px-3 font-semibold text-blue-900">Columna</th>
+                      <th className="text-left py-2 px-3 font-semibold text-blue-900">Requerido</th>
+                      <th className="text-left py-2 px-3 font-semibold text-blue-900">Ejemplo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-blue-800">
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">nombre</td>
+                      <td className="py-2 px-3">Si</td>
+                      <td className="py-2 px-3">Juan</td>
+                    </tr>
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">segundoNombre</td>
+                      <td className="py-2 px-3">No</td>
+                      <td className="py-2 px-3">Carlos</td>
+                    </tr>
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">apellido</td>
+                      <td className="py-2 px-3">Si</td>
+                      <td className="py-2 px-3">Perez</td>
+                    </tr>
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">segundoApellido</td>
+                      <td className="py-2 px-3">No</td>
+                      <td className="py-2 px-3">Lopez</td>
+                    </tr>
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">email</td>
+                      <td className="py-2 px-3">No</td>
+                      <td className="py-2 px-3">juan@ejemplo.com</td>
+                    </tr>
+                    <tr className="border-t border-blue-200">
+                      <td className="py-2 px-3 font-mono text-xs">nivel</td>
+                      <td className="py-2 px-3">No</td>
+                      <td className="py-2 px-3">1ro de Primaria</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-xs text-blue-600 space-y-1">
+                <p>* El nombre de la columna <strong>nivel</strong> debe coincidir exactamente con un nivel registrado en la institucion.</p>
+                <p>* Si no se indica nivel, se usara el nivel por defecto seleccionado abajo (si se selecciona uno).</p>
+                <p>* Se generara automaticamente un usuario y contrasena temporal (<strong>estudiante123</strong>) para cada estudiante.</p>
+                <p>* Tamano maximo del archivo: <strong>5 MB</strong>.</p>
               </div>
             </CardContent>
           </Card>
@@ -473,6 +625,49 @@ export default function ImportarEstudiantesPage() {
           </div>
         </>
       )}
+
+      {/* Dialog de advertencia de duplicados */}
+      <AlertDialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="w-5 h-5" />
+              Posibles estudiantes duplicados
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Se encontraron <strong>{duplicateMatches.length}</strong> coincidencia(s) de nombre y apellido con estudiantes ya registrados:
+                </p>
+                <div className="max-h-52 overflow-auto space-y-2">
+                  {duplicateMatches.map((match, idx) => (
+                    <div key={idx} className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">
+                          Fila {match.filaExcel}: {match.nombreExcel} {match.apellidoExcel}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ya existe: <strong>{match.existente.nombre} {match.existente.apellido}</strong> (@{match.existente.username})
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm">Deseas importar de todas formas?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={proceedWithImport}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Continuar de todas formas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

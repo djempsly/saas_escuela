@@ -5,7 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { inscripcionesApi, clasesApi, estudiantesApi, nivelesApi } from '@/lib/api';
-import { Users, Loader2, Plus, Search, UserPlus, CheckSquare, Square, Filter } from 'lucide-react';
+import { Users, Loader2, Plus, Search, UserPlus, CheckSquare, Square, Filter, AlertTriangle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 interface Estudiante {
   id: string;
@@ -40,6 +50,11 @@ interface ApiError {
   message?: string;
 }
 
+interface DuplicateInscripcion {
+  estudiante: Estudiante;
+  inscritoExistente: Estudiante;
+}
+
 export default function InscripcionesPage() {
   const [clases, setClases] = useState<Clase[]>([]);
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
@@ -52,6 +67,9 @@ export default function InscripcionesPage() {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollProgress, setEnrollProgress] = useState({ current: 0, total: 0 });
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateInscripcion[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [pendingInscripcionIds, setPendingInscripcionIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -84,11 +102,39 @@ export default function InscripcionesPage() {
     }
   };
 
+  const checkDuplicatesForInscripcion = (estudianteIds: string[]): DuplicateInscripcion[] => {
+    const matches: DuplicateInscripcion[] = [];
+    for (const id of estudianteIds) {
+      const est = estudiantes.find((e) => e.id === id);
+      if (!est) continue;
+      const inscrito = inscritos.find(
+        (i) =>
+          i.estudiante &&
+          i.estudiante.nombre.toLowerCase() === est.nombre.toLowerCase() &&
+          i.estudiante.apellido.toLowerCase() === est.apellido.toLowerCase() &&
+          i.estudiante.id !== est.id
+      );
+      if (inscrito?.estudiante) {
+        matches.push({ estudiante: est, inscritoExistente: inscrito.estudiante });
+      }
+    }
+    return matches;
+  };
+
   const handleInscribir = async (estudianteId: string) => {
     if (!selectedClase) {
       alert('Selecciona una clase primero');
       return;
     }
+
+    const matches = checkDuplicatesForInscripcion([estudianteId]);
+    if (matches.length > 0) {
+      setDuplicateMatches(matches);
+      setPendingInscripcionIds([estudianteId]);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
     try {
       await inscripcionesApi.inscribirMasivo(selectedClase, [estudianteId]);
       loadInscritos(selectedClase);
@@ -101,13 +147,28 @@ export default function InscripcionesPage() {
   const handleInscribirSeleccionados = async () => {
     if (!selectedClase || selectedStudents.size === 0) return;
 
-    setIsEnrolling(true);
-    setEnrollProgress({ current: 0, total: selectedStudents.size });
-
     const ids = Array.from(selectedStudents);
+    const matches = checkDuplicatesForInscripcion(ids);
+    if (matches.length > 0) {
+      setDuplicateMatches(matches);
+      setPendingInscripcionIds(ids);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    await proceedWithInscripcion(ids);
+  };
+
+  const proceedWithInscripcion = async (ids: string[]) => {
+    setShowDuplicateWarning(false);
+    setDuplicateMatches([]);
+    setPendingInscripcionIds([]);
+
+    setIsEnrolling(true);
+    setEnrollProgress({ current: 0, total: ids.length });
+
     let enrolled = 0;
 
-    // Process in batches of 10
     const batchSize = 10;
     for (let i = 0; i < ids.length; i += batchSize) {
       const batch = ids.slice(i, i + batchSize);
@@ -343,6 +404,47 @@ export default function InscripcionesPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog de advertencia de duplicados */}
+      <AlertDialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="w-5 h-5" />
+              Posible inscripcion duplicada
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Se encontraron <strong>{duplicateMatches.length}</strong> estudiante(s) con el mismo nombre y apellido que otros ya inscritos en esta clase:
+                </p>
+                <div className="max-h-52 overflow-auto space-y-2">
+                  {duplicateMatches.map((match, idx) => (
+                    <div key={idx} className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                      <p className="font-medium text-foreground">
+                        {match.estudiante.nombre} {match.estudiante.apellido}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ya inscrito con ese nombre: <strong>{match.inscritoExistente.nombre} {match.inscritoExistente.apellido}</strong>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm">Deseas inscribir de todas formas?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => proceedWithInscripcion(pendingInscripcionIds)}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Continuar de todas formas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

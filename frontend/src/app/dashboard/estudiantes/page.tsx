@@ -6,9 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { estudiantesApi, usersApi, nivelesApi } from '@/lib/api';
-import { Users, Search, Loader2, Eye, FileText, Plus, X, Save, EyeOff, Copy, KeyRound } from 'lucide-react';
+import { Users, Search, Loader2, Eye, FileText, Plus, X, Save, EyeOff, Copy, KeyRound, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 
 interface Estudiante {
   id: string;
@@ -61,6 +71,8 @@ export default function EstudiantesPage() {
     password: string;
   } | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [duplicateMatches, setDuplicateMatches] = useState<Estudiante[]>([]);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   const canSeePasswords = user?.role === 'ADMIN' || user?.role === 'DIRECTOR';
 
@@ -114,6 +126,26 @@ export default function EstudiantesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check for duplicates before submitting
+    const matches = estudiantes.filter(
+      (est) =>
+        est.nombre.toLowerCase().trim() === formData.nombre.trim().toLowerCase() &&
+        est.apellido.toLowerCase().trim() === formData.apellido.trim().toLowerCase()
+    );
+
+    if (matches.length > 0) {
+      setDuplicateMatches(matches);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    await proceedWithSubmit();
+  };
+
+  const proceedWithSubmit = async () => {
+    setShowDuplicateWarning(false);
+    setDuplicateMatches([]);
     setIsSaving(true);
 
     try {
@@ -328,6 +360,48 @@ export default function EstudiantesPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog de advertencia de duplicados */}
+      <AlertDialog open={showDuplicateWarning} onOpenChange={setShowDuplicateWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="w-5 h-5" />
+              Posible estudiante duplicado
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Ya existe(n) <strong>{duplicateMatches.length}</strong> estudiante(s) con el mismo nombre y apellido:
+                </p>
+                <div className="max-h-40 overflow-auto space-y-2">
+                  {duplicateMatches.map((est) => (
+                    <div key={est.id} className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                      <div className="w-8 h-8 rounded-full bg-yellow-200 text-yellow-800 flex items-center justify-center font-medium text-xs">
+                        {est.nombre[0]}{est.apellido[0]}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{est.nombre} {est.apellido}</p>
+                        <p className="text-xs text-muted-foreground">@{est.username}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm">Deseas registrar este estudiante de todas formas?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={proceedWithSubmit}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Continuar de todas formas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Modal de Registro */}
       {showModal && (

@@ -6,7 +6,9 @@ import { generateUsername } from '../utils/security';
 
 interface StudentRow {
   nombre: string;
+  segundoNombre?: string;
   apellido: string;
+  segundoApellido?: string;
   email?: string;
   nivel?: string;
 }
@@ -39,7 +41,9 @@ export const parseExcelFile = (buffer: Buffer): StudentRow[] => {
 
   return data.map((row) => ({
     nombre: String(row.nombre || row.Nombre || row.NOMBRE || '').trim(),
+    segundoNombre: String(row.segundoNombre || row['segundo nombre'] || row['Segundo Nombre'] || row.SEGUNDO_NOMBRE || '').trim() || undefined,
     apellido: String(row.apellido || row.Apellido || row.APELLIDO || '').trim(),
+    segundoApellido: String(row.segundoApellido || row['segundo apellido'] || row['Segundo Apellido'] || row.SEGUNDO_APELLIDO || '').trim() || undefined,
     email: row.email || row.Email || row.EMAIL || row.correo || row.Correo || undefined,
     nivel: String(row.nivel || row.Nivel || row.NIVEL || row.grado || row.Grado || '').trim() || undefined,
   }));
@@ -149,7 +153,9 @@ export const importStudents = async (
       const student = await prisma.user.create({
         data: {
           nombre: row.nombre,
+          segundoNombre: row.segundoNombre || null,
           apellido: row.apellido,
+          segundoApellido: row.segundoApellido || null,
           username,
           email: row.email || null,
           password: hashedPassword,
@@ -218,10 +224,10 @@ export const generateExcelTemplate = (): Buffer => {
 
   // Create header row with example data
   const data = [
-    ['nombre', 'apellido', 'email', 'nivel'],
-    ['Juan', 'Pérez', 'juan@ejemplo.com', '1ro de Primaria'],
-    ['María', 'García', 'maria@ejemplo.com', '2do de Primaria'],
-    ['Pedro', 'Rodríguez', '', '1ro de Primaria'],
+    ['nombre', 'segundoNombre', 'apellido', 'segundoApellido', 'email', 'nivel'],
+    ['Juan', 'Carlos', 'Pérez', 'López', 'juan@ejemplo.com', '1ro de Primaria'],
+    ['María', '', 'García', 'Martínez', 'maria@ejemplo.com', '2do de Primaria'],
+    ['Pedro', '', 'Rodríguez', '', '', '1ro de Primaria'],
   ];
 
   const worksheet = XLSX.utils.aoa_to_sheet(data);
@@ -229,7 +235,9 @@ export const generateExcelTemplate = (): Buffer => {
   // Set column widths
   worksheet['!cols'] = [
     { wch: 15 }, // nombre
+    { wch: 18 }, // segundoNombre
     { wch: 15 }, // apellido
+    { wch: 18 }, // segundoApellido
     { wch: 25 }, // email
     { wch: 20 }, // nivel
   ];
