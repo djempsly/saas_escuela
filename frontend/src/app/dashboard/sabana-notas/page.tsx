@@ -130,8 +130,14 @@ const SISTEMAS_PRIMARIA = ['PRIMARIA_DO', 'PRIMARIA_HT'];
 const SISTEMAS_INICIAL = ['INICIAL_DO', 'INICIAL_HT'];
 const SISTEMAS_SECUNDARIA = ['SECUNDARIA_GENERAL_DO', 'SECUNDARIA_HT', 'POLITECNICO_DO'];
 
-// Lista de RAs para mostrar en la tabla
-const RAS_DISPLAY = ['RA1', 'RA2', 'RA3', 'RA4', 'RA5', 'RA6', 'RA7'];
+// Lista de RAs para mostrar en la tabla (10 RAs, cada uno con 3 sub-columnas)
+const RAS_DISPLAY = ['RA1', 'RA2', 'RA3', 'RA4', 'RA5', 'RA6', 'RA7', 'RA8', 'RA9', 'RA10'];
+const RA_SUBCOLS = [
+  { key: '', label: 'C.R.A' },
+  { key: '_RP1', label: 'RP1' },
+  { key: '_RP2', label: 'RP2' },
+];
+const TOTAL_MODULO_ROWS = 5;
 
 // Determinar el tipo de formato de sábana según el sistema educativo
 const getFormatoSabana = (sistemaEducativo: string): 'politecnico' | 'secundaria' | 'primaria' | 'inicial' => {
@@ -396,21 +402,24 @@ export function BoletinIndividual({
       }
     });
 
-    // ... (módulos técnicos igual)
+    // Módulos técnicos (cada RA tiene 3 sub-columnas: CRA, RP1, RP2)
     modulosTecnicos.forEach((modulo, modIdx) => {
       const cal = estudiante.calificaciones[modulo.id];
       const canEdit = canEditMateria(modulo.id, cal);
 
       if (canEdit && !isReadOnly) {
         RAS_DISPLAY.forEach((ra, raIdx) => {
-          const cellId = `modulo-${modulo.id}-${ra}`;
-          cells.push({
-            cellId,
-            claseId: cal?.claseId || null,
-            periodo: ra,
-            asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
-            competenciaIndex: 0,
-            periodoIndex: raIdx,
+          RA_SUBCOLS.forEach((subcol, subIdx) => {
+            const raKey = `${ra}${subcol.key}`;
+            const cellId = `modulo-${modulo.id}-${raKey}`;
+            cells.push({
+              cellId,
+              claseId: cal?.claseId || null,
+              periodo: raKey,
+              asignaturaIndex: ASIGNATURAS_GENERALES_MINERD.length + modIdx,
+              competenciaIndex: 0,
+              periodoIndex: raIdx * 3 + subIdx,
+            });
           });
         });
       }
@@ -1147,7 +1156,7 @@ export function BoletinIndividual({
             </table>
 
             {/* TÍTULO MÓDULOS TÉCNICOS - Solo para sistemas Politécnicos */}
-            {modulosTecnicos.length > 0 && getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
+            {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
               <>
                 <div style={{
                   backgroundColor: colorPrimario,
@@ -1163,120 +1172,199 @@ export function BoletinIndividual({
                 {/* TABLA DE MÓDULOS TÉCNICOS */}
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '7px', marginBottom: '10px' }}>
                   <thead>
-                    <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
-                      <th style={{ border: '1px solid black', padding: '4px', width: '30%', textAlign: 'left' }}>MÓDULO TÉCNICO</th>
-                      {RAS_DISPLAY.map(ra => (
-                        <th key={ra} style={{ border: '1px solid black', padding: '3px' }}>{ra}</th>
+                    {/* Fila 1: "Periodo de Aprobación" arriba a la izquierda + celdas RA vacías sin color */}
+                    <tr>
+                      <th style={{ border: '1px solid black', padding: '4px', width: '14%', textAlign: 'left', fontSize: '7px', backgroundColor: colorPrimario, color: 'white' }}>
+                        Periodo de Aprobación
+                      </th>
+                      {RAS_DISPLAY.map((ra) => (
+                        <th key={`empty-${ra}`} colSpan={3} style={{ border: '1px solid black', padding: '2px' }}>
+                        </th>
                       ))}
-                      <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>C.F.</th>
-                      <th style={{ border: '1px solid black', padding: '3px', backgroundColor: '#fbbf24', color: 'black', width: '7%' }}>SIT.</th>
+                      <th rowSpan={3} style={{
+                        border: '1px solid black',
+                        padding: '2px',
+                        width: '2.5%',
+                        backgroundColor: '#fbbf24',
+                        color: 'black',
+                        verticalAlign: 'middle',
+                      }}>
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: '6px', fontWeight: 'bold', margin: '0 auto' }}>
+                          CALIFICACIÓN FINAL
+                        </div>
+                      </th>
+                      <th rowSpan={3} style={{
+                        border: '1px solid black',
+                        padding: '2px',
+                        width: '2.5%',
+                        backgroundColor: '#e5e7eb',
+                        color: 'black',
+                        verticalAlign: 'middle',
+                      }}>
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: '6px', fontWeight: 'bold', margin: '0 auto' }}>
+                          EVALUACIÓN ESPECIAL
+                        </div>
+                      </th>
+                      <th rowSpan={3} style={{
+                        border: '1px solid black',
+                        padding: '3px',
+                        width: '6%',
+                        textAlign: 'center',
+                        backgroundColor: '#fbbf24',
+                        color: 'black',
+                        fontSize: '6px',
+                        fontWeight: 'bold',
+                        verticalAlign: 'middle',
+                      }}>
+                        SITUACIÓN FINAL DE MÓDULO FORMATIVO
+                      </th>
+                    </tr>
+                    {/* Fila 2: "MÓDULOS FORMATIVOS" (rowSpan=2) + 10 columnas RA sin número */}
+                    <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
+                      <th rowSpan={2} style={{ border: '1px solid black', padding: '4px', textAlign: 'left', fontSize: '7px', verticalAlign: 'middle' }}>
+                        MÓDULOS FORMATIVOS
+                      </th>
+                      {RAS_DISPLAY.map((ra) => (
+                        <th key={ra} colSpan={3} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontSize: '6px' }}>
+                          RA
+                        </th>
+                      ))}
+                    </tr>
+                    {/* Fila 3: Sub-columnas C.R.A, RP1, RP2 para cada RA */}
+                    <tr style={{ backgroundColor: colorClaro }}>
+                      {RAS_DISPLAY.flatMap((ra) =>
+                        RA_SUBCOLS.map((subcol) => (
+                          <th key={`${ra}${subcol.key}`} style={{
+                            border: '1px solid black',
+                            padding: '1px',
+                            fontSize: '5px',
+                            minWidth: '14px',
+                            backgroundColor: subcol.key !== '' ? '#e5e7eb' : 'transparent',
+                          }}>
+                            {subcol.label}
+                          </th>
+                        ))
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {modulosTecnicos.map((modulo, idx) => {
-                      const isSelectedMateria = selectedMateriaId === modulo.id;
-                      const cal = estudiante.calificaciones[modulo.id];
-                      const canEdit = canEditMateria(modulo.id, cal);
-                      
-                      // Calcular CF de los RAs (Promedio simple por ahora)
+                    {Array.from({ length: TOTAL_MODULO_ROWS }, (_, rowIdx) => {
+                      const modulo = modulosTecnicos[rowIdx];
+                      const isSelectedMateria = modulo ? selectedMateriaId === modulo.id : false;
+                      const cal = modulo ? estudiante.calificaciones[modulo.id] : undefined;
+                      const canEdit = modulo ? canEditMateria(modulo.id, cal) : false;
+
+                      // Calcular CF: promedio de max(CRA, RP1, RP2) por cada RA
                       let sumRa = 0;
                       let countRa = 0;
                       if (cal?.ras) {
-                        Object.values(cal.ras).forEach(val => {
-                          if (val > 0) { sumRa += val; countRa++; }
+                        RAS_DISPLAY.forEach(ra => {
+                          const cra = cal.ras?.[ra] || 0;
+                          const rp1Val = cal.ras?.[`${ra}_RP1`] || 0;
+                          const rp2Val = cal.ras?.[`${ra}_RP2`] || 0;
+                          const maxVal = Math.max(cra, rp1Val, rp2Val);
+                          if (maxVal > 0) { sumRa += maxVal; countRa++; }
                         });
                       }
                       const cf = countRa > 0 ? Math.round(sumRa / countRa) : 0;
                       const situacion = calcularSituacion(cf);
 
                       return (
-                        <tr key={idx} style={{
+                        <tr key={rowIdx} style={{
                           backgroundColor: isSelectedMateria ? '#fff7ed' : 'transparent',
                           outline: isSelectedMateria ? '2px solid #f97316' : 'none',
-                          zIndex: isSelectedMateria ? 10 : 0,
-                          position: 'relative'
+                          position: 'relative',
                         }}>
                           <td style={{
                             border: '1px solid black',
                             padding: '4px',
                             fontWeight: 'bold',
                             fontSize: '7px',
-                            backgroundColor: isSelectedMateria ? '#ffedd5' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')
+                            backgroundColor: isSelectedMateria ? '#ffedd5' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent'),
+                            height: '22px',
                           }}>
-                            {modulo.nombre || ''}
-                            {isSelectedMateria && <span style={{ color: '#f97316', fontSize: '6px' }}> (Seleccionada)</span>}
-                            {!isSelectedMateria && canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
+                            {modulo ? (
+                              <>
+                                {modulo.nombre || ''}
+                                {isSelectedMateria && <span style={{ color: '#f97316', fontSize: '6px' }}> (Seleccionada)</span>}
+                                {!isSelectedMateria && canEdit && !isReadOnly && <span style={{ color: '#059669', fontSize: '5px' }}> (e)</span>}
+                              </>
+                            ) : ''}
                           </td>
-                          {RAS_DISPLAY.map(ra => {
-                            const valor = cal?.ras?.[ra] || 0;
-                            const cellId = `modulo-${modulo.id}-${ra}`;
-                            const isEditingThis = editingCell === cellId;
+                          {/* 10 RAs × 3 sub-columnas = 30 celdas */}
+                          {RAS_DISPLAY.flatMap((ra) =>
+                            RA_SUBCOLS.map((subcol) => {
+                              const raKey = `${ra}${subcol.key}`;
+                              const valor = cal?.ras?.[raKey] || 0;
+                              const cellId = modulo ? `modulo-${modulo.id}-${raKey}` : `empty-${rowIdx}-${raKey}`;
+                              const isEditingThis = editingCell === cellId;
 
-                            return (
-                              <td
-                                key={cellId}
-                                style={{
-                                  border: '1px solid black',
-                                  padding: '3px',
-                                  textAlign: 'center',
-                                  fontSize: '8px',
-                                  backgroundColor: isEditingThis ? '#fef9c3' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent'),
-                                  color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
-                                  fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
-                                  cursor: canEdit && !isReadOnly ? 'pointer' : 'default',
-                                  minWidth: '25px',
-                                  height: '25px'
-                                }}
-                                onClick={() => handleCellClick(cellId, valor || null, canEdit)}
-                              >
-                                {isEditingThis ? (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="1"
-                                    value={tempValue}
-                                    onChange={(e) => setTempValue(e.target.value)}
-                                    onBlur={() => handleCellBlur(cal?.claseId || null, ra, cellId)}
-                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, ra, cellId)}
-                                    autoFocus
-                                    disabled={isSaving}
-                                    style={{
-                                      width: '100%',
-                                      border: 'none',
-                                      textAlign: 'center',
-                                      fontSize: '8px',
-                                      backgroundColor: '#fef9c3',
-                                      outline: 'none',
-                                      padding: '0'
-                                    }}
-                                  />
-                                ) : (
-                                  valor > 0 ? valor : '-'
-                                )}
-                              </td>
-                            );
-                          })}
+                              return (
+                                <td
+                                  key={cellId}
+                                  style={{
+                                    border: '1px solid black',
+                                    padding: '1px',
+                                    textAlign: 'center',
+                                    fontSize: '7px',
+                                    backgroundColor: isEditingThis ? '#fef9c3' : (subcol.key !== '' ? '#f3f4f6' : (canEdit && !isReadOnly ? '#dbeafe' : 'transparent')),
+                                    color: valor > 0 && valor < 70 ? '#dc2626' : 'inherit',
+                                    fontWeight: valor > 0 && valor < 70 ? 'bold' : 'normal',
+                                    cursor: modulo && canEdit && !isReadOnly ? 'pointer' : 'default',
+                                    minWidth: '14px',
+                                    height: '22px',
+                                  }}
+                                  onClick={() => modulo && handleCellClick(cellId, valor || null, canEdit)}
+                                >
+                                  {isEditingThis ? (
+                                    <input
+                                      type="number" min="0" max="100" step="1"
+                                      value={tempValue}
+                                      onChange={(e) => setTempValue(e.target.value)}
+                                      onBlur={() => handleCellBlur(cal?.claseId || null, raKey, cellId)}
+                                      onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, raKey, cellId)}
+                                      autoFocus disabled={isSaving}
+                                      style={{ width: '100%', border: 'none', textAlign: 'center', fontSize: '7px', backgroundColor: '#fef9c3', outline: 'none', padding: '0' }}
+                                    />
+                                  ) : (
+                                    modulo ? (valor > 0 ? valor : '-') : ''
+                                  )}
+                                </td>
+                              );
+                            })
+                          )}
+                          {/* CALIFICACIÓN FINAL */}
                           <td style={{
                             border: '1px solid black',
-                            padding: '3px',
+                            padding: '2px',
                             textAlign: 'center',
                             fontWeight: 'bold',
                             backgroundColor: '#fef3c7',
-                            fontSize: '9px',
-                            color: cf > 0 && cf < 70 ? '#dc2626' : 'inherit'
+                            fontSize: '8px',
+                            color: cf > 0 && cf < 70 ? '#dc2626' : 'inherit',
                           }}>
-                            {cf || '-'}
+                            {modulo ? (cf || '-') : ''}
                           </td>
+                          {/* EVALUACIÓN ESPECIAL */}
                           <td style={{
                             border: '1px solid black',
-                            padding: '3px',
+                            padding: '2px',
+                            textAlign: 'center',
+                            backgroundColor: '#e5e7eb',
+                            fontSize: '8px',
+                          }}>
+                            {modulo ? '-' : ''}
+                          </td>
+                          {/* SITUACIÓN FINAL DE MÓDULO FORMATIVO */}
+                          <td style={{
+                            border: '1px solid black',
+                            padding: '2px',
                             textAlign: 'center',
                             fontWeight: 'bold',
                             backgroundColor: situacion === 'A' ? '#dcfce7' : situacion === 'R' ? '#fee2e2' : '#f3f4f6',
-                            fontSize: '9px'
+                            fontSize: '8px',
                           }}>
-                            {situacion}
+                            {modulo ? situacion : ''}
                           </td>
                         </tr>
                       );
