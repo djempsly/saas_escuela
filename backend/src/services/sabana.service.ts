@@ -21,9 +21,11 @@ export interface SabanaCalificacion {
   
   // Recuperación (Secundaria)
   cpc30: number | null;
+  cpcNota: number | null;
   cpcTotal: number | null;
   cc: number | null;
   cpex30: number | null;
+  cpexNota: number | null;
   cpex70: number | null;
   cex: number | null;
   promedioFinal: number | null;
@@ -358,9 +360,11 @@ export const getSabanaByNivel = async (
           rp4: numeroPeriodos === 4 ? mPromedios.rp4 : null,
           promedio: promedioMateria,
           cpc30: general?.cpc_30 ?? null,
+          cpcNota: general?.cpc_nota ?? null,
           cpcTotal: general?.cpc_total ?? null,
           cc: general?.cpc_total ?? null,
           cpex30: general?.cpex_70 ? (promedioMateria ?? 0) * 0.3 : null,
+          cpexNota: general?.cpex_nota ?? null,
           cpex70: general?.cpex_70 ?? null,
           cex: general?.cpex_total ?? null,
           promedioFinal: general?.promedioFinal ?? null,

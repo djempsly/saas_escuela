@@ -14,7 +14,9 @@ interface CalificacionGeneralInput {
   rp3?: number;
   rp4?: number;
   cpc_30?: number;
+  cpc_nota?: number;
   cpex_70?: number;
+  cpex_nota?: number;
 }
 
 interface CalificacionTecnicaInput {
@@ -169,7 +171,9 @@ export const guardarCalificacion = async (
   // Solo sistemas RD usan CPC
   if (sistema !== SistemaEducativo.PRIMARIA_HT && sistema !== SistemaEducativo.SECUNDARIA_HT) {
     dataToSave.cpc_30 = input.cpc_30;
+    dataToSave.cpc_nota = input.cpc_nota;
     dataToSave.cpex_70 = input.cpex_70;
+    dataToSave.cpex_nota = input.cpex_nota;
     dataToSave.cpc_total = input.cpc_30;
     dataToSave.cpex_total = input.cpex_70 ? (input.cpex_70 * 70) / 100 : 0;
   }

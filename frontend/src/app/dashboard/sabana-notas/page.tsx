@@ -38,9 +38,11 @@ export interface Calificacion {
   rp4: number | null;
   promedio: number | null;
   cpc30: number | null;
+  cpcNota: number | null;
   cpcTotal: number | null;
   cc: number | null;
   cpex30: number | null;
+  cpexNota: number | null;
   cpex70: number | null;
   cex: number | null;
   promedioFinal: number | null;
@@ -832,7 +834,7 @@ export function BoletinIndividual({
                     {isHT ? 'MOY.' : 'C.F.'}
                   </th>
                   <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#fbbf24', color: 'black', width: '2.5%' }}>
-                    %AA
+                    %A.A.
                   </th>
                   {/* Columnas dinámicas según país */}
                   {isHT ? (
@@ -846,10 +848,10 @@ export function BoletinIndividual({
                     </>
                   ) : (
                     <>
-                      <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', fontSize: '7px' }}>
+                      <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#e5e7eb', color: 'black', fontSize: '7px' }}>
                         CALIFICACIÓN COMPLETIVA
                       </th>
-                      <th colSpan={3} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '7px' }}>
+                      <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '7px' }}>
                         CALIFICACIÓN EXTRAORDINARIA
                       </th>
                       <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'black', width: '2.5%' }}>
@@ -885,9 +887,11 @@ export function BoletinIndividual({
                   {!isHT && (
                     <>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb' }}>50% PCP</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb' }}>CPC</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb' }}>50% CPC</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#e5e7eb', fontWeight: 'bold' }}>C.C.</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>30% PCP</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>CPEx</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>70% CPEx</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db', fontWeight: 'bold' }}>C.Ex.</th>
                     </>
@@ -1018,29 +1022,110 @@ export function BoletinIndividual({
                           </td>
                         </>
                       ) : (
-                        <>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
-                            {cal?.cpc30 ? Math.round(cal.cpc30) : '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
-                            {cal?.cpcTotal ? Math.round(cal.cpcTotal) : '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
-                            {cal?.cc || '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
-                            {cal?.cpex30 ? Math.round(cal.cpex30) : '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
-                            {cal?.cpex70 || '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '8px' }}>
-                            {cal?.cex || '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '8px' }}>
-                            -
-                          </td>
-                        </>
+                        (() => {
+                          const cpcNota = cal?.cpcNota ?? 0;
+                          const cpexNota = cal?.cpexNota ?? 0;
+                          const pcp50 = cf > 0 && cf < 70 ? Math.round(cf * 0.5) : 0;
+                          const cpc50 = cpcNota > 0 ? Math.round(cpcNota * 0.5) : 0;
+                          const ccCalc = cf > 0 && cf < 70 && cpcNota > 0 ? Math.round(cf * 0.5 + cpcNota * 0.5) : 0;
+                          const pcp30 = cf > 0 && cf < 70 ? Math.round(cf * 0.3) : 0;
+                          const cpex70Calc = cpexNota > 0 ? Math.round(cpexNota * 0.7) : 0;
+                          const cexCalc = cf > 0 && cf < 70 && cpexNota > 0 ? Math.round(cf * 0.3 + cpexNota * 0.7) : 0;
+                          const cpcCellId = `${asignatura.codigo}-cpc_nota`;
+                          const cpexCellId = `${asignatura.codigo}-cpex_nota`;
+                          const isEditingCpc = editingCell === cpcCellId;
+                          const isEditingCpex = editingCell === cpexCellId;
+                          const canEditCpc = canEdit && !isReadOnly && cf > 0 && cf < 70;
+
+                          return (
+                            <>
+                              {/* 50% PCP */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                                {pcp50 > 0 ? pcp50 : '-'}
+                              </td>
+                              {/* CPC (editable raw grade) */}
+                              <td
+                                style={{
+                                  border: '1px solid black',
+                                  padding: '1px',
+                                  textAlign: 'center',
+                                  backgroundColor: isEditingCpc ? '#fef9c3' : (canEditCpc ? '#dbeafe' : '#e5e7eb'),
+                                  fontSize: '8px',
+                                  cursor: canEditCpc ? 'pointer' : 'default',
+                                  color: cpcNota > 0 && cpcNota < 70 ? '#dc2626' : 'inherit',
+                                  fontWeight: cpcNota > 0 && cpcNota < 70 ? 'bold' : 'normal',
+                                  minWidth: '22px',
+                                  height: '22px'
+                                }}
+                                onClick={() => canEditCpc && handleCellClick(cpcCellId, cpcNota || null, true)}
+                              >
+                                {isEditingCpc ? (
+                                  <input
+                                    type="number" min="0" max="100" step="1"
+                                    value={tempValue}
+                                    onChange={(e) => setTempValue(e.target.value)}
+                                    onBlur={() => handleCellBlur(cal?.claseId || null, 'cpc_nota', cpcCellId)}
+                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, 'cpc_nota', cpcCellId)}
+                                    autoFocus disabled={isSaving}
+                                    style={{ width: '100%', border: 'none', textAlign: 'center', fontSize: '8px', backgroundColor: '#fef9c3', outline: 'none', padding: '2px' }}
+                                  />
+                                ) : (cpcNota > 0 ? cpcNota : '-')}
+                              </td>
+                              {/* 50% CPC */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                                {cpc50 > 0 ? cpc50 : '-'}
+                              </td>
+                              {/* C.C. */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#e5e7eb', fontSize: '8px' }}>
+                                {ccCalc > 0 ? ccCalc : '-'}
+                              </td>
+                              {/* 30% PCP */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                                {pcp30 > 0 ? pcp30 : '-'}
+                              </td>
+                              {/* CPEx (editable raw grade) */}
+                              <td
+                                style={{
+                                  border: '1px solid black',
+                                  padding: '1px',
+                                  textAlign: 'center',
+                                  backgroundColor: isEditingCpex ? '#fef9c3' : (canEditCpc ? '#dbeafe' : '#d1d5db'),
+                                  fontSize: '8px',
+                                  cursor: canEditCpc ? 'pointer' : 'default',
+                                  color: cpexNota > 0 && cpexNota < 70 ? '#dc2626' : 'inherit',
+                                  fontWeight: cpexNota > 0 && cpexNota < 70 ? 'bold' : 'normal',
+                                  minWidth: '22px',
+                                  height: '22px'
+                                }}
+                                onClick={() => canEditCpc && handleCellClick(cpexCellId, cpexNota || null, true)}
+                              >
+                                {isEditingCpex ? (
+                                  <input
+                                    type="number" min="0" max="100" step="1"
+                                    value={tempValue}
+                                    onChange={(e) => setTempValue(e.target.value)}
+                                    onBlur={() => handleCellBlur(cal?.claseId || null, 'cpex_nota', cpexCellId)}
+                                    onKeyDown={(e) => handleCellKeyDown(e, cal?.claseId || null, 'cpex_nota', cpexCellId)}
+                                    autoFocus disabled={isSaving}
+                                    style={{ width: '100%', border: 'none', textAlign: 'center', fontSize: '8px', backgroundColor: '#fef9c3', outline: 'none', padding: '2px' }}
+                                  />
+                                ) : (cpexNota > 0 ? cpexNota : '-')}
+                              </td>
+                              {/* 70% CPEx */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                                {cpex70Calc > 0 ? cpex70Calc : '-'}
+                              </td>
+                              {/* C.Ex. */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '8px' }}>
+                                {cexCalc > 0 ? cexCalc : '-'}
+                              </td>
+                              {/* C.E. */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '8px' }}>
+                                -
+                              </td>
+                            </>
+                          );
+                        })()
                       )}
 
                       {/* Situación */}
@@ -1259,7 +1344,7 @@ export function BoletinIndividual({
             <div style={{ fontSize: '6px', marginTop: '5px', borderTop: '1px solid #ccc', paddingTop: '5px' }}>
               <strong>{isHT ? 'Compétences:' : 'Competencias:'}</strong> {COMPETENCIAS.map(c => `${c.corto} = ${c.nombre}`).join(' | ')}
               <br />
-              <strong>{isHT ? 'Légende:' : 'Leyenda:'}</strong> P = {isHT ? 'Période' : 'Período'} | RP = {isHT ? 'Récupération' : 'Recuperación'} | C.F. = {isHT ? 'Note Finale' : 'Calificación Final'} | %AA = % {isHT ? 'Présence' : 'Asistencia Acumulada'} | SIT. = {isHT ? 'Résultat' : 'Situación'}
+              <strong>{isHT ? 'Légende:' : 'Leyenda:'}</strong> P = {isHT ? 'Période' : 'Período'} | RP = {isHT ? 'Récupération' : 'Recuperación'} | C.F. = {isHT ? 'Note Finale' : 'Calificación Final'} | %A.A. = % {isHT ? 'Présence' : 'Asistencia Acumulada'} | SIT. = {isHT ? 'Résultat' : 'Situación'}
             </div>
           </div>
         </div>

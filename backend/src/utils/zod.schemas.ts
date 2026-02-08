@@ -198,7 +198,9 @@ export const calificacionSchema = z.object({
     rp3: z.number().min(0).max(100).optional(),
     rp4: z.number().min(0).max(100).optional(),
     cpc_30: z.number().min(0).max(30).optional(),
+    cpc_nota: z.number().min(0).max(100).optional(),
     cpex_70: z.number().min(0).max(70).optional(),
+    cpex_nota: z.number().min(0).max(100).optional(),
   }),
 });
 

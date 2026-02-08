@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Calificacion" ADD COLUMN     "cpc_nota" DOUBLE PRECISION DEFAULT 0,
+ADD COLUMN     "cpex_nota" DOUBLE PRECISION DEFAULT 0;
