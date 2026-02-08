@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { sabanaApi } from '@/lib/api';
+import { sabanaApi, institucionesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -276,6 +276,7 @@ export function BoletinIndividual({
   onSaveCalificacion,
   isReadOnly,
   selectedMateriaId,
+  institucion,
 }: {
   estudiante: Estudiante;
   materias: Materia[];
@@ -291,6 +292,7 @@ export function BoletinIndividual({
   onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null, competenciaId?: string) => Promise<void>;
   isReadOnly: boolean;
   selectedMateriaId?: string;
+  institucion?: { nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string } | null;
 }) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState('');
@@ -365,11 +367,27 @@ export function BoletinIndividual({
   // Usar asignaturas estáticas del MINERD
   // Buscar la materia del backend que coincida con la asignatura MINERD (por código o nombre)
   const findMateriaByAsignatura = useCallback((asignatura: { codigo: string; nombre: string }) => {
-    return materias.find(m =>
-      m.codigo === asignatura.codigo ||
-      m.nombre.toLowerCase().includes(asignatura.nombre.toLowerCase().split(' ')[0]) ||
-      asignatura.nombre.toLowerCase().includes(m.nombre.toLowerCase().split(' ')[0])
-    );
+    // 1. Código exacto (máxima prioridad)
+    const byCode = materias.find(m => m.codigo === asignatura.codigo);
+    if (byCode) return byCode;
+
+    // 2. Nombre completo contenido en el otro (evita falsos positivos con primera palabra)
+    const asigNombre = asignatura.nombre.toLowerCase();
+    const byFullName = materias.find(m => {
+      const mNombre = m.nombre.toLowerCase();
+      return mNombre === asigNombre || mNombre.includes(asigNombre) || asigNombre.includes(mNombre);
+    });
+    if (byFullName) return byFullName;
+
+    // 3. Fallback: primeras dos palabras para mayor especificidad
+    const asigWords = asigNombre.split(/\s+/);
+    const searchKey = asigWords.length >= 2 ? asigWords.slice(0, 2).join(' ') : asigWords[0];
+    return materias.find(m => {
+      const mNombre = m.nombre.toLowerCase();
+      const mWords = mNombre.split(/\s+/);
+      const mKey = mWords.length >= 2 ? mWords.slice(0, 2).join(' ') : mWords[0];
+      return mNombre.includes(searchKey) || searchKey.includes(mKey);
+    });
   }, [materias]);
 
   // Módulos técnicos del backend (estos sí vienen dinámicos según la especialidad)
@@ -492,9 +510,10 @@ export function BoletinIndividual({
       return;
     }
 
-    // Extraer competenciaId del cellId si no es un módulo
+    // Extraer competenciaId del cellId si no es un módulo ni una nota completiva/extraordinaria
     let compId: string | undefined = undefined;
-    if (!cellId.startsWith('modulo-')) {
+    const isCpcOrCpex = cellId.endsWith('-cpc_nota') || cellId.endsWith('-cpex_nota');
+    if (!cellId.startsWith('modulo-') && !isCpcOrCpex) {
       const parts = cellId.split('-');
       if (parts.length >= 2) compId = parts[1]; // El ID de la competencia está en la segunda parte
     }
@@ -864,8 +883,8 @@ export function BoletinIndividual({
                       <th colSpan={4} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#d1d5db', color: 'black', fontSize: '7px' }}>
                         CALIFICACIÓN EXTRAORDINARIA
                       </th>
-                      <th rowSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'black', width: '2.5%' }}>
-                        C.E.
+                      <th colSpan={2} style={{ border: '1px solid black', padding: '1px', backgroundColor: '#9ca3af', color: 'white', fontSize: '7px' }}>
+                        EVALUACIÓN ESPECIAL
                       </th>
                     </>
                   )}
@@ -904,6 +923,8 @@ export function BoletinIndividual({
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>CPEx</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db' }}>70% CPEx</th>
                       <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#d1d5db', fontWeight: 'bold' }}>C.Ex.</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#9ca3af', color: 'white', fontWeight: 'bold' }}>C.F.</th>
+                      <th style={{ border: '1px solid black', padding: '1px', fontSize: '6px', backgroundColor: '#9ca3af', color: 'white', fontWeight: 'bold' }}>C.E.</th>
                     </>
                   )}
                 </tr>
@@ -1035,17 +1056,25 @@ export function BoletinIndividual({
                         (() => {
                           const cpcNota = cal?.cpcNota ?? 0;
                           const cpexNota = cal?.cpexNota ?? 0;
+
+                          // COMPLETIVA: 50% CF original + 50% nota completiva
                           const pcp50 = cf > 0 && cf < 70 ? Math.round(cf * 0.5) : 0;
                           const cpc50 = cpcNota > 0 ? Math.round(cpcNota * 0.5) : 0;
                           const ccCalc = cf > 0 && cf < 70 && cpcNota > 0 ? Math.round(cf * 0.5 + cpcNota * 0.5) : 0;
-                          const pcp30 = cf > 0 && cf < 70 ? Math.round(cf * 0.3) : 0;
-                          const cpex70Calc = cpexNota > 0 ? Math.round(cpexNota * 0.7) : 0;
-                          const cexCalc = cf > 0 && cf < 70 && cpexNota > 0 ? Math.round(cf * 0.3 + cpexNota * 0.7) : 0;
+
+                          // EXTRAORDINARIA: Solo se activa si C.C. existe y es < 70
+                          // Fórmula: 30% CF original + 70% nota extraordinaria
+                          const needsExtraordinaria = ccCalc > 0 && ccCalc < 70;
+                          const pcp30 = needsExtraordinaria ? Math.round(cf * 0.3) : 0;
+                          const cpex70Calc = needsExtraordinaria && cpexNota > 0 ? Math.round(cpexNota * 0.7) : 0;
+                          const cexCalc = needsExtraordinaria && cpexNota > 0 ? Math.round(cf * 0.3 + cpexNota * 0.7) : 0;
+
                           const cpcCellId = `${asignatura.codigo}-cpc_nota`;
                           const cpexCellId = `${asignatura.codigo}-cpex_nota`;
                           const isEditingCpc = editingCell === cpcCellId;
                           const isEditingCpex = editingCell === cpexCellId;
                           const canEditCpc = canEdit && !isReadOnly && cf > 0 && cf < 70;
+                          const canEditCpex = canEdit && !isReadOnly && needsExtraordinaria;
 
                           return (
                             <>
@@ -1093,21 +1122,21 @@ export function BoletinIndividual({
                               <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#d1d5db', fontSize: '8px' }}>
                                 {pcp30 > 0 ? pcp30 : '-'}
                               </td>
-                              {/* CPEx (editable raw grade) */}
+                              {/* CPEx (editable raw grade) - Solo se habilita si C.C. < 70 */}
                               <td
                                 style={{
                                   border: '1px solid black',
                                   padding: '1px',
                                   textAlign: 'center',
-                                  backgroundColor: isEditingCpex ? '#fef9c3' : (canEditCpc ? '#dbeafe' : '#d1d5db'),
+                                  backgroundColor: isEditingCpex ? '#fef9c3' : (canEditCpex ? '#dbeafe' : '#d1d5db'),
                                   fontSize: '8px',
-                                  cursor: canEditCpc ? 'pointer' : 'default',
+                                  cursor: canEditCpex ? 'pointer' : 'default',
                                   color: cpexNota > 0 && cpexNota < 70 ? '#dc2626' : 'inherit',
                                   fontWeight: cpexNota > 0 && cpexNota < 70 ? 'bold' : 'normal',
                                   minWidth: '22px',
                                   height: '22px'
                                 }}
-                                onClick={() => canEditCpc && handleCellClick(cpexCellId, cpexNota || null, true)}
+                                onClick={() => canEditCpex && handleCellClick(cpexCellId, cpexNota || null, true)}
                               >
                                 {isEditingCpex ? (
                                   <input
@@ -1129,8 +1158,12 @@ export function BoletinIndividual({
                               <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#d1d5db', fontSize: '8px' }}>
                                 {cexCalc > 0 ? cexCalc : '-'}
                               </td>
-                              {/* C.E. */}
-                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', fontSize: '8px' }}>
+                              {/* Evaluación Especial: C.F. */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', color: 'white', fontSize: '8px' }}>
+                                -
+                              </td>
+                              {/* Evaluación Especial: C.E. */}
+                              <td style={{ border: '1px solid black', padding: '1px', textAlign: 'center', backgroundColor: '#9ca3af', color: 'white', fontSize: '8px' }}>
                                 -
                               </td>
                             </>
@@ -1451,32 +1484,7 @@ export function BoletinIndividual({
             border: '1px solid #ccc',
           }}
         >
-          {/* Header Lado B */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: colorPrimario,
-            color: 'white',
-            padding: '15px 20px',
-            marginBottom: '20px'
-          }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 900 }}>
-                INSTITUCIÓN EDUCATIVA
-              </h2>
-              <p style={{ margin: 0, fontSize: '11px', fontStyle: 'italic' }}>
-                La visión del futuro
-              </p>
-            </div>
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
-              alt="MINERD"
-              style={{ width: '50px', backgroundColor: 'white', padding: '5px', borderRadius: '5px' }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', height: '100%' }}>
             {/* Columna Izquierda: Información */}
             <div>
               <div style={{ marginBottom: '20px' }}>
@@ -1486,7 +1494,7 @@ export function BoletinIndividual({
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()} {estudiante.segundoApellido ? estudiante.segundoApellido.toUpperCase() : ''}, {estudiante.nombre} {estudiante.segundoNombre || ''}</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Matricule' : 'Matrícula'}:</strong> ________________________</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Niveau' : 'Nivel/Grado'}:</strong> {sabanaData.nivel?.nombre || '________________________'}</p>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> ________________________</p>
+                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> {institucion?.nombre || '________________________'}</p>
                 <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Code' : 'Código del Centro'}:</strong> ____</p>
               </div>
 
@@ -1555,39 +1563,126 @@ export function BoletinIndividual({
               </div>
             </div>
 
-            {/* Columna Derecha: Firmas */}
-            <div>
-              <div style={{
-                backgroundColor: 'black',
-                color: 'white',
-                padding: '10px',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                marginBottom: '15px'
-              }}>
-                {isHT ? 'SIGNATURE DU PARENT / TUTEUR' : 'FIRMA DEL PADRE, MADRE O TUTOR'}
-              </div>
+            {/* Columna Derecha: Portada del Boletín */}
+            {(() => {
+              const gn = sabanaData.nivel?.gradoNumero || (() => {
+                const match = sabanaData.nivel?.nombre?.match(/(\d+)/);
+                return match ? parseInt(match[1]) : 0;
+              })();
+              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'ro' : 'to';
+              const gradoColores: Record<number, string> = {
+                1: '#2563eb', 2: '#16a34a', 3: '#9333ea',
+                4: '#dc2626', 5: '#ea580c', 6: '#0891b2',
+              };
+              const franjaColor = gradoColores[gn] || '#1e3a8a';
 
-              <h4 style={{ color: colorPrimario, marginBottom: '10px' }}>{isHT ? 'Périodes de Rapport:' : 'Período de Reportes de Calificaciones:'}</h4>
+              return (
+                <div style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
+                  {/* Franja VERTICAL a la IZQUIERDA con nombre del centro y lema */}
+                  <div style={{
+                    backgroundColor: franjaColor,
+                    color: 'white',
+                    width: '45px',
+                    minWidth: '45px',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <div style={{
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px' }}>
+                        {institucion?.nombre || 'INSTITUCIÓN EDUCATIVA'}
+                      </span>
+                      {institucion?.lema && (
+                        <span style={{ fontSize: '9px', fontStyle: 'italic', marginLeft: '6px' }}>
+                          {' — '}{institucion.lema}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>{isHT ? '1ère Période / Contrôle:' : '1er Período (Agosto - Sept - Oct):'}</span>
+                  {/* Contenido principal de la columna derecha */}
+                  <div style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* Logo MINERD */}
+                    <div style={{ marginBottom: '15px' }}>
+                      <img
+                        src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
+                        alt="MINERD"
+                        style={{ width: '80px' }}
+                      />
+                    </div>
+
+                    {/* Instrucciones del ministerio */}
+                    <div style={{ fontSize: '10px', lineHeight: '1.6', marginBottom: '10px' }}>
+                      <p style={{ margin: 0 }}>Viceministerio de Servicios Técnicos y Pedagógicos</p>
+                      <p style={{ margin: 0 }}>Dirección de Educación Secundaria</p>
+                      <p style={{ margin: 0 }}>Departamento de la Modalidad de Educación Técnico Profesional</p>
+                    </div>
+
+                    {/* Boletín de Calificaciones */}
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', marginTop: '15px', marginBottom: '20px' }}>
+                      Boletín de Calificaciones
+                    </div>
+
+                    {/* Bloque GRADO (mismo estilo que Lado A) */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '20px' }}>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
+                        {gn > 0 && (
+                          <div style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            lineHeight: '1',
+                            paddingLeft: '6px',
+                            paddingRight: '2px',
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            marginRight: '-10px',
+                          }}>
+                            <span style={{
+                              fontSize: '100px',
+                              fontWeight: '900',
+                              color: franjaColor,
+                              lineHeight: '0.20',
+                            }}>
+                              {gn}
+                            </span>
+                            <sup style={{
+                              fontSize: '30px',
+                              fontWeight: 'bold',
+                              color: franjaColor,
+                              position: 'absolute',
+                              right: '-34px',
+                              bottom: '10px',
+                              marginTop: '-10px'
+                            }}>
+                              {sufijo}
+                            </sup>
+                          </div>
+                        )}
+                        <div style={{
+                          backgroundColor: 'black',
+                          color: 'white',
+                          padding: '8px 16px',
+                          fontWeight: 'bold',
+                          fontSize: '17px',
+                          lineHeight: '1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          letterSpacing: '2px',
+                        }}>
+                          GRADO
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>{isHT ? '2ème Période / Contrôle:' : '2do Período (Nov - Dic - Enero):'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>{isHT ? '3ème Période / Contrôle:' : '3er Período (Feb - Marzo):'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 'bold' }}>{isHT ? '4ème Période / Contrôle:' : '4to Período (Abril - Mayo - Jun):'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid black', paddingBottom: '20px' }}>
-                  <span style={{ fontWeight: 'bold' }}>{isHT ? 'Fin d\'Année:' : 'Fin de Año:'}</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Firmas al final */}
@@ -1649,6 +1744,7 @@ export default function SabanaNotasPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [institucion, setInstitucion] = useState<{ nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string } | null>(null);
 
   const isDocente = user?.role === 'DOCENTE';
   const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
@@ -1676,6 +1772,22 @@ export default function SabanaNotasPage() {
         setCiclosLectivos(ciclosRes.data);
         const cicloActivo = ciclosRes.data.find((c: CicloLectivo) => c.activo);
         if (cicloActivo) setSelectedCiclo(cicloActivo.id);
+
+        // Cargar datos de la institución (branding es público, no requiere rol ADMIN)
+        if (user?.institucionId) {
+          try {
+            const instRes = await institucionesApi.getBranding(user.institucionId);
+            const inst = instRes.data;
+            setInstitucion({
+              nombre: inst.nombre,
+              lema: inst.lema || null,
+              logoUrl: inst.logoUrl || null,
+              colorPrimario: inst.colorPrimario || '#1a56db',
+            });
+          } catch {
+            console.error('Error cargando institución');
+          }
+        }
       } catch {
         toast.error('Error al cargar datos iniciales');
       } finally {
@@ -1765,6 +1877,7 @@ export default function SabanaNotasPage() {
         onSaveCalificacion={handleSaveCalificacion}
         isReadOnly={isReadOnly}
         selectedMateriaId={selectedMateriaId}
+        institucion={institucion}
       />
     );
   }

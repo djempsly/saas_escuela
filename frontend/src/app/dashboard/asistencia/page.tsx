@@ -123,10 +123,16 @@ export default function AsistenciaPage() {
   const [fechaError, setFechaError] = useState<string>('');
 
   const isDocente = user?.role === 'DOCENTE';
-  const canEdit = isDocente;
+  const isAdmin = user?.role === 'ADMIN';
+  const canEdit = isDocente || isAdmin;
 
-  // Validar si una fecha es fin de semana o feriado
+  const today = new Date().toISOString().split('T')[0];
+
+  // Validar si una fecha es fin de semana, feriado o futura
   const validarFecha = (dateStr: string): string => {
+    // Validar fecha futura
+    if (dateStr > today) return 'No se puede registrar asistencia en una fecha futura';
+
     const fecha = new Date(dateStr + 'T12:00:00');
     const dia = fecha.getDay();
     if (dia === 0) return 'No se puede registrar asistencia en día domingo';
@@ -455,6 +461,7 @@ export default function AsistenciaPage() {
               type="date"
               value={selectedDate}
               onChange={(e) => handleDateChange(e.target.value)}
+              max={today}
               className="px-3 py-2 border rounded-md"
             />
           </div>
