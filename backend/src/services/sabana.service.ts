@@ -53,6 +53,7 @@ export interface SabanaCalificacion {
   claseId: string | null;
   docenteId: string | null;
   docenteNombre: string | null;
+  publicado: boolean;
 }
 
 export interface SabanaEstudiante {
@@ -375,6 +376,7 @@ export const getSabanaByNivel = async (
           claseId: claseFinal?.id || null,
           docenteId: claseFinal?.docente?.id || null,
           docenteNombre: claseFinal?.docente ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}` : null,
+          publicado: general?.publicado ?? false,
         };
       }
 
@@ -569,4 +571,74 @@ export const updateCalificacionSabana = async (
       });
     }
   }
+};
+
+/**
+ * Publicar calificaciones de una clase para un ciclo lectivo
+ */
+export const publicarCalificaciones = async (
+  claseId: string,
+  cicloLectivoId: string,
+  userId: string,
+  userRole: string,
+  institucionId: string
+) => {
+  // Verificar la clase
+  const clase = await prisma.clase.findUnique({
+    where: { id: claseId },
+    include: {
+      materia: true,
+      nivel: { include: { institucion: true } },
+    },
+  });
+
+  if (!clase) throw new Error('Clase no encontrada');
+  if (clase.nivel.institucionId !== institucionId) throw new Error('Sin permiso');
+
+  // Verificar permisos: docente de la clase, coordinador, o director
+  const esDocente = clase.docenteId === userId;
+  const esDirector = userRole === 'DIRECTOR';
+  const esCoordinador = userRole === 'COORDINADOR' || userRole === 'COORDINADOR_ACADEMICO';
+
+  if (!esDocente && !esDirector && !esCoordinador) {
+    throw new Error('Sin permiso para publicar calificaciones');
+  }
+
+  const now = new Date();
+
+  // Actualizar calificaciones generales
+  const calificacionesUpdate = await prisma.calificacion.updateMany({
+    where: {
+      claseId,
+      cicloLectivoId,
+      publicado: false,
+    },
+    data: {
+      publicado: true,
+      publicadoAt: now,
+      publicadoPor: userId,
+    },
+  });
+
+  // Actualizar calificaciones por competencia
+  const competenciasUpdate = await prisma.calificacionCompetencia.updateMany({
+    where: {
+      claseId,
+      cicloLectivoId,
+      publicado: false,
+    },
+    data: {
+      publicado: true,
+      publicadoAt: now,
+      publicadoPor: userId,
+    },
+  });
+
+  return {
+    calificacionesPublicadas: calificacionesUpdate.count,
+    competenciasPublicadas: competenciasUpdate.count,
+    claseId,
+    cicloLectivoId,
+    publicadoAt: now,
+  };
 };

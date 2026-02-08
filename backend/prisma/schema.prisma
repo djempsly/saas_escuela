@@ -270,6 +270,9 @@ model Calificacion {
   claseId        String
   cicloLectivoId String
   updatedAt      DateTime     @updatedAt
+  publicado       Boolean      @default(false)
+  publicadoAt     DateTime?
+  publicadoPor    String?
   cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
   clase          Clase        @relation(fields: [claseId], references: [id])
   estudiante     User         @relation(fields: [estudianteId], references: [id])
@@ -292,6 +295,9 @@ model CalificacionCompetencia {
   claseId        String
   cicloLectivoId String
   updatedAt      DateTime     @updatedAt
+  publicado       Boolean      @default(false)
+  publicadoAt     DateTime?
+  publicadoPor    String?
   cicloLectivo   CicloLectivo @relation("CicloCalificacionesCompetencia", fields: [cicloLectivoId], references: [id])
   clase          Clase        @relation("ClaseCalificacionesCompetencia", fields: [claseId], references: [id])
   estudiante     User         @relation("CalificacionesCompetencia", fields: [estudianteId], references: [id])

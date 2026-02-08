@@ -22,6 +22,36 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
     throw new Error('Clase no encontrada');
   }
 
+  // Validar que la fecha no sea fin de semana
+  const fechaValidar = new Date(input.fecha);
+  const diaSemana = fechaValidar.getUTCDay();
+  if (diaSemana === 0) {
+    throw new Error('No se puede registrar asistencia en día domingo');
+  }
+  if (diaSemana === 6) {
+    throw new Error('No se puede registrar asistencia en día sábado');
+  }
+
+  // Validar que la fecha no sea feriado
+  const fechaInicioDay = new Date(fechaValidar);
+  fechaInicioDay.setUTCHours(0, 0, 0, 0);
+  const fechaFinDay = new Date(fechaValidar);
+  fechaFinDay.setUTCHours(23, 59, 59, 999);
+
+  const feriado = await prisma.evento.findFirst({
+    where: {
+      institucionId,
+      tipo: 'FERIADO',
+      fechaInicio: { lte: fechaFinDay },
+      fechaFin: { gte: fechaInicioDay },
+    },
+    select: { titulo: true },
+  });
+
+  if (feriado) {
+    throw new Error(`No se puede registrar asistencia en día feriado: ${feriado.titulo}`);
+  }
+
   // Verificar que todos los estudiantes están inscritos en la clase
   const estudianteIds = input.asistencias.map((a) => a.estudianteId);
   const inscripciones = await prisma.inscripcion.findMany({

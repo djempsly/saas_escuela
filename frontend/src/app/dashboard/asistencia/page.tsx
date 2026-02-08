@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { asistenciaApi, clasesApi, ciclosApi } from '@/lib/api';
+import { asistenciaApi, clasesApi, ciclosApi, eventosApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import {
   ClipboardCheck,
@@ -20,6 +20,7 @@ import {
   BarChart3,
   X,
   ArrowLeft,
+  Calendar,
 } from 'lucide-react';
 
 const ESTADOS = [
@@ -118,8 +119,32 @@ export default function AsistenciaPage() {
   const [totalDiasLaborables, setTotalDiasLaborables] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
+  const [feriados, setFeriados] = useState<{ id: string; titulo: string; fechaInicio: string; fechaFin: string }[]>([]);
+  const [fechaError, setFechaError] = useState<string>('');
+
   const isDocente = user?.role === 'DOCENTE';
   const canEdit = isDocente;
+
+  // Validar si una fecha es fin de semana o feriado
+  const validarFecha = (dateStr: string): string => {
+    const fecha = new Date(dateStr + 'T12:00:00');
+    const dia = fecha.getDay();
+    if (dia === 0) return 'No se puede registrar asistencia en día domingo';
+    if (dia === 6) return 'No se puede registrar asistencia en día sábado';
+
+    // Verificar feriados
+    const fechaMs = fecha.getTime();
+    const feriadoEncontrado = feriados.find(f => {
+      const inicio = new Date(f.fechaInicio).getTime();
+      const fin = new Date(f.fechaFin).getTime();
+      return fechaMs >= inicio && fechaMs <= fin;
+    });
+    if (feriadoEncontrado) {
+      return `Día feriado: ${feriadoEncontrado.titulo}`;
+    }
+
+    return '';
+  };
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -136,6 +161,24 @@ export default function AsistenciaPage() {
         const cicloActivo = ciclosData.find((c: Ciclo) => c.activo);
         if (cicloActivo) {
           setSelectedCiclo(cicloActivo.id);
+        }
+
+        // Cargar feriados del año actual
+        const year = new Date().getFullYear();
+        try {
+          const feriadosRes = await eventosApi.getFeriados(
+            `${year}-01-01`,
+            `${year}-12-31`
+          );
+          setFeriados(feriadosRes.data || []);
+        } catch (error) {
+          console.error('Error cargando feriados:', error);
+        }
+
+        // Validar fecha inicial
+        const initialError = validarFecha(new Date().toISOString().split('T')[0]);
+        if (initialError) {
+          setFechaError(initialError);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -159,6 +202,13 @@ export default function AsistenciaPage() {
       return;
     }
     setSelectedClase(claseId);
+    const error = validarFecha(selectedDate);
+    setFechaError(error);
+    if (error) {
+      setAsistencias([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await asistenciaApi.getByClase(claseId, selectedDate);
@@ -175,6 +225,14 @@ export default function AsistenciaPage() {
 
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
+    const error = validarFecha(date);
+    setFechaError(error);
+
+    if (error) {
+      setAsistencias([]);
+      return;
+    }
+
     if (selectedClase) {
       setIsLoading(true);
       try {
@@ -352,6 +410,13 @@ export default function AsistenciaPage() {
       {successMessage && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-md">
           {successMessage}
+        </div>
+      )}
+
+      {fechaError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          {fechaError}
         </div>
       )}
 

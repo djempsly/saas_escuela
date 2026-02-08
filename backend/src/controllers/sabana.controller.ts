@@ -8,6 +8,7 @@ import {
   getNivelesParaSabana,
   getCiclosLectivosParaSabana,
   updateCalificacionSabana,
+  publicarCalificaciones,
 } from '../services/sabana.service';
 import { z } from 'zod';
 import { registrarAuditLog } from '../services/audit.service';
@@ -133,6 +134,62 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
     return res.json(calificacion);
   } catch (error: any) {
     console.error('Error actualizando calificación:', error);
+    return res.status(500).json({ error: error.message || 'Error del servidor' });
+  }
+};
+
+// Schema para validar publicación
+const publicarCalificacionesSchema = z.object({
+  claseId: z.string().min(1, 'claseId es requerido'),
+  cicloLectivoId: z.string().min(1, 'cicloLectivoId es requerido'),
+});
+
+/**
+ * PATCH /sabana/publicar
+ * Publica las calificaciones de una clase para que sean visibles por estudiantes
+ */
+export const publicarCalificacionesHandler = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    if (!user?.institucionId) {
+      return res.status(400).json({ error: 'Usuario sin institución asignada' });
+    }
+
+    const validation = publicarCalificacionesSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        details: validation.error.issues,
+      });
+    }
+
+    const { claseId, cicloLectivoId } = validation.data;
+
+    const resultado = await publicarCalificaciones(
+      claseId,
+      cicloLectivoId,
+      user.usuarioId,
+      user.rol,
+      user.institucionId
+    );
+
+    registrarAuditLog({
+      accion: 'ACTUALIZAR',
+      entidad: 'Calificacion',
+      entidadId: claseId,
+      descripcion: `Calificaciones publicadas: ${resultado.calificacionesPublicadas} calificaciones, ${resultado.competenciasPublicadas} competencias`,
+      datos: { claseId, cicloLectivoId },
+      usuarioId: user.usuarioId,
+      institucionId: user.institucionId,
+    });
+
+    return res.json(resultado);
+  } catch (error: any) {
+    console.error('Error publicando calificaciones:', error);
+    if (error.message.includes('Sin permiso')) {
+      return res.status(403).json({ error: error.message });
+    }
     return res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 };

@@ -101,6 +101,7 @@ const menuItems = {
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
     { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
+    { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
@@ -176,14 +177,15 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen transition-all duration-300 border-r bg-white flex flex-col',
+        'fixed left-0 top-0 z-40 h-screen transition-all duration-300 flex flex-col',
         isOpen ? 'w-64' : 'w-20'
       )}
+      style={{ backgroundColor: primaryColor }}
     >
       {/* Logo y nombre */}
       <div
-        className="flex items-center h-16 px-4 border-b flex-shrink-0"
-        style={{ backgroundColor: primaryColor }}
+        className="flex items-center h-16 px-4 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.15)' }}
       >
         {branding?.logoUrl ? (
           <Image
@@ -219,10 +221,9 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
               className={cn(
                 'flex items-center px-3 py-2 rounded-lg transition-colors',
                 isActive
-                  ? 'text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-white/20 text-white font-medium'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
               )}
-              style={isActive ? { backgroundColor: primaryColor } : {}}
               title={!isOpen ? item.label : undefined}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -234,9 +235,9 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
 
       {/* Indicador de rol (solo cuando sidebar está expandido) */}
       {isOpen && (
-        <div className="p-4 border-t">
-          <div className="text-xs text-muted-foreground">
-            Rol: <span className="font-medium text-slate-700">{role.replace('_', ' ')}</span>
+        <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+          <div className="text-xs text-white/50">
+            Rol: <span className="font-medium text-white/80">{role.replace('_', ' ')}</span>
           </div>
         </div>
       )}
@@ -244,7 +245,8 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
       {/* Botón de toggle */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-20 p-1 bg-white border rounded-full shadow-md hover:bg-slate-50"
+        className="absolute -right-3 top-20 p-1 rounded-full shadow-md border text-white"
+        style={{ backgroundColor: primaryColor }}
       >
         {isOpen ? (
           <ChevronLeft className="w-4 h-4" />

@@ -43,8 +43,8 @@ router.get(
   }
 );
 
-// Rutas administrativas (DIRECTOR, SECRETARIA)
-router.use(roleMiddleware([ROLES.DIRECTOR, ROLES.SECRETARIA]));
+// Rutas administrativas (DIRECTOR, SECRETARIA, COORDINADOR_ACADEMICO)
+router.use(roleMiddleware([ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO]));
 
 // Listar todos los cobros
 router.get('/', getCobrosHandler);

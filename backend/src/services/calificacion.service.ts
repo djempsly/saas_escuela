@@ -372,6 +372,7 @@ export const getCalificacionesByEstudiante = async (
   const whereClause: any = {
     estudianteId,
     clase: { institucionId },
+    publicado: true,
   };
 
   if (cicloLectivoId) {
@@ -445,6 +446,7 @@ export const getBoletinEstudiante = async (
       estudianteId,
       cicloLectivoId,
       clase: { institucionId },
+      publicado: true,
     },
     include: {
       clase: {

@@ -279,3 +279,38 @@ export const getEventoById = async (
 export const getTiposEvento = () => {
   return Object.values(TipoEvento);
 };
+
+// Obtener feriados para un rango de fechas
+export const getFeriados = async (
+  institucionId: string,
+  fechaInicio: Date,
+  fechaFin: Date
+) => {
+  return prisma.evento.findMany({
+    where: {
+      institucionId,
+      tipo: 'FERIADO',
+      OR: [
+        {
+          fechaInicio: { gte: fechaInicio, lte: fechaFin },
+        },
+        {
+          fechaFin: { gte: fechaInicio, lte: fechaFin },
+        },
+        {
+          AND: [
+            { fechaInicio: { lte: fechaInicio } },
+            { fechaFin: { gte: fechaFin } },
+          ],
+        },
+      ],
+    },
+    select: {
+      id: true,
+      titulo: true,
+      fechaInicio: true,
+      fechaFin: true,
+    },
+    orderBy: { fechaInicio: 'asc' },
+  });
+};

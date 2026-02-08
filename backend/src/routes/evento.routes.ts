@@ -6,6 +6,7 @@ import {
   getEventosHandler,
   getEventoByIdHandler,
   getTiposEventoHandler,
+  getFeriadosHandler,
 } from '../controllers/evento.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -23,6 +24,9 @@ router.use(
 
 // Obtener tipos de evento
 router.get('/tipos', getTiposEventoHandler);
+
+// Obtener feriados
+router.get('/feriados', getFeriadosHandler);
 
 // Listar eventos (acceso por rol)
 router.get('/', getEventosHandler);

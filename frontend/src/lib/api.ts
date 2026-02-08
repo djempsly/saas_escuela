@@ -502,6 +502,8 @@ export const eventosApi = {
     api.get(`/eventos/${id}`),
   getTipos: () =>
     api.get('/eventos/tipos'),
+  getFeriados: (fechaInicio: string, fechaFin: string) =>
+    api.get('/eventos/feriados', { params: { fechaInicio, fechaFin } }),
   create: (data: {
     titulo: string;
     descripcion?: string;
@@ -631,6 +633,8 @@ export const sabanaApi = {
     valor: number | null;
     competenciaId?: string;
   }) => api.patch('/sabana/calificacion', data),
+  publicar: (claseId: string, cicloLectivoId: string) =>
+    api.patch('/sabana/publicar', { claseId, cicloLectivoId }),
 };
 
 // Audit Logs API (Historial)

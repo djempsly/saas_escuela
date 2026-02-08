@@ -8,6 +8,7 @@ import {
   getCiclosLectivosHandler,
   getSabanaHandler,
   updateCalificacionHandler,
+  publicarCalificacionesHandler,
 } from '../controllers/sabana.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -31,6 +32,14 @@ router.get(
   '/ciclos-lectivos',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
   getCiclosLectivosHandler
+);
+
+// PATCH /sabana/publicar - Publicar calificaciones de una clase
+// DIRECTOR, COORDINADOR, COORDINADOR_ACADEMICO, DOCENTE
+router.patch(
+  '/publicar',
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  publicarCalificacionesHandler
 );
 
 // GET /sabana/:nivelId/:cicloLectivoId - Obtener sábana de notas

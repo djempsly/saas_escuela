@@ -6,6 +6,7 @@ import {
   getEventos,
   getEventoById,
   getTiposEvento,
+  getFeriados,
 } from '../services/evento.service';
 import { sanitizeErrorMessage } from '../utils/security';
 
@@ -156,6 +157,33 @@ export const getTiposEventoHandler = async (_req: Request, res: Response) => {
   try {
     const tipos = getTiposEvento();
     return res.status(200).json(tipos);
+  } catch (error: unknown) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const getFeriadosHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const { fechaInicio, fechaFin } = req.query as {
+      fechaInicio?: string;
+      fechaFin?: string;
+    };
+
+    if (!fechaInicio || !fechaFin) {
+      return res.status(400).json({ message: 'fechaInicio y fechaFin son requeridos' });
+    }
+
+    const feriados = await getFeriados(
+      getInstitucionId(req),
+      new Date(fechaInicio),
+      new Date(fechaFin)
+    );
+
+    return res.status(200).json(feriados);
   } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

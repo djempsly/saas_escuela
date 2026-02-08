@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Loader2, FileSpreadsheet, Search, Printer, ChevronLeft, ChevronRight, ArrowLeft, User } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Search, Printer, ChevronLeft, ChevronRight, ArrowLeft, User, Send, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -68,6 +68,7 @@ export interface Calificacion {
   claseId: string | null;
   docenteId: string | null;
   docenteNombre: string | null;
+  publicado?: boolean;
 }
 
 export interface Estudiante {
@@ -1559,6 +1560,7 @@ export default function SabanaNotasPage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const isDocente = user?.role === 'DOCENTE';
   const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
@@ -1635,6 +1637,22 @@ export default function SabanaNotasPage() {
     loadSabana();
   };
 
+  const handlePublicar = async (claseId: string) => {
+    if (!selectedCiclo) return;
+    if (!confirm('¿Está seguro de publicar estas calificaciones? Los estudiantes podrán ver las notas.')) return;
+
+    setIsPublishing(true);
+    try {
+      await sabanaApi.publicar(claseId, selectedCiclo);
+      toast.success('Calificaciones publicadas exitosamente');
+      loadSabana();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al publicar calificaciones');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleSelectStudent = (index: number) => {
     setCurrentStudentIndex(index);
     setViewMode('boletin');
@@ -1705,6 +1723,86 @@ export default function SabanaNotasPage() {
           )}
         </div>
       </CardContent></Card>
+      {!loading && sabanaData && (
+        <Card>
+          <CardContent className="pt-4">
+            <h3 className="text-sm font-semibold mb-3">Estado de publicacion por materia</h3>
+            <div className="space-y-2">
+              {sabanaData.materias
+                .filter(m => {
+                  // For docente, only show their materias
+                  if (isDocente) {
+                    return sabanaData.estudiantes.some(est => {
+                      const cal = est.calificaciones[m.id];
+                      return cal && cal.docenteId === user?.id;
+                    });
+                  }
+                  return true;
+                })
+                .map(materia => {
+                  // Find the claseId for this materia
+                  const firstEstWithCal = sabanaData.estudiantes.find(est => est.calificaciones[materia.id]?.claseId);
+                  const claseId = firstEstWithCal?.calificaciones[materia.id]?.claseId;
+
+                  // Check publication status
+                  const calificaciones = sabanaData.estudiantes
+                    .map(est => est.calificaciones[materia.id])
+                    .filter(Boolean);
+                  const totalCals = calificaciones.length;
+                  const publicadas = calificaciones.filter(c => c?.publicado).length;
+                  const todasPublicadas = totalCals > 0 && publicadas === totalCals;
+                  const algunaPublicada = publicadas > 0;
+
+                  // Check if user can publish
+                  const canPublish = claseId && (
+                    user?.role === 'DIRECTOR' ||
+                    user?.role === 'COORDINADOR' ||
+                    user?.role === 'COORDINADOR_ACADEMICO' ||
+                    (isDocente && calificaciones.some(c => c?.docenteId === user?.id))
+                  );
+
+                  return (
+                    <div key={materia.id} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {todasPublicadas ? (
+                          <Eye className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-amber-500" />
+                        )}
+                        <span className="text-sm font-medium">{materia.nombre}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          todasPublicadas
+                            ? 'bg-green-100 text-green-700'
+                            : algunaPublicada
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {todasPublicadas ? 'Publicado' : algunaPublicada ? `${publicadas}/${totalCals} publicadas` : 'Borrador'}
+                        </span>
+                      </div>
+                      {canPublish && !todasPublicadas && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePublicar(claseId!)}
+                          disabled={isPublishing}
+                          className="text-xs"
+                        >
+                          {isPublishing ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <Send className="w-3 h-3 mr-1" />
+                          )}
+                          Publicar
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {loading ? <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></div> : sabanaData && (
         <StudentList estudiantes={sabanaData.estudiantes} searchTerm={searchTerm} setSearchTerm={setSearchTerm} onSelectStudent={handleSelectStudent} />
       )}
