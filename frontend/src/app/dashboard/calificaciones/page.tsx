@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { calificacionesApi, clasesApi } from '@/lib/api';
+import { useEffect, useState, useCallback, Fragment } from 'react';
+import { sabanaApi, clasesApi, calificacionesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
-import { BookOpen, Loader2, Eye, Edit3, Check, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Loader2, BookOpen, Edit3, Eye, Check, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 // CSS para quitar spinners de inputs numéricos
 const noSpinnerStyles = `
@@ -20,117 +21,147 @@ const noSpinnerStyles = `
   }
 `;
 
-interface Calificacion {
-  id?: string;
-  estudianteId: string;
-  claseId: string;
-  estudiante?: {
-    id: string;
-    nombre: string;
-    apellido: string;
-  };
-  clase?: {
-    materia?: { nombre: string };
-  };
-  p1?: number | null;
-  p2?: number | null;
-  p3?: number | null;
-  p4?: number | null;
-  rp1?: number | null;
-  rp2?: number | null;
-  rp3?: number | null;
-  rp4?: number | null;
-  promedio?: number | null;
-}
+const COMPETENCIAS = [
+  { id: 'COMUNICATIVA', nombre: 'Comunicativa', corto: 'COM' },
+  { id: 'LOGICO', nombre: 'Pensamiento Lógico, Creativo y Crítico', corto: 'PLC' },
+  { id: 'CIENTIFICO', nombre: 'Científica y Tecnológica', corto: 'CYT' },
+  { id: 'ETICO', nombre: 'Ética y Ciudadana', corto: 'EYC' },
+  { id: 'DESARROLLO', nombre: 'Desarrollo Personal y Espiritual', corto: 'DPE' },
+];
+
+const PERIODOS = [
+  { key: 'p1', label: 'P1', rpKey: 'rp1' },
+  { key: 'p2', label: 'P2', rpKey: 'rp2' },
+  { key: 'p3', label: 'P3', rpKey: 'rp3' },
+  { key: 'p4', label: 'P4', rpKey: 'rp4' },
+];
+
+const NOTA_APROBACION = 70;
 
 interface Clase {
   id: string;
-  materia?: { nombre: string };
-  nivel?: { nombre: string };
-  docente?: { nombre: string; apellido: string };
+  materiaId: string;
+  nivelId: string;
+  cicloLectivoId: string;
+  materia?: { id: string; nombre: string; codigo: string | null };
+  nivel?: { id: string; nombre: string; gradoNumero: number | null };
+  cicloLectivo?: { id: string; nombre: string; activo: boolean };
+  _count?: { inscripciones: number };
 }
 
-// Roles que pueden ver calificaciones (sábana de notas)
+interface CompGrades {
+  p1: number | null;
+  p2: number | null;
+  p3: number | null;
+  p4: number | null;
+  rp1: number | null;
+  rp2: number | null;
+  rp3: number | null;
+  rp4: number | null;
+}
+
+interface StudentRow {
+  estudianteId: string;
+  nombre: string;
+  apellido: string;
+  grades: CompGrades;
+}
+
 const ROLES_LECTURA = ['ADMIN', 'DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'DOCENTE', 'SECRETARIA'];
-// Solo docente puede editar
-const ROLES_ESCRITURA = ['DOCENTE'];
 
 export default function CalificacionesPage() {
   const { user } = useAuthStore();
-  const [calificaciones, setCalificaciones] = useState<Calificacion[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
+  const [selectedClaseId, setSelectedClaseId] = useState('');
+  const [selectedCompetencia, setSelectedCompetencia] = useState('');
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedClase, setSelectedClase] = useState('');
-  const [editingCell, setEditingCell] = useState<{ idx: number; field: string } | null>(null);
+  const [isLoadingGrades, setIsLoadingGrades] = useState(false);
+  const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Vista estudiante (legacy)
+  const [studentCalificaciones, setStudentCalificaciones] = useState<any[]>([]);
 
   const userRole = user?.role || '';
-  const canRead = ROLES_LECTURA.includes(userRole);
-  const canEdit = ROLES_ESCRITURA.includes(userRole);
+  const canRead = ROLES_LECTURA.includes(userRole) || userRole === 'ESTUDIANTE';
+  const canEdit = userRole === 'DOCENTE';
   const isEstudiante = userRole === 'ESTUDIANTE';
 
+  const selectedClase = clases.find(c => c.id === selectedClaseId);
+
+  // Cargar datos iniciales
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       try {
         if (isEstudiante) {
-          // Estudiante ve sus propias calificaciones
-          const response = await calificacionesApi.getMisCalificaciones();
-          setCalificaciones(response.data.data || response.data || []);
+          const res = await calificacionesApi.getMisCalificaciones();
+          setStudentCalificaciones(res.data?.data || res.data || []);
         } else if (canRead) {
-          // Otros roles ven lista de clases para seleccionar
-          const response = await clasesApi.getAll();
-          setClases(response.data.data || response.data || []);
+          const res = await clasesApi.getAll();
+          const data = res.data?.data || res.data || [];
+          setClases(Array.isArray(data) ? data : []);
         }
-      } catch (error) {
-        console.error('Error:', error);
+      } catch (err) {
+        console.error('Error:', err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    load();
   }, [isEstudiante, canRead]);
 
-  const loadCalificacionesClase = async (claseId: string) => {
-    if (!claseId) {
-      setCalificaciones([]);
-      setSelectedClase('');
+  // Cargar calificaciones por competencia
+  const loadGrades = useCallback(async () => {
+    if (!selectedClaseId || !selectedCompetencia) {
+      setStudents([]);
       return;
     }
-    setSelectedClase(claseId);
-    setIsLoading(true);
+
+    const clase = clases.find(c => c.id === selectedClaseId);
+    if (!clase) return;
+
+    setIsLoadingGrades(true);
     try {
-      const response = await calificacionesApi.getByClase(claseId);
-      const responseData = response.data?.data || response.data;
+      const res = await sabanaApi.getSabana(clase.nivelId, clase.cicloLectivoId);
+      const sabana = res.data?.data || res.data;
+      const materiaId = clase.materiaId;
 
-      // La API devuelve { clase, calificaciones, totalEstudiantes }
-      // Extraer el array de calificaciones (incluye estudiantes sin notas)
-      let calificacionesArray: Calificacion[] = [];
-
-      if (Array.isArray(responseData)) {
-        calificacionesArray = responseData;
-      } else if (responseData?.calificaciones && Array.isArray(responseData.calificaciones)) {
-        calificacionesArray = responseData.calificaciones.map((cal: any) => ({
-          ...cal,
-          claseId: claseId,
-          // Asegurar que promedio se calcule correctamente
-          promedio: cal.promedioFinal ?? null,
-        }));
+      const rows: StudentRow[] = [];
+      for (const est of sabana.estudiantes || []) {
+        const cal = est.calificaciones?.[materiaId];
+        if (cal && cal.claseId === selectedClaseId) {
+          const compGrades = cal.competencias?.[selectedCompetencia] || {
+            p1: null, p2: null, p3: null, p4: null,
+            rp1: null, rp2: null, rp3: null, rp4: null,
+          };
+          rows.push({
+            estudianteId: est.id,
+            nombre: `${est.nombre}${est.segundoNombre ? ` ${est.segundoNombre}` : ''}`,
+            apellido: `${est.apellido}${est.segundoApellido ? ` ${est.segundoApellido}` : ''}`,
+            grades: compGrades,
+          });
+        }
       }
-
-      setCalificaciones(calificacionesArray);
-    } catch (error) {
-      console.error('Error:', error);
-      setCalificaciones([]);
+      rows.sort((a, b) => a.apellido.localeCompare(b.apellido));
+      setStudents(rows);
+    } catch (err) {
+      console.error('Error loading grades:', err);
+      toast.error('Error al cargar calificaciones');
     } finally {
-      setIsLoading(false);
+      setIsLoadingGrades(false);
     }
-  };
+  }, [selectedClaseId, selectedCompetencia, clases]);
 
-  const startEditing = (idx: number, field: string, currentValue: number | null | undefined) => {
+  useEffect(() => {
+    loadGrades();
+  }, [loadGrades]);
+
+  // Edición
+  const startEditing = (studentId: string, periodo: string, currentValue: number | null) => {
     if (!canEdit) return;
-    setEditingCell({ idx, field });
+    setEditingCell(`${studentId}-${periodo}`);
     setEditValue(currentValue?.toString() || '');
   };
 
@@ -139,81 +170,59 @@ export default function CalificacionesPage() {
     setEditValue('');
   };
 
-  const saveCalificacion = async (idx: number, field: string) => {
-    const cal = calificaciones[idx];
+  const saveGrade = async (studentId: string, periodo: string) => {
     const value = editValue === '' ? null : parseFloat(editValue);
-
     if (value !== null && (isNaN(value) || value < 0 || value > 100)) {
-      alert('La nota debe ser un numero entre 0 y 100');
+      toast.error('La nota debe ser un número entre 0 y 100');
       return;
     }
 
     setIsSaving(true);
     try {
-      await calificacionesApi.guardar({
-        estudianteId: cal.estudianteId,
-        claseId: cal.claseId,
-        [field]: value,
+      await sabanaApi.updateCalificacion({
+        claseId: selectedClaseId,
+        estudianteId: studentId,
+        periodo,
+        valor: value,
+        competenciaId: selectedCompetencia,
       });
 
-      // Actualizar estado local
-      const updated = [...calificaciones];
-      updated[idx] = { ...updated[idx], [field]: value };
+      setStudents(prev =>
+        prev.map(s =>
+          s.estudianteId === studentId
+            ? { ...s, grades: { ...s.grades, [periodo]: value } }
+            : s
+        )
+      );
 
-      // Recalcular promedio usando Math.max(P, RP) para cada periodo
-      const notaEfectiva1 = Math.max(updated[idx].p1 || 0, updated[idx].rp1 || 0);
-      const notaEfectiva2 = Math.max(updated[idx].p2 || 0, updated[idx].rp2 || 0);
-      const notaEfectiva3 = Math.max(updated[idx].p3 || 0, updated[idx].rp3 || 0);
-      const notaEfectiva4 = Math.max(updated[idx].p4 || 0, updated[idx].rp4 || 0);
-
-      const notasEfectivas = [notaEfectiva1, notaEfectiva2, notaEfectiva3, notaEfectiva4]
-        .filter(n => n > 0);
-      updated[idx].promedio = notasEfectivas.length > 0
-        ? notasEfectivas.reduce((a, b) => a + b, 0) / notasEfectivas.length
-        : null;
-
-      setCalificaciones(updated);
       setEditingCell(null);
       setEditValue('');
-      setSuccessMessage('Calificacion guardada');
-      setTimeout(() => setSuccessMessage(''), 2000);
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Error al guardar');
+      toast.success('Calificación guardada');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error al guardar');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, idx: number, field: string) => {
-    if (e.key === 'Enter') {
-      saveCalificacion(idx, field);
-    } else if (e.key === 'Escape') {
-      cancelEditing();
-    }
+  const handleKeyDown = (e: React.KeyboardEvent, studentId: string, periodo: string) => {
+    if (e.key === 'Enter') saveGrade(studentId, periodo);
+    else if (e.key === 'Escape') cancelEditing();
   };
 
-  // Nota mínima para aprobar (70 RD, 50 Haití - por ahora usamos 70)
-  const NOTA_APROBACION = 70;
-
-  // Verificar si la celda de recuperación debe estar habilitada
-  const isRpEnabled = (cal: Calificacion, rpField: 'rp1' | 'rp2' | 'rp3' | 'rp4') => {
-    const pField = rpField.replace('rp', 'p') as 'p1' | 'p2' | 'p3' | 'p4';
-    const pValue = cal[pField];
-    // RP solo se habilita si P existe y P < 70 (reprobado)
+  const isRpEnabled = (grades: CompGrades, rpKey: string) => {
+    const pKey = rpKey.replace('rp', 'p') as keyof CompGrades;
+    const pValue = grades[pKey];
     return pValue !== null && pValue !== undefined && pValue < NOTA_APROBACION;
   };
 
-  const renderCell = (cal: Calificacion, idx: number, field: string, value: number | null | undefined, isRpField: boolean = false) => {
-    const isEditing = editingCell?.idx === idx && editingCell?.field === field;
+  const renderCell = (student: StudentRow, periodo: string, isRp: boolean = false) => {
+    const cellKey = `${student.estudianteId}-${periodo}`;
+    const value = student.grades[periodo as keyof CompGrades];
+    const isEditing = editingCell === cellKey;
 
-    // Para campos RP, verificar si está habilitado
-    if (isRpField) {
-      const rpEnabled = isRpEnabled(cal, field as 'rp1' | 'rp2' | 'rp3' | 'rp4');
-      if (!rpEnabled) {
-        // Celda deshabilitada - fondo gris, no editable
-        return <span className="text-muted-foreground bg-slate-100 px-2 py-1 rounded">-</span>;
-      }
+    if (isRp && !isRpEnabled(student.grades, periodo)) {
+      return <span className="text-muted-foreground bg-slate-100 px-2 py-1 rounded text-sm">-</span>;
     }
 
     if (isEditing) {
@@ -225,7 +234,7 @@ export default function CalificacionesPage() {
             max="100"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, idx, field)}
+            onKeyDown={(e) => handleKeyDown(e, student.estudianteId, periodo)}
             className="w-16 h-8 text-center text-sm"
             autoFocus
             disabled={isSaving}
@@ -234,7 +243,7 @@ export default function CalificacionesPage() {
             size="icon"
             variant="ghost"
             className="h-6 w-6"
-            onClick={() => saveCalificacion(idx, field)}
+            onClick={() => saveGrade(student.estudianteId, periodo)}
             disabled={isSaving}
           >
             <Check className="h-3 w-3 text-green-600" />
@@ -253,15 +262,16 @@ export default function CalificacionesPage() {
     }
 
     const displayValue = value ?? '-';
-    const colorClass = value !== null && value !== undefined
-      ? value >= 70 ? 'text-green-600' : value >= 60 ? 'text-yellow-600' : 'text-red-600'
-      : 'text-muted-foreground';
+    const colorClass =
+      value !== null && value !== undefined
+        ? value >= 70 ? 'text-green-600' : value >= 60 ? 'text-yellow-600' : 'text-red-600'
+        : 'text-muted-foreground';
 
     if (canEdit) {
       return (
         <button
-          onClick={() => startEditing(idx, field, value)}
-          className={`w-full h-full hover:bg-slate-100 rounded px-2 py-1 ${colorClass}`}
+          onClick={() => startEditing(student.estudianteId, periodo, value)}
+          className={`w-full hover:bg-slate-100 rounded px-2 py-1 text-sm ${colorClass}`}
           title="Clic para editar"
         >
           {displayValue}
@@ -269,44 +279,111 @@ export default function CalificacionesPage() {
       );
     }
 
-    return <span className={colorClass}>{displayValue}</span>;
+    return <span className={`text-sm ${colorClass}`}>{displayValue}</span>;
   };
 
-  // No tiene permisos
-  if (!canRead && !isEstudiante) {
+  // Sin permisos
+  if (!canRead) {
     return (
       <div className="space-y-6">
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No tienes permisos para ver esta seccion</p>
+            <p className="text-muted-foreground">No tienes permisos para ver esta sección</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  // Vista Estudiante (legacy)
+  if (isEstudiante) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Mis Calificaciones</h1>
+          <p className="text-muted-foreground">Consulta tus calificaciones</p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : studentCalificaciones.length > 0 ? (
+          <Card>
+            <CardContent className="p-0 overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="text-left p-4 font-medium text-sm">Materia</th>
+                    {PERIODOS.map(p => (
+                      <Fragment key={p.key}>
+                        <th className="text-center p-2 font-medium text-sm w-16">{p.label}</th>
+                        <th className="text-center p-2 font-medium text-sm w-16 bg-amber-50">R{p.label}</th>
+                      </Fragment>
+                    ))}
+                    <th className="text-center p-4 font-medium text-sm w-24 bg-slate-100">Promedio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentCalificaciones.map((cal: any, idx: number) => {
+                    const promedio = cal.promedioFinal ?? cal.promedio ?? null;
+                    return (
+                      <tr key={idx} className="border-t hover:bg-slate-50">
+                        <td className="p-4 font-medium text-sm">{cal.clase?.materia?.nombre || 'Sin materia'}</td>
+                        {PERIODOS.map(p => {
+                          const pVal = cal[p.key] as number | null;
+                          const rpVal = cal[p.rpKey] as number | null;
+                          const pColor = pVal != null ? (pVal >= 70 ? 'text-green-600' : pVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                          const rpColor = rpVal != null ? (rpVal >= 70 ? 'text-green-600' : rpVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                          return (
+                            <Fragment key={p.key}>
+                              <td className={`text-center p-2 text-sm ${pColor}`}>{pVal ?? '-'}</td>
+                              <td className={`text-center p-2 text-sm bg-amber-50 ${rpColor}`}>{rpVal ?? '-'}</td>
+                            </Fragment>
+                          );
+                        })}
+                        <td className="text-center p-4 font-bold text-sm bg-slate-50">
+                          {promedio != null ? Number(promedio).toFixed(1) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No hay calificaciones registradas</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Vista principal: Docente / Director / Admin
   return (
     <div className="space-y-6">
-      {/* Estilos para quitar spinners */}
       <style>{noSpinnerStyles}</style>
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Calificaciones</h1>
+          <h1 className="text-2xl font-bold">Calificaciones por Competencia</h1>
           <p className="text-muted-foreground">
-            {isEstudiante
-              ? 'Consulta tus calificaciones'
-              : canEdit
-                ? 'Gestiona las calificaciones de tus clases'
-                : 'Consulta las calificaciones'}
+            {canEdit
+              ? 'Califica por competencia y los datos se reflejan en la sábana de notas'
+              : 'Consulta las calificaciones por competencia'}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {canEdit ? (
             <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full flex items-center gap-1">
-              <Edit3 className="w-3 h-3" /> Modo edicion
+              <Edit3 className="w-3 h-3" /> Modo edición
             </span>
           ) : (
             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
@@ -316,97 +393,112 @@ export default function CalificacionesPage() {
         </div>
       </div>
 
-      {/* Mensaje de exito */}
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-md text-sm">
-          {successMessage}
-        </div>
-      )}
-
-      {/* Selector de clase (no para estudiantes) */}
-      {!isEstudiante && (
+      {/* Selectores */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Seleccionar Clase</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Clase</CardTitle>
           </CardHeader>
           <CardContent>
             <select
-              value={selectedClase}
-              onChange={(e) => loadCalificacionesClase(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md"
+              value={selectedClaseId}
+              onChange={(e) => {
+                setSelectedClaseId(e.target.value);
+                setEditingCell(null);
+              }}
+              className="w-full px-3 py-2 border rounded-md text-sm"
             >
               <option value="">-- Seleccionar clase --</option>
               {clases.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.materia?.nombre} - {c.nivel?.nombre}
-                  {c.docente && ` (${c.docente.nombre} ${c.docente.apellido})`}
+                  {c._count ? ` (${c._count.inscripciones} est.)` : ''}
                 </option>
               ))}
             </select>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Competencia</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <select
+              value={selectedCompetencia}
+              onChange={(e) => {
+                setSelectedCompetencia(e.target.value);
+                setEditingCell(null);
+              }}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+              disabled={!selectedClaseId}
+            >
+              <option value="">-- Seleccionar competencia --</option>
+              {COMPETENCIAS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.corto} - {c.nombre}
+                </option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Info banner */}
+      {selectedClase && selectedCompetencia && !isLoadingGrades && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm">
+          <strong>{selectedClase.materia?.nombre}</strong> · {selectedClase.nivel?.nombre} · Competencia:{' '}
+          <strong>{COMPETENCIAS.find(c => c.id === selectedCompetencia)?.nombre}</strong> · {students.length} estudiantes
+        </div>
       )}
 
-      {/* Tabla de calificaciones */}
-      {isLoading ? (
+      {/* Tabla */}
+      {isLoading || isLoadingGrades ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : calificaciones.length > 0 ? (
+      ) : students.length > 0 ? (
         <Card>
           <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full min-w-[600px]">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="text-left p-4 font-medium sticky left-0 bg-slate-50">
-                    {isEstudiante ? 'Materia' : 'Estudiante'}
-                  </th>
-                  <th className="text-center p-2 font-medium w-16">P1</th>
-                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P1">RP1</th>
-                  <th className="text-center p-2 font-medium w-16">P2</th>
-                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P2">RP2</th>
-                  <th className="text-center p-2 font-medium w-16">P3</th>
-                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P3">RP3</th>
-                  <th className="text-center p-2 font-medium w-16">P4</th>
-                  <th className="text-center p-2 font-medium w-16 bg-amber-50" title="Recuperación P4">RP4</th>
-                  <th className="text-center p-4 font-medium w-24 bg-slate-100">Promedio</th>
+                  <th className="text-left p-3 font-medium text-sm w-8">#</th>
+                  <th className="text-left p-3 font-medium text-sm">Estudiante</th>
+                  {PERIODOS.map((p) => (
+                    <Fragment key={p.key}>
+                      <th className="text-center p-2 font-medium text-sm w-16">{p.label}</th>
+                      <th className="text-center p-2 font-medium text-sm w-16 bg-amber-50" title={`Recuperación ${p.label}`}>
+                        R{p.label}
+                      </th>
+                    </Fragment>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {calificaciones.map((cal, idx) => {
-                  // Calcular promedio usando notas efectivas (max de P y RP)
-                  const notaEfectiva1 = Math.max(cal.p1 || 0, cal.rp1 || 0);
-                  const notaEfectiva2 = Math.max(cal.p2 || 0, cal.rp2 || 0);
-                  const notaEfectiva3 = Math.max(cal.p3 || 0, cal.rp3 || 0);
-                  const notaEfectiva4 = Math.max(cal.p4 || 0, cal.rp4 || 0);
-                  const notasEfectivas = [notaEfectiva1, notaEfectiva2, notaEfectiva3, notaEfectiva4].filter(n => n > 0);
-                  const promedioCalculado = notasEfectivas.length > 0
-                    ? notasEfectivas.reduce((a, b) => a + b, 0) / notasEfectivas.length
-                    : null;
-
-                  return (
-                    <tr key={cal.estudianteId + '-' + idx} className="border-t hover:bg-slate-50">
-                      <td className="p-4 font-medium sticky left-0 bg-white">
-                        {isEstudiante
-                          ? cal.clase?.materia?.nombre || 'Sin materia'
-                          : `${cal.estudiante?.nombre || ''} ${cal.estudiante?.apellido || ''}`}
-                      </td>
-                      <td className="text-center p-2">{renderCell(cal, idx, 'p1', cal.p1)}</td>
-                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp1', cal.rp1, true)}</td>
-                      <td className="text-center p-2">{renderCell(cal, idx, 'p2', cal.p2)}</td>
-                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp2', cal.rp2, true)}</td>
-                      <td className="text-center p-2">{renderCell(cal, idx, 'p3', cal.p3)}</td>
-                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp3', cal.rp3, true)}</td>
-                      <td className="text-center p-2">{renderCell(cal, idx, 'p4', cal.p4)}</td>
-                      <td className="text-center p-2 bg-amber-50">{renderCell(cal, idx, 'rp4', cal.rp4, true)}</td>
-                      <td className="text-center p-4 font-bold bg-slate-50">
-                        {promedioCalculado?.toFixed(1) ?? '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {students.map((student, idx) => (
+                  <tr key={student.estudianteId} className="border-t hover:bg-slate-50">
+                    <td className="p-3 text-sm text-muted-foreground">{idx + 1}</td>
+                    <td className="p-3 text-sm font-medium">
+                      {student.apellido}, {student.nombre}
+                    </td>
+                    {PERIODOS.map((p) => (
+                      <Fragment key={p.key}>
+                        <td className="text-center p-2">{renderCell(student, p.key)}</td>
+                        <td className="text-center p-2 bg-amber-50">{renderCell(student, p.rpKey, true)}</td>
+                      </Fragment>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
+          </CardContent>
+        </Card>
+      ) : selectedClaseId && selectedCompetencia ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No hay estudiantes inscritos en esta clase</p>
           </CardContent>
         </Card>
       ) : (
@@ -414,16 +506,14 @@ export default function CalificacionesPage() {
           <CardContent className="py-12 text-center">
             <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {!isEstudiante && !selectedClase
-                ? 'Selecciona una clase para ver las calificaciones'
-                : 'No hay calificaciones registradas'}
+              Selecciona una clase y una competencia para ver las calificaciones
             </p>
           </CardContent>
         </Card>
       )}
 
       {/* Leyenda */}
-      {calificaciones.length > 0 && (
+      {students.length > 0 && (
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-500"></span> 70-100: Aprobado
