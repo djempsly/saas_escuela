@@ -30,7 +30,7 @@ const upload = multer({
 // Apply auth middlewares
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO]),
   resolveTenantMiddleware,
   requireTenantMiddleware
 );

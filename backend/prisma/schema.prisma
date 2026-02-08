@@ -45,6 +45,7 @@ model User {
   pagosRegistrados            Pago[]                     @relation("PagosRegistrados")
   participaciones             ParticipanteConversacion[]
   tareasCreadas               Tarea[]                    @relation("TareasCreadas")
+  auditLogs                   AuditLog[]                 @relation("AuditLogs")
   institucion                 Institucion?               @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
   coordinadorCiclosEducativos CicloEducativo[]           @relation("CoordinadorCicloEducativo")
 }
@@ -100,6 +101,7 @@ model Institucion {
   sistemasEducativos     InstitucionSistemaEducativo[]
   materias               Materia[]
   niveles                Nivel[]
+  auditLogs              AuditLog[]                    @relation("AuditLogsInstitucion")
   usuarios               User[]                        @relation("UsuariosInstitucion")
 }
 
@@ -525,6 +527,23 @@ model DiasLaborables {
   @@unique([claseId, cicloLectivoId])
 }
 
+model AuditLog {
+  id            String      @id @default(cuid())
+  accion        AccionAudit
+  entidad       String
+  entidadId     String?
+  descripcion   String
+  datos         Json?
+  usuarioId     String
+  institucionId String
+  createdAt     DateTime    @default(now())
+  usuario       User        @relation("AuditLogs", fields: [usuarioId], references: [id])
+  institucion   Institucion @relation("AuditLogsInstitucion", fields: [institucionId], references: [id])
+
+  @@index([institucionId, createdAt])
+  @@index([usuarioId])
+}
+
 model SystemSettings {
   id                      String   @id @default("system")
   maintenanceMode         Boolean  @default(false)
@@ -637,4 +656,11 @@ enum MetodoPago {
 enum TipoMateria {
   GENERAL
   TECNICA
+}
+
+enum AccionAudit {
+  CREAR
+  ACTUALIZAR
+  ELIMINAR
+  IMPORTAR
 }

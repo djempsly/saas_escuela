@@ -72,33 +72,35 @@ const menuItems = {
     { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: PieChart },
     { href: '/dashboard/actividades', label: 'Actividades', icon: FileText, conditional: 'autogestionActividades' },
+    { href: '/dashboard/historial', label: 'Historial', icon: Clock },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
   ],
 
-  // Coordinador - Gestiona un ciclo educativo (ej: Primer Ciclo Primaria)
+  // Coordinador - Supervisa pedagogía: clases, calificaciones, asistencia dentro de sus niveles
   COORDINADOR: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
-    { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
+    { href: '/dashboard/tareas', label: 'Tareas', icon: FileText },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
   ],
 
-  // Coordinador Académico - Similar al coordinador pero más enfocado en lo académico
+  // Coordinador Académico - Admin académico: importar estudiantes, inscripciones, gestión amplia
   COORDINADOR_ACADEMICO: [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/estudiantes/importar', label: 'Importar Estudiantes', icon: Upload },
     { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
     { href: '/dashboard/materias', label: 'Materias', icon: BookMarked },
     { href: '/dashboard/niveles', label: 'Niveles', icon: Layers },
+    { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },

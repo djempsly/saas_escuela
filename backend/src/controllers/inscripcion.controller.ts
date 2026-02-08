@@ -10,6 +10,7 @@ import {
 import { inscripcionSchema, inscripcionMasivaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { Role } from '@prisma/client';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const inscribirEstudianteHandler = async (req: Request, res: Response) => {
   try {
@@ -18,6 +19,17 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
     }
     const validated = inscripcionSchema.parse({ body: req.body });
     const inscripcion = await inscribirEstudiante(validated.body, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'CREAR',
+        entidad: 'Inscripcion',
+        entidadId: inscripcion.id,
+        descripcion: `Estudiante inscrito en clase`,
+        datos: { claseId: validated.body.claseId, estudianteId: validated.body.estudianteId },
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(201).json(inscripcion);
   } catch (error: any) {
     if (error.issues) {
@@ -109,6 +121,16 @@ export const eliminarInscripcionHandler = async (req: Request, res: Response) =>
     }
     const { id } = req.params as { id: string };
     await eliminarInscripcion(id, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'ELIMINAR',
+        entidad: 'Inscripcion',
+        entidadId: id,
+        descripcion: `Inscripción eliminada`,
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(204).send();
   } catch (error: any) {
     if (error.message.includes('no encontrada')) {

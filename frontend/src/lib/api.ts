@@ -633,6 +633,19 @@ export const sabanaApi = {
   }) => api.patch('/sabana/calificacion', data),
 };
 
+// Audit Logs API (Historial)
+export const auditLogsApi = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    fechaDesde?: string;
+    fechaHasta?: string;
+    usuarioId?: string;
+    entidad?: string;
+    accion?: string;
+  }) => api.get('/audit-logs', { params }),
+};
+
 // Tipos de roles disponibles
 export const ROLES = {
   ADMIN: 'ADMIN',

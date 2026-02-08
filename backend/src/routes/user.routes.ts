@@ -108,11 +108,11 @@ router.get(
   getUserByIdHandler
 );
 
-// Only a DIRECTOR or ADMIN can create users (Docente, Estudiante)
+// ADMIN, DIRECTOR, or COORDINADOR_ACADEMICO can create users
 router.post(
   '/',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR_ACADEMICO]),
   resolveTenantMiddleware,
   createUserHandler
 );

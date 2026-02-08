@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { tareasApi } from '@/lib/api';
+import { tareasApi, uploadApi } from '@/lib/api';
 import {
   Loader2,
   ArrowLeft,
@@ -18,6 +18,11 @@ import {
   Clock,
   AlertCircle,
   Download,
+  Upload,
+  Image as ImageIcon,
+  Video,
+  Link2,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -113,9 +118,21 @@ interface ApiError {
   message?: string;
 }
 
+function isYouTubeUrl(url: string): boolean {
+  return /(?:youtube\.com\/watch|youtu\.be\/|youtube\.com\/embed)/.test(url);
+}
+
+const recursoIcons: Record<string, React.ReactNode> = {
+  ARCHIVO: <FileText className="w-4 h-4" />,
+  IMAGEN: <ImageIcon className="w-4 h-4" />,
+  VIDEO: <Video className="w-4 h-4" />,
+  ENLACE: <Link2 className="w-4 h-4" />,
+};
+
 export default function TareaDetallePage() {
   const params = useParams();
   const tareaId = params.id as string;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tarea, setTarea] = useState<Tarea | null>(null);
   const [entregas, setEntregas] = useState<EntregaConEstudiante[]>([]);
@@ -124,6 +141,10 @@ export default function TareaDetallePage() {
   const [calificacion, setCalificacion] = useState('');
   const [comentario, setComentario] = useState('');
   const [isCalificando, setIsCalificando] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAddingRecurso, setIsAddingRecurso] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitulo, setLinkTitulo] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,6 +196,46 @@ export default function TareaDetallePage() {
     } else {
       setCalificacion('');
       setComentario('');
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const uploadRes = await uploadApi.uploadFile(file);
+      const { url, nombre, tipo } = uploadRes.data;
+      await tareasApi.agregarRecurso(tareaId, { tipo, titulo: nombre, url });
+      const tareaRes = await tareasApi.getById(tareaId);
+      setTarea(tareaRes.data);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleAddLink = async () => {
+    if (!linkUrl.trim()) return;
+
+    setIsAddingRecurso(true);
+    try {
+      const titulo = linkTitulo.trim() || linkUrl;
+      const tipo = isYouTubeUrl(linkUrl) ? 'VIDEO' : 'ENLACE';
+      await tareasApi.agregarRecurso(tareaId, { tipo, titulo, url: linkUrl.trim() });
+      const tareaRes = await tareasApi.getById(tareaId);
+      setTarea(tareaRes.data);
+      setLinkUrl('');
+      setLinkTitulo('');
+    } catch (error) {
+      console.error('Error adding link:', error);
+    } finally {
+      setIsAddingRecurso(false);
     }
   };
 
@@ -310,6 +371,104 @@ export default function TareaDetallePage() {
             {tarea.puntajeMaximo && (
               <span>Puntaje máximo: {tarea.puntajeMaximo} pts</span>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Materiales de Apoyo */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Materiales de Apoyo</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {tarea.recursos.length > 0 && (
+            <div className="space-y-2">
+              {tarea.recursos.map((recurso) => (
+                <a
+                  key={recurso.id}
+                  href={recurso.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2 bg-muted rounded hover:bg-muted/80"
+                >
+                  {recursoIcons[recurso.tipo] || <FileText className="w-4 h-4" />}
+                  <span className="text-sm flex-1 truncate">{recurso.titulo}</span>
+                  <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0" />
+                </a>
+              ))}
+            </div>
+          )}
+          {tarea.recursos.length === 0 && (
+            <p className="text-sm text-muted-foreground">No hay materiales adjuntos.</p>
+          )}
+
+          <div className="pt-3 border-t space-y-3">
+            <p className="text-sm font-medium">Agregar material</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Subiendo...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir archivo
+                  </>
+                )}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp"
+              />
+            </div>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="linkUrlDetail" className="text-xs text-muted-foreground">
+                  URL (YouTube o enlace)
+                </Label>
+                <Input
+                  id="linkUrlDetail"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="linkTituloDetail" className="text-xs text-muted-foreground">
+                  Titulo del enlace
+                </Label>
+                <Input
+                  id="linkTituloDetail"
+                  value={linkTitulo}
+                  onChange={(e) => setLinkTitulo(e.target.value)}
+                  placeholder="Nombre del recurso"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddLink}
+                disabled={!linkUrl.trim() || isAddingRecurso}
+              >
+                {isAddingRecurso ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Agregar'
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

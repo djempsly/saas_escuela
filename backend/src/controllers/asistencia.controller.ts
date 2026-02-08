@@ -8,6 +8,7 @@ import {
 } from '../services/asistencia.service';
 import { tomarAsistenciaSchema, reporteAsistenciaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const tomarAsistenciaHandler = async (req: Request, res: Response) => {
   try {
@@ -16,6 +17,17 @@ export const tomarAsistenciaHandler = async (req: Request, res: Response) => {
     }
     const validated = tomarAsistenciaSchema.parse({ body: req.body });
     const resultado = await tomarAsistencia(validated.body, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'CREAR',
+        entidad: 'Asistencia',
+        entidadId: validated.body.claseId,
+        descripcion: `Asistencia registrada: ${validated.body.fecha} - ${validated.body.asistencias.length} estudiantes`,
+        datos: { claseId: validated.body.claseId, fecha: validated.body.fecha },
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(200).json(resultado);
   } catch (error: any) {
     if (error.issues) {

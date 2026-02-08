@@ -17,6 +17,7 @@ import { crearUsuarioSchema } from '../utils/zod.schemas';
 import { ROLES } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { uploadToS3 } from '../services/s3.service';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
@@ -55,9 +56,41 @@ export const createUserHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // DIRECTOR solo puede crear usuarios de su institucion
+    // Requiere institución para roles no-ADMIN
     if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'Accion no permitida' });
+    }
+
+    // COORDINADOR_ACADEMICO solo puede crear ESTUDIANTES
+    if (req.user.rol === ROLES.COORDINADOR_ACADEMICO) {
+      if (validatedData.body.rol !== ROLES.ESTUDIANTE) {
+        return res.status(403).json({ message: 'Solo puedes crear estudiantes' });
+      }
+      const result = await createUser(validatedData.body, req.resolvedInstitucionId);
+      registrarAuditLog({
+        accion: 'CREAR',
+        entidad: 'Usuario',
+        entidadId: result.user.id,
+        descripcion: `Estudiante creado: ${result.user.nombre} ${result.user.apellido}`,
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+      return res.status(201).json({
+        status: 'success',
+        data: {
+          user: {
+            id: result.user.id,
+            nombre: result.user.nombre,
+            segundoNombre: result.user.segundoNombre,
+            apellido: result.user.apellido,
+            segundoApellido: result.user.segundoApellido,
+            email: result.user.email,
+            username: result.user.username,
+            role: result.user.role,
+          },
+          tempPassword: result.tempPassword,
+        },
+      });
     }
 
     // Only DIRECTORS can create users (ademas del ADMIN ya manejado arriba)
@@ -71,6 +104,14 @@ export const createUserHandler = async (req: Request, res: Response) => {
     }
 
     const result = await createUser(validatedData.body, req.resolvedInstitucionId);
+    registrarAuditLog({
+      accion: 'CREAR',
+      entidad: 'Usuario',
+      entidadId: result.user.id,
+      descripcion: `Usuario creado: ${result.user.nombre} ${result.user.apellido} (${result.user.role})`,
+      usuarioId: req.user.usuarioId.toString(),
+      institucionId: req.resolvedInstitucionId,
+    });
     return res.status(201).json({
       status: 'success',
       data: {

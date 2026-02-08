@@ -1,14 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { tareasApi, clasesApi } from '@/lib/api';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { tareasApi, clasesApi, uploadApi } from '@/lib/api';
+import {
+  Loader2,
+  ArrowLeft,
+  Upload,
+  X,
+  FileText,
+  Image as ImageIcon,
+  Video,
+  Link2,
+} from 'lucide-react';
 import Link from 'next/link';
 import {
   Select,
@@ -24,6 +33,12 @@ interface Clase {
   nivel: { nombre: string };
 }
 
+interface Recurso {
+  tipo: string;
+  titulo: string;
+  url: string;
+}
+
 interface ApiError {
   response?: {
     data?: {
@@ -33,12 +48,28 @@ interface ApiError {
   message?: string;
 }
 
+function isYouTubeUrl(url: string): boolean {
+  return /(?:youtube\.com\/watch|youtu\.be\/|youtube\.com\/embed)/.test(url);
+}
+
+const recursoIcons: Record<string, React.ReactNode> = {
+  ARCHIVO: <FileText className="w-4 h-4" />,
+  IMAGEN: <ImageIcon className="w-4 h-4" />,
+  VIDEO: <Video className="w-4 h-4" />,
+  ENLACE: <Link2 className="w-4 h-4" />,
+};
+
 export default function NuevaTareaPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [clases, setClases] = useState<Clase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [recursos, setRecursos] = useState<Recurso[]>([]);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitulo, setLinkTitulo] = useState('');
   const [formData, setFormData] = useState({
     titulo: '',
     descripcion: '',
@@ -63,6 +94,40 @@ export default function NuevaTareaPage() {
     fetchClases();
   }, []);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const response = await uploadApi.uploadFile(file);
+      const { url, nombre, tipo } = response.data;
+      setRecursos((prev) => [...prev, { tipo, titulo: nombre, url }]);
+    } catch (error) {
+      const apiError = error as ApiError;
+      setError(apiError.response?.data?.message || 'Error al subir el archivo');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleAddLink = () => {
+    if (!linkUrl.trim()) return;
+
+    const titulo = linkTitulo.trim() || linkUrl;
+    const tipo = isYouTubeUrl(linkUrl) ? 'VIDEO' : 'ENLACE';
+    setRecursos((prev) => [...prev, { tipo, titulo, url: linkUrl.trim() }]);
+    setLinkUrl('');
+    setLinkTitulo('');
+  };
+
+  const handleRemoveRecurso = (index: number) => {
+    setRecursos((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -84,7 +149,7 @@ export default function NuevaTareaPage() {
 
     setIsSubmitting(true);
     try {
-      await tareasApi.create({
+      const tareaRes = await tareasApi.create({
         titulo: formData.titulo,
         descripcion: formData.descripcion,
         instrucciones: formData.instrucciones || undefined,
@@ -95,6 +160,14 @@ export default function NuevaTareaPage() {
         estado: formData.estado,
         claseId: formData.claseId,
       });
+
+      const tareaId = tareaRes.data.id;
+
+      // Agregar recursos
+      await Promise.all(
+        recursos.map((recurso) => tareasApi.agregarRecurso(tareaId, recurso))
+      );
+
       router.push('/dashboard/tareas');
     } catch (error) {
       const apiError = error as ApiError;
@@ -177,26 +250,26 @@ export default function NuevaTareaPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="titulo">Título *</Label>
+              <Label htmlFor="titulo">Titulo *</Label>
               <Input
                 id="titulo"
                 value={formData.titulo}
                 onChange={(e) =>
                   setFormData({ ...formData, titulo: e.target.value })
                 }
-                placeholder="Ej: Ensayo sobre la Revolución Industrial"
+                placeholder="Ej: Ensayo sobre la Revolucion Industrial"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="descripcion">Descripción *</Label>
+              <Label htmlFor="descripcion">Descripcion *</Label>
               <Textarea
                 id="descripcion"
                 value={formData.descripcion}
                 onChange={(e) =>
                   setFormData({ ...formData, descripcion: e.target.value })
                 }
-                placeholder="Describe brevemente de qué trata la tarea..."
+                placeholder="Describe brevemente de que trata la tarea..."
                 rows={3}
               />
             </div>
@@ -214,6 +287,100 @@ export default function NuevaTareaPage() {
               />
             </div>
 
+            {/* Materiales de Apoyo */}
+            <div className="space-y-4">
+              <Label>Materiales de Apoyo (opcional)</Label>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Subiendo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Subir archivo
+                    </>
+                  )}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp"
+                />
+              </div>
+
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="linkUrl" className="text-xs text-muted-foreground">
+                    URL (YouTube o enlace)
+                  </Label>
+                  <Input
+                    id="linkUrl"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=... o cualquier URL"
+                  />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="linkTitulo" className="text-xs text-muted-foreground">
+                    Titulo del enlace
+                  </Label>
+                  <Input
+                    id="linkTitulo"
+                    value={linkTitulo}
+                    onChange={(e) => setLinkTitulo(e.target.value)}
+                    placeholder="Nombre del recurso"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddLink}
+                  disabled={!linkUrl.trim()}
+                >
+                  Agregar
+                </Button>
+              </div>
+
+              {recursos.length > 0 && (
+                <div className="space-y-2 border rounded-lg p-3">
+                  {recursos.map((recurso, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-muted rounded"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {recursoIcons[recurso.tipo] || <FileText className="w-4 h-4" />}
+                        <span className="text-sm truncate">{recurso.titulo}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({recurso.tipo})
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0"
+                        onClick={() => handleRemoveRecurso(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="fechaVencimiento">Fecha de vencimiento *</Label>
@@ -228,7 +395,7 @@ export default function NuevaTareaPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="puntajeMaximo">Puntaje máximo (opcional)</Label>
+                <Label htmlFor="puntajeMaximo">Puntaje maximo (opcional)</Label>
                 <Input
                   id="puntajeMaximo"
                   type="number"

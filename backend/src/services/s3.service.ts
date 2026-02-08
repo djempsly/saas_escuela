@@ -37,7 +37,8 @@ type S3Folder =
   | 'fotos'
   | 'videos'
   | 'perfiles'
-  | 'imagenes';
+  | 'imagenes'
+  | 'recursos';
 
 /**
  * Sube un archivo a S3 y retorna la URL pública.

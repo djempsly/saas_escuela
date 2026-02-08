@@ -20,6 +20,8 @@ import dashboardRoutes from './dashboard.routes';
 import cicloEducativoRoutes from './cicloEducativo.routes';
 import importRoutes from './import.routes';
 import sabanaRoutes from './sabana.routes';
+import auditRoutes from './audit.routes';
+import uploadRoutes from './upload.routes';
 
 const router = Router();
 
@@ -67,5 +69,11 @@ router.use('/import', importRoutes);
 
 // Rutas de Sábana de Notas
 router.use('/sabana', sabanaRoutes);
+
+// Rutas de Historial / Audit Log
+router.use('/audit-logs', auditRoutes);
+
+// Rutas de subida de archivos
+router.use('/upload', uploadRoutes);
 
 export default router;

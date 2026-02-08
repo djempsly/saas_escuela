@@ -13,6 +13,7 @@ import {
   getMetodosPago,
 } from '../services/cobro.service';
 import { sanitizeErrorMessage } from '../utils/security';
+import { registrarAuditLog } from '../services/audit.service';
 
 const getUserId = (req: Request): string => {
   return String(req.user?.usuarioId || '');
@@ -29,6 +30,16 @@ export const crearCobroHandler = async (req: Request, res: Response) => {
     }
 
     const cobro = await crearCobro(req.body, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'CREAR',
+        entidad: 'Cobro',
+        entidadId: cobro.id,
+        descripcion: `Cobro creado: ${req.body.concepto} - $${req.body.monto}`,
+        usuarioId: getUserId(req),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(201).json(cobro);
   } catch (error: unknown) {
     const err = error as Error;
@@ -135,6 +146,16 @@ export const registrarPagoHandler = async (req: Request, res: Response) => {
       getUserId(req),
       req.resolvedInstitucionId
     );
+
+    registrarAuditLog({
+      accion: 'CREAR',
+      entidad: 'Pago',
+      entidadId: id,
+      descripcion: `Pago registrado: $${req.body.monto} - ${req.body.metodoPago}`,
+      datos: { cobroId: id, monto: req.body.monto, metodoPago: req.body.metodoPago },
+      usuarioId: getUserId(req),
+      institucionId: req.resolvedInstitucionId,
+    });
 
     return res.status(200).json(result);
   } catch (error: unknown) {

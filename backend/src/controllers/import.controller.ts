@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { parseExcelFile, importStudents, generateExcelTemplate } from '../services/import.service';
 import { sanitizeErrorMessage } from '../utils/security';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const importEstudiantesHandler = async (req: Request, res: Response) => {
   try {
@@ -29,6 +30,17 @@ export const importEstudiantesHandler = async (req: Request, res: Response) => {
       nivelId,
       autoEnroll === 'true' || autoEnroll === true
     );
+
+    if (req.user && req.resolvedInstitucionId) {
+      registrarAuditLog({
+        accion: 'IMPORTAR',
+        entidad: 'Estudiante',
+        descripcion: `Importación masiva de estudiantes: ${rows.length} filas procesadas`,
+        datos: { totalFilas: rows.length, nivelId },
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
 
     return res.status(200).json(result);
   } catch (error: any) {

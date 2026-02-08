@@ -151,6 +151,20 @@ export const deleteClase = async (id: string, institucionId: string) => {
   });
 };
 
+// Obtener clases filtradas por niveles (para coordinadores)
+export const findClasesByNiveles = async (nivelIds: string[], institucionId: string) => {
+  return prisma.clase.findMany({
+    where: { nivelId: { in: nivelIds }, institucionId },
+    include: {
+      materia: true,
+      nivel: true,
+      docente: { select: { id: true, nombre: true, apellido: true, email: true } },
+      cicloLectivo: true,
+      _count: { select: { inscripciones: true } },
+    },
+  });
+};
+
 // Obtener clases de un docente específico
 export const findClasesByDocente = async (docenteId: string, institucionId: string) => {
   return prisma.clase.findMany({

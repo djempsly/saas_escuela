@@ -6,6 +6,7 @@
 
 import { SistemaEducativo } from '@prisma/client';
 import prisma from '../config/db';
+import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
 
 export interface SabanaCalificacion {
   // Notas Generales (P1-P4)
@@ -411,6 +412,10 @@ export const getNivelesParaSabana = async (institucionId: string, userId?: strin
   const where: any = { institucionId };
   if (userRole === 'DOCENTE' && userId) {
     where.clases = { some: { docenteId: userId } };
+  }
+  if (userRole === 'COORDINADOR' && userId) {
+    const nivelIds = await getCoordinadorNivelIds(userId);
+    where.id = { in: nivelIds };
   }
 
   return prisma.nivel.findMany({

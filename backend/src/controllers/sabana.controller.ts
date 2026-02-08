@@ -10,6 +10,7 @@ import {
   updateCalificacionSabana,
 } from '../services/sabana.service';
 import { z } from 'zod';
+import { registrarAuditLog } from '../services/audit.service';
 
 /**
  * GET /sabana/niveles
@@ -118,6 +119,16 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       user.institucionId,
       competenciaId
     );
+
+    registrarAuditLog({
+      accion: 'ACTUALIZAR',
+      entidad: 'Calificacion',
+      entidadId: claseId,
+      descripcion: `Calificación actualizada: periodo ${periodo}, valor ${valor}`,
+      datos: { claseId, estudianteId, periodo, valor, competenciaId },
+      usuarioId: user.usuarioId,
+      institucionId: user.institucionId,
+    });
 
     return res.json(calificacion);
   } catch (error: any) {

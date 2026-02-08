@@ -7,10 +7,13 @@ import {
   updateClase,
   deleteClase,
   findClasesByDocente,
+  findClasesByNiveles,
 } from '../services/clase.service';
 import { claseSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { Role } from '@prisma/client';
+import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const createClaseHandler = async (req: Request, res: Response) => {
   try {
@@ -19,6 +22,16 @@ export const createClaseHandler = async (req: Request, res: Response) => {
     }
     const validated = claseSchema.parse({ body: req.body });
     const clase = await createClase(validated.body, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'CREAR',
+        entidad: 'Clase',
+        entidadId: clase.id,
+        descripcion: `Clase creada: ${clase.materia.nombre} - ${clase.nivel.nombre}`,
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(201).json(clase);
   } catch (error: any) {
     if (error.issues) {
@@ -40,6 +53,13 @@ export const getClasesHandler = async (req: Request, res: Response) => {
     // Si es docente, solo ver sus clases
     if (req.user?.rol === Role.DOCENTE) {
       const clases = await findClasesByDocente(req.user.usuarioId.toString(), req.resolvedInstitucionId);
+      return res.status(200).json(clases);
+    }
+
+    // Si es coordinador, solo ver clases de sus niveles asignados
+    if (req.user?.rol === Role.COORDINADOR) {
+      const nivelIds = await getCoordinadorNivelIds(req.user.usuarioId.toString());
+      const clases = await findClasesByNiveles(nivelIds, req.resolvedInstitucionId);
       return res.status(200).json(clases);
     }
 
@@ -90,6 +110,17 @@ export const updateClaseHandler = async (req: Request, res: Response) => {
     const validated = updateSchema.parse(req.body);
 
     await updateClase(id, req.resolvedInstitucionId, validated);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'ACTUALIZAR',
+        entidad: 'Clase',
+        entidadId: id,
+        descripcion: `Clase actualizada`,
+        datos: validated,
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(200).json({ message: 'Clase actualizada' });
   } catch (error: any) {
     if (error.issues) {
@@ -109,6 +140,16 @@ export const deleteClaseHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
     await deleteClase(id, req.resolvedInstitucionId);
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'ELIMINAR',
+        entidad: 'Clase',
+        entidadId: id,
+        descripcion: `Clase eliminada`,
+        usuarioId: req.user.usuarioId.toString(),
+        institucionId: req.resolvedInstitucionId,
+      });
+    }
     return res.status(204).send();
   } catch (error: any) {
     if (error.message.includes('No se puede eliminar')) {
