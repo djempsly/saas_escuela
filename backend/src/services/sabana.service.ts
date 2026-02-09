@@ -54,6 +54,7 @@ export interface SabanaCalificacion {
   docenteId: string | null;
   docenteNombre: string | null;
   publicado: boolean;
+  observaciones: string | null;
 }
 
 export interface SabanaEstudiante {
@@ -377,6 +378,7 @@ export const getSabanaByNivel = async (
           docenteId: claseFinal?.docente?.id || null,
           docenteNombre: claseFinal?.docente ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}` : null,
           publicado: general?.publicado ?? false,
+          observaciones: general?.observaciones ?? null,
         };
       }
 
@@ -447,12 +449,13 @@ export const getCiclosLectivosParaSabana = async (institucionId: string) => {
 export const updateCalificacionSabana = async (
   claseId: string,
   estudianteId: string,
-  periodo: string, // 'p1'...'p4' OR 'RA1'...'RA10'
+  periodo: string, // 'p1'...'p4', 'RA1'...'RA10', 'observaciones'
   valor: number | null,
   userId: string,
   userRole: string,
   userInstitucionId: string,
-  competenciaId?: string
+  competenciaId?: string,
+  valorTexto?: string
 ) => {
   const clase = await prisma.clase.findUnique({
     where: { id: claseId },
@@ -474,6 +477,35 @@ export const updateCalificacionSabana = async (
   const esDocente = clase.docenteId === userId;
   const esDirector = userRole === 'DIRECTOR';
   if (!esDocente && !esDirector) throw new Error('Sin permiso para editar');
+
+  // Guardar observaciones (texto, no numérico)
+  if (periodo === 'observaciones') {
+    const calExistente = await prisma.calificacion.findUnique({
+      where: {
+        estudianteId_claseId_cicloLectivoId: {
+          estudianteId,
+          claseId,
+          cicloLectivoId: clase.cicloLectivoId,
+        },
+      },
+    });
+
+    if (calExistente) {
+      return prisma.calificacion.update({
+        where: { id: calExistente.id },
+        data: { observaciones: valorTexto || null },
+      });
+    } else {
+      return prisma.calificacion.create({
+        data: {
+          estudianteId,
+          claseId,
+          cicloLectivoId: clase.cicloLectivoId,
+          observaciones: valorTexto || null,
+        },
+      });
+    }
+  }
 
   // Detectar si es una nota técnica (RA)
   const isRA = periodo.toUpperCase().startsWith('RA');
@@ -514,7 +546,7 @@ export const updateCalificacionSabana = async (
       }
     });
 
-  } else if (competenciaId) {
+  } else if (competenciaId && !['cpc_nota', 'cpex_nota', 'cpc_30', 'cpex_70'].includes(periodo.toLowerCase())) {
     // NUEVO: Actualizar Calificación por Competencia
     const calificacionExistente = await prisma.calificacionCompetencia.findUnique({
       where: {

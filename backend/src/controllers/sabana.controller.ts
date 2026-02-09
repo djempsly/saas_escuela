@@ -83,9 +83,10 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
 const updateCalificacionSchema = z.object({
   claseId: z.string().min(1, 'claseId es requerido'),
   estudianteId: z.string().min(1, 'estudianteId es requerido'),
-  periodo: z.string().min(2, 'periodo es requerido'), // Soporta p1-p4 y RA1-RA10
-  valor: z.number().min(0).max(100).nullable(),
+  periodo: z.string().min(2, 'periodo es requerido'), // Soporta p1-p4, RA1-RA10, observaciones
+  valor: z.number().min(0).max(100).nullable().optional(),
   competenciaId: z.string().optional(),
+  valorTexto: z.string().optional(),
 });
 
 /**
@@ -108,25 +109,26 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       });
     }
 
-    const { claseId, estudianteId, periodo, valor, competenciaId } = validation.data;
+    const { claseId, estudianteId, periodo, valor, competenciaId, valorTexto } = validation.data;
 
     const calificacion = await updateCalificacionSabana(
       claseId,
       estudianteId,
       periodo,
-      valor,
+      valor ?? null,
       user.usuarioId,
       user.rol,
       user.institucionId,
-      competenciaId
+      competenciaId,
+      valorTexto
     );
 
     registrarAuditLog({
       accion: 'ACTUALIZAR',
       entidad: 'Calificacion',
       entidadId: claseId,
-      descripcion: `Calificación actualizada: periodo ${periodo}, valor ${valor}`,
-      datos: { claseId, estudianteId, periodo, valor, competenciaId },
+      descripcion: periodo === 'observaciones' ? `Observaciones actualizadas` : `Calificación actualizada: periodo ${periodo}, valor ${valor}`,
+      datos: { claseId, estudianteId, periodo, valor, competenciaId, valorTexto },
       usuarioId: user.usuarioId,
       institucionId: user.institucionId,
     });

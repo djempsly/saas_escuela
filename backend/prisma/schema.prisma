@@ -273,6 +273,7 @@ model Calificacion {
   publicado       Boolean      @default(false)
   publicadoAt     DateTime?
   publicadoPor    String?
+  observaciones   String?
   cicloLectivo   CicloLectivo @relation(fields: [cicloLectivoId], references: [id])
   clase          Clase        @relation(fields: [claseId], references: [id])
   estudiante     User         @relation(fields: [estudianteId], references: [id])

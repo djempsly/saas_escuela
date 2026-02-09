@@ -69,6 +69,7 @@ export interface Calificacion {
   docenteId: string | null;
   docenteNombre: string | null;
   publicado?: boolean;
+  observaciones?: string | null;
 }
 
 export interface Estudiante {
@@ -292,12 +293,62 @@ export function BoletinIndividual({
   onSaveCalificacion: (claseId: string, estudianteId: string, periodo: string, valor: number | null, competenciaId?: string) => Promise<void>;
   isReadOnly: boolean;
   selectedMateriaId?: string;
-  institucion?: { nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string } | null;
+  institucion?: {
+    nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string;
+    direccion: string | null; codigoCentro: string | null; distritoEducativo: string | null; regionalEducacion: string | null;
+  } | null;
 }) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const printContentRef = useRef<HTMLDivElement>(null);
+
+  // Observaciones: tomar la primera que exista de cualquier materia del estudiante
+  const getObservacionesData = useCallback(() => {
+    for (const materiaId of Object.keys(estudiante.calificaciones || {})) {
+      const cal = estudiante.calificaciones[materiaId];
+      if (cal?.claseId && cal.observaciones) {
+        return { texto: cal.observaciones, claseId: cal.claseId };
+      }
+    }
+    // Si no hay observaciones, devolver el primer claseId disponible para poder guardar
+    for (const materiaId of Object.keys(estudiante.calificaciones || {})) {
+      const cal = estudiante.calificaciones[materiaId];
+      if (cal?.claseId) return { texto: '', claseId: cal.claseId };
+    }
+    return { texto: '', claseId: null };
+  }, [estudiante.calificaciones]);
+
+  const obsData = getObservacionesData();
+  const [observacionesText, setObservacionesText] = useState(obsData.texto);
+  const [isSavingObs, setIsSavingObs] = useState(false);
+  const [obsGuardada, setObsGuardada] = useState(false);
+
+  // Sincronizar cuando cambie de estudiante
+  useEffect(() => {
+    const data = getObservacionesData();
+    setObservacionesText(data.texto);
+    setObsGuardada(false);
+  }, [estudiante.id, getObservacionesData]);
+
+  const saveObservaciones = async () => {
+    if (!obsData.claseId) return;
+    setIsSavingObs(true);
+    try {
+      await sabanaApi.updateCalificacion({
+        claseId: obsData.claseId,
+        estudianteId: estudiante.id,
+        periodo: 'observaciones',
+        valorTexto: observacionesText,
+      });
+      setObsGuardada(true);
+      setTimeout(() => setObsGuardada(false), 2000);
+    } catch (err) {
+      console.error('Error guardando observaciones:', err);
+    } finally {
+      setIsSavingObs(false);
+    }
+  };
 
   // Colores dinámicos según el grado
   const nivelNombre = sabanaData.nivel?.nombre || '';
@@ -1485,81 +1536,156 @@ export function BoletinIndividual({
           }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', height: '100%' }}>
-            {/* Columna Izquierda: Información */}
-            <div>
-              <div style={{ marginBottom: '20px' }}>
-                <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  {isHT ? 'INFORMATION DE L\'ÉTUDIANT' : 'INFORMACIÓN DEL ESTUDIANTE'}
-                </h3>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Nom Complet' : 'Nombre Completo'}:</strong> {estudiante.apellido.toUpperCase()} {estudiante.segundoApellido ? estudiante.segundoApellido.toUpperCase() : ''}, {estudiante.nombre} {estudiante.segundoNombre || ''}</p>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Matricule' : 'Matrícula'}:</strong> ________________________</p>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Niveau' : 'Nivel/Grado'}:</strong> {sabanaData.nivel?.nombre || '________________________'}</p>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'École' : 'Centro Educativo'}:</strong> {institucion?.nombre || '________________________'}</p>
-                <p style={{ margin: '8px 0' }}><strong>{isHT ? 'Code' : 'Código del Centro'}:</strong> ____</p>
+            {/* Columna Izquierda: Formulario oficial */}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', paddingTop: '35px' }}>
+
+              {/* 1. FIRMA DEL PADRE, MADRE O TUTOR */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  backgroundColor: '#2d3a2e', color: 'white', textAlign: 'center',
+                  padding: '6px 10px', fontWeight: 'bold', fontSize: '10px',
+                  textTransform: 'uppercase' as const, letterSpacing: '1px',
+                }}>
+                  FIRMA DEL PADRE, MADRE O TUTOR
+                </div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '11px', margin: '10px 0 8px' }}>
+                  Periodo de Reportes de Calificaciones
+                </div>
+                <div style={{ paddingLeft: '15px' }}>
+                  {[
+                    'Agost-Sept-Oct.',
+                    'Nov-Dic-Enero',
+                    'Feb-Mar',
+                    'Abril-May-Jun',
+                    'Fin de Año Escolar',
+                  ].map((periodo) => (
+                    <div key={periodo} style={{ display: 'flex', alignItems: 'flex-end', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '9px', minWidth: '120px' }}>{periodo}</span>
+                      <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '14px' }}></div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: '9px', fontStyle: 'italic', marginTop: '6px', paddingLeft: '15px' }}>
+                  Marca con una X
+                </p>
               </div>
 
-              {/* Situación Final */}
-              <div style={{ marginTop: '30px' }}>
-                <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  {isHT ? 'RÉSULTAT FINAL' : 'SITUACIÓN FINAL DEL ESTUDIANTE'}
-                </h3>
-                <p style={{ margin: '10px 0' }}>{isHT ? 'Cochez avec un X:' : 'Marca con una X:'}</p>
-                <div style={{ display: 'flex', gap: '30px', marginTop: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                      width: '25px',
-                      height: '25px',
-                      border: '2px solid black',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 'bold',
-                      fontSize: '16px'
-                    }}>
-                      {(() => {
-                        const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
-                          const m = findMateriaByAsignatura(a);
-                          return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
-                        }).filter((cf: number) => cf > 0);
-                        const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
-                        return prom >= 70 ? 'X' : '';
-                      })()}
-                    </div>
-                    <span style={{ fontWeight: 'bold' }}>{isHT ? 'ADMIS' : 'PROMOVIDO'}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{
-                      width: '25px',
-                      height: '25px',
-                      border: '2px solid black',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 'bold',
-                      fontSize: '16px'
-                    }}>
-                      {(() => {
-                        const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
-                          const m = findMateriaByAsignatura(a);
-                          return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
-                        }).filter((cf: number) => cf > 0);
-                        const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
-                        return prom > 0 && prom < 70 ? 'X' : '';
-                      })()}
-                    </div>
-                    <span style={{ fontWeight: 'bold' }}>{isHT ? 'ÉCHEC' : 'REPROBADO'}</span>
-                  </div>
+              {/* 2. SITUACIÓN FINAL DEL ESTUDIANTE */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  backgroundColor: '#2d3a2e', color: 'white', textAlign: 'center',
+                  padding: '6px 10px', fontWeight: 'bold', fontSize: '10px',
+                  textTransform: 'uppercase' as const, letterSpacing: '1px',
+                }}>
+                  SITUACIÓN FINAL DEL ESTUDIANTE
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '10px' }}>
+                  {(() => {
+                    const cfs = ASIGNATURAS_GENERALES_MINERD.map(a => {
+                      const m = findMateriaByAsignatura(a);
+                      return m ? calcularCF(estudiante.calificaciones[m.id], isHT) : 0;
+                    }).filter((cf: number) => cf > 0);
+                    const prom = cfs.length > 0 ? cfs.reduce((acc: number, val: number) => acc + val, 0) / cfs.length : 0;
+                    const esPromovido = prom >= 70;
+                    const esReprobado = prom > 0 && prom < 70;
+
+                    return (
+                      <>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{
+                            background: 'linear-gradient(to bottom, #e5e7eb, #d1d5db)',
+                            padding: '6px 20px', fontWeight: 'bold', fontSize: '10px',
+                            textTransform: 'uppercase' as const, border: '1px solid #9ca3af',
+                          }}>PROMOVIDO</div>
+                          <div style={{
+                            width: '30px', height: '30px', border: '2px solid black',
+                            margin: '6px auto 0', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', fontWeight: 'bold', fontSize: '18px',
+                          }}>
+                            {esPromovido ? 'X' : ''}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{
+                            background: 'linear-gradient(to bottom, #e5e7eb, #d1d5db)',
+                            padding: '6px 20px', fontWeight: 'bold', fontSize: '10px',
+                            textTransform: 'uppercase' as const, border: '1px solid #9ca3af',
+                          }}>REPROBADO</div>
+                          <div style={{
+                            width: '30px', height: '30px', border: '2px solid black',
+                            margin: '6px auto 0', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', fontWeight: 'bold', fontSize: '18px',
+                          }}>
+                            {esReprobado ? 'X' : ''}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
-              {/* Observaciones */}
-              <div style={{ marginTop: '30px' }}>
-                <h3 style={{ color: colorPrimario, borderBottom: `2px solid ${colorPrimario}`, paddingBottom: '5px' }}>
-                  {isHT ? 'OBSERVATIONS' : 'OBSERVACIONES'}
-                </h3>
-                <div style={{ borderBottom: '1px solid #ccc', height: '25px', marginTop: '15px' }}></div>
-                <div style={{ borderBottom: '1px solid #ccc', height: '25px' }}></div>
-                <div style={{ borderBottom: '1px solid #ccc', height: '25px' }}></div>
+              {/* 3. OBSERVACIONES */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{
+                  backgroundColor: '#2d3a2e', color: 'white', textAlign: 'center',
+                  padding: '6px 10px', fontWeight: 'bold', fontSize: '10px',
+                  textTransform: 'uppercase' as const, letterSpacing: '1px',
+                }}>
+                  OBSERVACIONES
+                </div>
+                {/* Editable en pantalla, texto plano en impresión */}
+                <div className="no-print" style={{ marginTop: '8px' }}>
+                  <textarea
+                    value={observacionesText}
+                    onChange={(e) => setObservacionesText(e.target.value)}
+                    placeholder="Escriba las observaciones del estudiante..."
+                    disabled={isReadOnly}
+                    style={{
+                      width: '100%', minHeight: '70px', fontSize: '12px', padding: '8px',
+                      border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical',
+                      fontFamily: 'Arial, sans-serif', lineHeight: '1.5',
+                    }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <button
+                      onClick={saveObservaciones}
+                      disabled={isSavingObs || isReadOnly}
+                      style={{
+                        fontSize: '9px', padding: '3px 10px', backgroundColor: '#2d3a2e',
+                        color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer',
+                        opacity: isSavingObs ? 0.6 : 1,
+                      }}
+                    >
+                      {isSavingObs ? 'Guardando...' : 'Guardar observación'}
+                    </button>
+                    {obsGuardada && <span style={{ fontSize: '9px', color: 'green' }}>Guardada</span>}
+                  </div>
+                </div>
+                {/* Para impresión: mostrar texto o líneas vacías */}
+                <div className="print-only" style={{ display: 'none', marginTop: '8px' }}>
+                  {observacionesText ? (
+                    <p style={{ fontSize: '9px', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                      {observacionesText}
+                    </p>
+                  ) : (
+                    [...Array(5)].map((_, i) => (
+                      <div key={i} style={{ borderBottom: '1px solid black', height: '20px' }}></div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Firmas al pie */}
+              <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', paddingTop: '25px', paddingBottom: '25px' }}>
+                <div style={{ textAlign: 'center', width: '45%' }}>
+                  <div style={{ borderTop: '1px solid black', width: '100%', marginBottom: '4px' }}></div>
+                  <span style={{ fontWeight: 'bold', fontSize: '9px' }}>Maestro/Encargado de Curso</span>
+                </div>
+                <div style={{ textAlign: 'center', width: '45%' }}>
+                  <div style={{ borderTop: '1px solid black', width: '100%', marginBottom: '4px' }}></div>
+                  <span style={{ fontWeight: 'bold', fontSize: '9px' }}>Director/a del Centro</span>
+                </div>
               </div>
             </div>
 
@@ -1611,9 +1737,9 @@ export function BoletinIndividual({
                     {/* Logo MINERD */}
                     <div style={{ marginBottom: '15px' }}>
                       <img
-                        src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Logo_MINERD.png"
+                        src="https://www.ministeriodeeducacion.gob.do/img/logo/logoMinerdHD.svg"
                         alt="MINERD"
-                        style={{ width: '80px' }}
+                        style={{ width: '100px' }}
                       />
                     </div>
 
@@ -1630,7 +1756,7 @@ export function BoletinIndividual({
                     </div>
 
                     {/* Bloque GRADO (mismo estilo que Lado A) */}
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '15px' }}>
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
                         {gn > 0 && (
                           <div style={{
@@ -1679,30 +1805,87 @@ export function BoletinIndividual({
                         </div>
                       </div>
                     </div>
+
+                    {/* Modalidad */}
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '10px' }}>
+                      MODALIDAD TÉCNICO PROFESIONAL
+                    </div>
+
+                    {/* Línea separadora */}
+                    <div style={{ width: '60%', borderBottom: '2px solid black', marginBottom: '20px' }}></div>
+
+                    {/* Año Escolar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '15px' }}>
+                      <div style={{
+                        backgroundColor: 'black',
+                        color: 'white',
+                        padding: '8px 16px',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        letterSpacing: '2px',
+                      }}>
+                        AÑO ESCOLAR
+                      </div>
+                      <span style={{
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        textDecoration: 'underline',
+                        letterSpacing: '1px',
+                      }}>
+                        {sabanaData.cicloLectivo?.nombre || '________'}
+                      </span>
+                    </div>
+
+                    {/* Formulario oficial */}
+                    <div style={{ width: '90%', fontSize: '9px' }}>
+                      {/* Fila superior: SECCIÓN y NÚMERO DE ORDEN */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
+                          <span style={{
+                            backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
+                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            whiteSpace: 'nowrap',
+                          }}>SECCIÓN</span>
+                          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px' }}></div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
+                          <span style={{
+                            backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
+                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            whiteSpace: 'nowrap',
+                          }}>NÚMERO DE ORDEN</span>
+                          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px' }}></div>
+                        </div>
+                      </div>
+
+                      {/* Campos verticales del formulario */}
+                      {[
+                        { label: 'NOMBRES', value: `${estudiante.nombre}${estudiante.segundoNombre ? ` ${estudiante.segundoNombre}` : ''}` },
+                        { label: 'APELLIDOS', value: `${estudiante.apellido}${estudiante.segundoApellido ? ` ${estudiante.segundoApellido}` : ''}` },
+                        { label: 'NOMBRE DEL CENTRO EDUCATIVO', value: institucion?.nombre || '' },
+                        { label: 'CÓDIGO DEL CENTRO', value: institucion?.codigoCentro || '' },
+                        { label: 'DIRECCIÓN DEL CENTRO EDUCATIVO', value: institucion?.direccion || '' },
+                        { label: 'DISTRITO EDUCATIVO', value: institucion?.distritoEducativo || '' },
+                        { label: 'DIRECCIÓN REGIONAL DE EDUCACIÓN', value: institucion?.regionalEducacion || '' },
+                      ].map((campo) => (
+                        <div key={campo.label} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{
+                            backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
+                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            whiteSpace: 'nowrap', minWidth: '70px', textAlign: 'center',
+                          }}>{campo.label}</span>
+                          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px', fontSize: '9px', paddingBottom: '2px' }}>
+                            {campo.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );
             })()}
           </div>
 
-          {/* Firmas al final */}
-          <div style={{
-            position: 'absolute',
-            bottom: '2cm',
-            left: '1cm',
-            right: '1cm',
-            display: 'flex',
-            justifyContent: 'space-around'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ borderTop: '1px solid black', width: '200px', marginBottom: '5px' }}></div>
-              <span style={{ fontWeight: 'bold' }}>{isHT ? 'Signature de l\'Enseignant' : 'Firma del Docente / Maestro Encargado'}</span>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ borderTop: '1px solid black', width: '200px', marginBottom: '5px' }}></div>
-              <span style={{ fontWeight: 'bold' }}>{isHT ? 'Signature du Directeur' : 'Firma del Director(a)'}</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1720,6 +1903,7 @@ export function BoletinIndividual({
           @page { size: 35.56cm 21.59cm; margin: 0; }
           body { margin: 0; padding: 0; }
           .no-print { display: none !important; }
+          .print-only { display: block !important; }
           .boletin-page { page-break-after: always; border: none !important; width: 35.56cm !important; }
         }
       `}</style>
@@ -1744,7 +1928,10 @@ export default function SabanaNotasPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [institucion, setInstitucion] = useState<{ nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string } | null>(null);
+  const [institucion, setInstitucion] = useState<{
+    nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string;
+    direccion: string | null; codigoCentro: string | null; distritoEducativo: string | null; regionalEducacion: string | null;
+  } | null>(null);
 
   const isDocente = user?.role === 'DOCENTE';
   const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' || user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
@@ -1783,6 +1970,10 @@ export default function SabanaNotasPage() {
               lema: inst.lema || null,
               logoUrl: inst.logoUrl || null,
               colorPrimario: inst.colorPrimario || '#1a56db',
+              direccion: inst.direccion || null,
+              codigoCentro: inst.codigoCentro || null,
+              distritoEducativo: inst.distritoEducativo || null,
+              regionalEducacion: inst.regionalEducacion || null,
             });
           } catch {
             console.error('Error cargando institución');

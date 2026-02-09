@@ -629,9 +629,10 @@ export const sabanaApi = {
   updateCalificacion: (data: {
     claseId: string;
     estudianteId: string;
-    periodo: string; // Permitir p1..p4, rp1..rp4 y RA1..RA10
-    valor: number | null;
+    periodo: string; // Permitir p1..p4, rp1..rp4, RA1..RA10, observaciones
+    valor?: number | null;
     competenciaId?: string;
+    valorTexto?: string;
   }) => api.patch('/sabana/calificacion', data),
   publicar: (claseId: string, cicloLectivoId: string) =>
     api.patch('/sabana/publicar', { claseId, cicloLectivoId }),

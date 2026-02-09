@@ -376,6 +376,10 @@ export const getInstitucionBranding = async (id: string) => {
       idiomaPrincipal: true,
       slug: true,
       autogestionActividades: true,
+      direccion: true,
+      codigoCentro: true,
+      distritoEducativo: true,
+      regionalEducacion: true,
     },
   });
 };
