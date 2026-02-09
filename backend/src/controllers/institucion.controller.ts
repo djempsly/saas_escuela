@@ -149,6 +149,10 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
       colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
       colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
       lema: z.string().max(200).optional().nullable(),
+      direccion: z.string().max(300).optional(),
+      codigoCentro: z.string().max(50).optional(),
+      distritoEducativo: z.string().max(100).optional(),
+      regionalEducacion: z.string().max(100).optional(),
     });
 
     const validated = configSchema.parse(req.body);
@@ -195,6 +199,10 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
       lema: validated.lema ?? undefined,
       logoUrl,
       fondoLoginUrl,
+      direccion: validated.direccion,
+      codigoCentro: validated.codigoCentro,
+      distritoEducativo: validated.distritoEducativo,
+      regionalEducacion: validated.regionalEducacion,
     });
 
     return res.status(200).json(config);

@@ -393,6 +393,10 @@ export const updateInstitucionConfig = async (
     logoUrl?: string;
     fondoLoginUrl?: string;
     lema?: string;
+    direccion?: string;
+    codigoCentro?: string;
+    distritoEducativo?: string;
+    regionalEducacion?: string;
   }
 ) => {
   const institucion = await prisma.institucion.findUnique({
@@ -410,6 +414,10 @@ export const updateInstitucionConfig = async (
     logoUrl: string;
     fondoLoginUrl: string;
     lema: string | null;
+    direccion: string | null;
+    codigoCentro: string | null;
+    distritoEducativo: string | null;
+    regionalEducacion: string | null;
   }> = {};
 
   if (input.colorPrimario) {
@@ -426,6 +434,18 @@ export const updateInstitucionConfig = async (
   }
   if (input.lema !== undefined) {
     updateData.lema = input.lema || null;
+  }
+  if (input.direccion !== undefined) {
+    updateData.direccion = input.direccion || null;
+  }
+  if (input.codigoCentro !== undefined) {
+    updateData.codigoCentro = input.codigoCentro || null;
+  }
+  if (input.distritoEducativo !== undefined) {
+    updateData.distritoEducativo = input.distritoEducativo || null;
+  }
+  if (input.regionalEducacion !== undefined) {
+    updateData.regionalEducacion = input.regionalEducacion || null;
   }
 
   // Si no hay nada que actualizar, retornar la institución actual

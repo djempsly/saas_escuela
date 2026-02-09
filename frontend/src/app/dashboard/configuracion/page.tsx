@@ -44,6 +44,10 @@ interface ExtendedBranding {
   idiomaPrincipal?: string;
   slug?: string;
   autogestionActividades?: boolean;
+  direccion?: string | null;
+  codigoCentro?: string | null;
+  distritoEducativo?: string | null;
+  regionalEducacion?: string | null;
 }
 
 export default function ConfiguracionPage() {
@@ -60,6 +64,10 @@ export default function ConfiguracionPage() {
   const [formData, setFormData] = useState({
     colorPrimario: branding?.colorPrimario || '#1a365d',
     colorSecundario: branding?.colorSecundario || '#3182ce',
+    direccion: '',
+    codigoCentro: '',
+    distritoEducativo: '',
+    regionalEducacion: '',
   });
 
   // Configuracion de colores para notas
@@ -80,7 +88,15 @@ export default function ConfiguracionPage() {
       if (user?.role === 'DIRECTOR' && user?.institucionId) {
         try {
           const response = await institucionesApi.getBranding(user.institucionId);
-          setExtendedBranding(response.data);
+          const data = response.data;
+          setExtendedBranding(data);
+          setFormData(prev => ({
+            ...prev,
+            direccion: data.direccion || '',
+            codigoCentro: data.codigoCentro || '',
+            distritoEducativo: data.distritoEducativo || '',
+            regionalEducacion: data.regionalEducacion || '',
+          }));
         } catch (error) {
           console.error('Error loading extended branding:', error);
         }
@@ -105,6 +121,10 @@ export default function ConfiguracionPage() {
       data.append('colorPrimario', formData.colorPrimario);
       data.append('colorSecundario', formData.colorSecundario);
       data.append('gradeColors', JSON.stringify(gradeColors));
+      data.append('direccion', formData.direccion);
+      data.append('codigoCentro', formData.codigoCentro);
+      data.append('distritoEducativo', formData.distritoEducativo);
+      data.append('regionalEducacion', formData.regionalEducacion);
 
       if (logoFile) {
         data.append('logo', logoFile);
@@ -329,6 +349,61 @@ export default function ConfiguracionPage() {
                 >
                   Botón Secundario
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Datos del Centro Educativo */}
+      {isDirector && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Datos del Centro Educativo
+            </CardTitle>
+            <CardDescription>
+              Información del centro que aparece en los boletines y reportes oficiales
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="direccion">Dirección del Centro Educativo</Label>
+                <Input
+                  id="direccion"
+                  value={formData.direccion}
+                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                  placeholder="Ej: Calle Principal #123, Santo Domingo"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="codigoCentro">Código del Centro</Label>
+                <Input
+                  id="codigoCentro"
+                  value={formData.codigoCentro}
+                  onChange={(e) => setFormData({ ...formData, codigoCentro: e.target.value })}
+                  placeholder="Ej: 01234"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="distritoEducativo">Distrito Educativo</Label>
+                <Input
+                  id="distritoEducativo"
+                  value={formData.distritoEducativo}
+                  onChange={(e) => setFormData({ ...formData, distritoEducativo: e.target.value })}
+                  placeholder="Ej: 15-03"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="regionalEducacion">Dirección Regional de Educación</Label>
+                <Input
+                  id="regionalEducacion"
+                  value={formData.regionalEducacion}
+                  onChange={(e) => setFormData({ ...formData, regionalEducacion: e.target.value })}
+                  placeholder="Ej: Regional 10, Santo Domingo"
+                />
               </div>
             </div>
           </CardContent>
