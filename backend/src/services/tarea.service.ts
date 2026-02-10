@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { EstadoTarea, EstadoEntrega, TipoRecurso } from '@prisma/client';
+import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
 interface CrearTareaInput {
@@ -62,9 +63,9 @@ export const crearTarea = async (
 
   return prisma.tarea.create({
     data: {
-      titulo: input.titulo,
-      descripcion: input.descripcion,
-      instrucciones: input.instrucciones,
+      titulo: sanitizeText(input.titulo),
+      descripcion: sanitizeText(input.descripcion),
+      instrucciones: sanitizeOptional(input.instrucciones),
       fechaPublicacion: input.fechaPublicacion,
       fechaVencimiento: input.fechaVencimiento,
       puntajeMaximo: input.puntajeMaximo,
@@ -103,9 +104,16 @@ export const actualizarTarea = async (
     throw new Error('Solo el docente que creó la tarea puede editarla');
   }
 
+  const sanitizedInput = {
+    ...input,
+    ...(input.titulo !== undefined && { titulo: sanitizeText(input.titulo) }),
+    ...(input.descripcion !== undefined && { descripcion: sanitizeText(input.descripcion) }),
+    ...(input.instrucciones !== undefined && { instrucciones: sanitizeOptional(input.instrucciones) }),
+  };
+
   return prisma.tarea.update({
     where: { id: tareaId },
-    data: input,
+    data: sanitizedInput,
     include: {
       clase: { include: { materia: true, nivel: true } },
       docente: { select: { id: true, nombre: true, apellido: true } },
@@ -308,7 +316,7 @@ export const agregarRecurso = async (
   return prisma.recursoTarea.create({
     data: {
       tipo: recurso.tipo,
-      titulo: recurso.titulo,
+      titulo: sanitizeText(recurso.titulo),
       url: recurso.url,
       tareaId,
     },
@@ -373,8 +381,8 @@ export const entregarTarea = async (
     const entrega = await prisma.entregaTarea.update({
       where: { id: entregaExistente.id },
       data: {
-        contenido: input.contenido,
-        comentarioEstudiante: input.comentarioEstudiante,
+        contenido: sanitizeOptional(input.contenido),
+        comentarioEstudiante: sanitizeOptional(input.comentarioEstudiante),
         estado,
         fechaEntrega: ahora,
       },
@@ -401,8 +409,8 @@ export const entregarTarea = async (
     // Crear nueva entrega
     return prisma.entregaTarea.create({
       data: {
-        contenido: input.contenido,
-        comentarioEstudiante: input.comentarioEstudiante,
+        contenido: sanitizeOptional(input.contenido),
+        comentarioEstudiante: sanitizeOptional(input.comentarioEstudiante),
         estado,
         fechaEntrega: ahora,
         tareaId,
@@ -461,7 +469,7 @@ export const calificarEntrega = async (
     where: { id: entregaId },
     data: {
       calificacion: input.calificacion,
-      comentarioDocente: input.comentarioDocente,
+      comentarioDocente: sanitizeOptional(input.comentarioDocente),
       estado: EstadoEntrega.CALIFICADO,
     },
     include: {

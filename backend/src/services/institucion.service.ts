@@ -1,6 +1,7 @@
 import { Prisma, Role, SistemaEducativo, Idioma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 import { getMateriasOficiales } from '../utils/materias-oficiales';
 
@@ -33,14 +34,13 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
 export const createInstitucion = async (input: any) => {
   const { director, directorId, colores, sistemaEducativo, sistemasEducativos, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
 
-  // Debug: Log received values
-  console.log('Creating institution with:', {
+  logger.debug({
     idiomaPrincipal,
     sistemaEducativo,
     sistemasEducativos,
     pais: rest.pais,
-    nombre: rest.nombre
-  });
+    nombre: rest.nombre,
+  }, 'Creating institution');
 
   // Validate SistemaEducativo
   if (!sistemaEducativo || !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)) {
@@ -66,8 +66,7 @@ export const createInstitucion = async (input: any) => {
   if (idiomaPrincipal && Object.values(Idioma).includes(idiomaPrincipal as Idioma)) {
     resolvedIdioma = idiomaPrincipal as Idioma;
   }
-  console.log('Resolved idioma:', resolvedIdioma);
-  console.log('Sistemas educativos a crear:', sistemasValidos);
+  logger.debug({ resolvedIdioma, sistemasValidos }, 'Resolved idioma and sistemas educativos');
 
   // Generar slug único
   const slug = inputSlug ? generateSlug(inputSlug) : await generateUniqueSlug(rest.nombre);

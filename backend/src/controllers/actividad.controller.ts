@@ -109,7 +109,7 @@ export const createActividadHandler = async (req: Request, res: Response) => {
 
     return res.status(201).json(actividad);
   } catch (error: any) {
-    console.error('Error creating actividad:', error);
+    req.log.error({ err: error }, 'Error creating actividad');
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }

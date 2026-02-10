@@ -23,9 +23,9 @@ import { z } from 'zod';
 
 export const createInstitucionHandler = async (req: Request, res: Response) => {
   try {
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    req.log.debug({ body: req.body }, 'Request body');
     const validatedData = institucionSchema.parse({ body: req.body });
-    console.log('Validated data:', JSON.stringify(validatedData.body, null, 2));
+    req.log.debug({ data: validatedData.body }, 'Validated data');
     const result = await createInstitucion(validatedData.body);
     return res.status(201).json({
       status: 'success',
@@ -35,7 +35,7 @@ export const createInstitucionHandler = async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error creating institucion:', error);
+    req.log.error({ err: error }, 'Error creating institucion');
     if (error.issues) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
@@ -110,7 +110,7 @@ export const deleteInstitucionHandler = async (req: Request, res: Response) => {
     await deleteInstitucion(id);
     return res.status(204).send();
   } catch (error: any) {
-    console.error('Error deleting institucion:', error);
+    req.log.error({ err: error }, 'Error deleting institucion');
     // Errores de validación/negocio son seguros para mostrar
     if (error.message?.includes('No se puede eliminar') || error.message?.includes('no encontrada')) {
       return res.status(400).json({ message: error.message });
@@ -209,7 +209,7 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(config);
   } catch (error: any) {
-    console.error('Error updating config:', error?.message || error);
+    req.log.error({ err: error }, 'Error updating config');
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
@@ -245,7 +245,7 @@ export const updateDirectorConfigHandler = async (req: Request, res: Response) =
 
     return res.status(200).json(config);
   } catch (error: any) {
-    console.error('Error updating director config:', error?.message || error);
+    req.log.error({ err: error }, 'Error updating director config');
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
@@ -262,11 +262,11 @@ export const updateDirectorConfigHandler = async (req: Request, res: Response) =
 export const getBrandingBySlugHandler = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params as { slug: string };
-    console.log(`[DEBUG] Buscando branding para slug: "${slug}"`);
+    req.log.debug({ slug }, 'Buscando branding para slug');
     const branding = await getInstitucionBrandingBySlug(slug);
 
     if (!branding) {
-      console.log(`[DEBUG] Institución no encontrada para slug: "${slug}"`);
+      req.log.debug({ slug }, 'Institución no encontrada para slug');
       return res.status(404).json({ message: 'Institución no encontrada' });
     }
 
@@ -412,7 +412,7 @@ export const uploadFaviconHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error uploading favicon:', error);
+    req.log.error({ err: error }, 'Error uploading favicon');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -445,7 +445,7 @@ export const uploadHeroHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error uploading hero image:', error);
+    req.log.error({ err: error }, 'Error uploading hero image');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -478,7 +478,7 @@ export const uploadLoginLogoHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error uploading login logo:', error);
+    req.log.error({ err: error }, 'Error uploading login logo');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

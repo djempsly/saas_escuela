@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 export interface CicloEducativoInput {
   nombre: string;
@@ -9,8 +10,8 @@ export interface CicloEducativoInput {
 export const createCicloEducativo = async (input: CicloEducativoInput, institucionId: string) => {
   return prisma.cicloEducativo.create({
     data: {
-      nombre: input.nombre,
-      descripcion: input.descripcion,
+      nombre: sanitizeText(input.nombre),
+      descripcion: sanitizeOptional(input.descripcion),
       orden: input.orden || 1,
       institucionId,
     },
@@ -68,8 +69,8 @@ export const updateCicloEducativo = async (
   return prisma.cicloEducativo.update({
     where: { id },
     data: {
-      ...(input.nombre && { nombre: input.nombre }),
-      ...(input.descripcion !== undefined && { descripcion: input.descripcion }),
+      ...(input.nombre && { nombre: sanitizeText(input.nombre) }),
+      ...(input.descripcion !== undefined && { descripcion: sanitizeOptional(input.descripcion) }),
       ...(input.orden !== undefined && { orden: input.orden }),
     },
     include: {

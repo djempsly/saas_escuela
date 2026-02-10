@@ -44,7 +44,7 @@ export const importEstudiantesHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error importing students:', error);
+    req.log.error({ err: error }, 'Error importing students');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -62,7 +62,7 @@ export const downloadPlantillaHandler = async (req: Request, res: Response) => {
 
     return res.send(buffer);
   } catch (error: any) {
-    console.error('Error generating template:', error);
+    req.log.error({ err: error }, 'Error generating template');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

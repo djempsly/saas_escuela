@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { isProd } from '../config/env';
+import { logger } from '../config/logger';
+import { AppError } from '../errors';
+import * as Sentry from '@sentry/node';
 
 /**
  * Error handler global centralizado.
@@ -9,7 +12,8 @@ import { isProd } from '../config/env';
  * Maneja diferentes tipos de errores y retorna respuestas apropiadas:
  * - Errores de Prisma (DB)
  * - Errores de Zod (validación)
- * - Errores de negocio (throw new Error)
+ * - Errores de aplicación (AppError y subclases)
+ * - [Legacy] Errores de negocio por string matching
  * - Errores inesperados
  *
  * Debe registrarse al final de app.ts:
@@ -25,7 +29,8 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   // Log del error para debugging
-  console.error(`[ERROR] ${req.method} ${req.path}:`, err);
+  const log = req.log || logger;
+  log.error({ err, action: 'error_handler', method: req.method, path: req.path }, err.message);
 
   // =========================
   // Errores de Prisma (DB)
@@ -71,7 +76,7 @@ export const errorHandler = (
 
       // Otros errores de Prisma
       default:
-        console.error(`[PRISMA ERROR] Código no manejado: ${err.code}`, err);
+        log.error({ err, prismaCode: err.code }, 'Prisma error no manejado');
         return res.status(500).json({
           error: 'Error de base de datos',
           details: isProd ? undefined : `${err.code}: ${err.message}`,
@@ -81,7 +86,7 @@ export const errorHandler = (
 
   // Timeout de Prisma
   if (err instanceof Prisma.PrismaClientInitializationError) {
-    console.error('[PRISMA INIT ERROR]', err);
+    log.error({ err }, 'Prisma initialization error');
     return res.status(503).json({
       error: 'Servicio no disponible - error de conexión a base de datos',
     });
@@ -117,9 +122,33 @@ export const errorHandler = (
   }
 
   // =========================
-  // Errores de negocio conocidos
+  // Errores de aplicación (AppError y subclases)
   // =========================
-  // Estos son errores lanzados intencionalmente en servicios
+  if (err instanceof AppError) {
+    if (!err.isOperational) {
+      log.error({ err }, 'Non-operational error');
+      Sentry.captureException(err);
+    }
+    return res.status(err.statusCode).json({
+      error: err.isOperational ? err.message : (isProd ? 'Error interno del servidor' : err.message),
+    });
+  }
+
+  // =========================
+  // Errores CRÍTICOS (JWT_SECRET, etc.)
+  // =========================
+  if (err.message.startsWith('CRITICAL:')) {
+    log.fatal({ err }, 'Critical error');
+    Sentry.captureException(err);
+    return res.status(500).json({
+      error: isProd ? 'Error interno del servidor' : err.message,
+    });
+  }
+
+  // =========================
+  // [LEGACY] Errores de negocio por string matching
+  // TODO: Migrar servicios para usar AppError subclases y eliminar este bloque
+  // =========================
   const knownErrors = [
     'Credenciales no válidas',
     'Usuario desactivado',
@@ -152,17 +181,6 @@ export const errorHandler = (
     }
 
     return res.status(status).json({ error: err.message });
-  }
-
-  // =========================
-  // Errores CRÍTICOS (JWT_SECRET, etc.)
-  // =========================
-  if (err.message.startsWith('CRITICAL:')) {
-    console.error('[CRITICAL ERROR]', err.message);
-    // En producción, no revelar el error específico
-    return res.status(500).json({
-      error: isProd ? 'Error interno del servidor' : err.message,
-    });
   }
 
   // =========================

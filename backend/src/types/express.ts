@@ -1,10 +1,13 @@
 import { JwtPayload } from '../utils/jwt.payload';
 import { Institucion } from '@prisma/client';
+import type { Logger } from '../config/logger';
 
 declare global {
   namespace Express {
     export interface Request {
       user?: JwtPayload;
+      requestId?: string;
+      log: Logger;
       /**
        * InstitucionId resuelto por el tenant middleware.
        * - Para usuarios regulares: viene del JWT

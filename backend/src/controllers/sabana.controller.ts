@@ -28,7 +28,7 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
     const niveles = await getNivelesParaSabana(user.institucionId, user.usuarioId, user.rol);
     return res.json(niveles);
   } catch (error: any) {
-    console.error('Error obteniendo niveles para sábana:', error);
+    req.log.error({ err: error }, 'Error obteniendo niveles para sábana');
     return res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 };
@@ -48,7 +48,7 @@ export const getCiclosLectivosHandler = async (req: Request, res: Response) => {
     const ciclos = await getCiclosLectivosParaSabana(user.institucionId);
     return res.json(ciclos);
   } catch (error: any) {
-    console.error('Error obteniendo ciclos lectivos:', error);
+    req.log.error({ err: error }, 'Error obteniendo ciclos lectivos');
     return res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 };
@@ -74,7 +74,7 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
     const sabana = await getSabanaByNivel(nivelId, cicloLectivoId, user.institucionId, user.usuarioId);
     return res.json(sabana);
   } catch (error: any) {
-    console.error('Error obteniendo sábana de notas:', error);
+    req.log.error({ err: error }, 'Error obteniendo sábana de notas');
     return res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 };
@@ -135,7 +135,7 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
 
     return res.json(calificacion);
   } catch (error: any) {
-    console.error('Error actualizando calificación:', error);
+    req.log.error({ err: error }, 'Error actualizando calificación');
     return res.status(500).json({ error: error.message || 'Error del servidor' });
   }
 };
@@ -188,7 +188,7 @@ export const publicarCalificacionesHandler = async (req: Request, res: Response)
 
     return res.json(resultado);
   } catch (error: any) {
-    console.error('Error publicando calificaciones:', error);
+    req.log.error({ err: error }, 'Error publicando calificaciones');
     if (error.message.includes('Sin permiso')) {
       return res.status(403).json({ error: error.message });
     }

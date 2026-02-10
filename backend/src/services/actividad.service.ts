@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { deleteFile } from '../middleware/upload.middleware';
+import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 interface ActividadInput {
   titulo: string;
@@ -26,8 +27,8 @@ export const createActividad = async (
 
   return prisma.actividad.create({
     data: {
-      titulo: input.titulo,
-      contenido: input.contenido,
+      titulo: sanitizeText(input.titulo),
+      contenido: sanitizeText(input.contenido),
       urlArchivo: input.fotos?.[0] || null, // Compatibilidad con legacy
       fotos: input.fotos || [],
       videos: input.videos || [],
@@ -165,8 +166,8 @@ export const updateActividad = async (id: string, input: Partial<ActividadInput>
   }
 
   const updateData: any = {
-    titulo: input.titulo,
-    contenido: input.contenido,
+    titulo: sanitizeOptional(input.titulo),
+    contenido: sanitizeOptional(input.contenido),
     tipoMedia,
   };
 

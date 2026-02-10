@@ -78,7 +78,7 @@ router.get(
         })),
       });
     } catch (error) {
-      console.error('[PUBLIC] Error en /landing:', error);
+      req.log.error({ err: error }, 'Error en /landing');
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
@@ -127,7 +127,7 @@ router.get(
         fechaPublicacion: actividad.createdAt,
       });
     } catch (error) {
-      console.error('[PUBLIC] Error en /actividades/:id:', error);
+      req.log.error({ err: error }, 'Error en /actividades/:id');
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
@@ -184,7 +184,7 @@ router.get('/instituciones', async (req: Request, res: Response) => {
       data: instituciones,
     });
   } catch (error) {
-    console.error('[PUBLIC] Error en /instituciones:', error);
+    req.log.error({ err: error }, 'Error en /instituciones');
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -227,7 +227,7 @@ router.get('/actividades', async (req: Request, res: Response) => {
 
     res.json(actividades);
   } catch (error) {
-    console.error('[PUBLIC] Error en /actividades:', error);
+    req.log.error({ err: error }, 'Error en /actividades');
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

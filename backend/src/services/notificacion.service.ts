@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { sanitizeText } from '../utils/sanitize';
 
 export const getNotificaciones = async (
   usuarioId: string,
@@ -56,8 +57,8 @@ export const crearNotificacionesMasivas = async (
 
   return prisma.notificacion.createMany({
     data: usuarioIds.map((usuarioId) => ({
-      titulo,
-      mensaje,
+      titulo: sanitizeText(titulo),
+      mensaje: sanitizeText(mensaje),
       usuarioId,
     })),
   });

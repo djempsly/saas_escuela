@@ -36,7 +36,7 @@ router.get('/verify-domain', async (req: Request, res: Response) => {
     // Dominio no autorizado - Caddy NO debe generar certificado
     return res.status(404).send('Domain not authorized');
   } catch (error) {
-    console.error(`[INTERNAL] Error verificando dominio ${domain}:`, error);
+    req.log.error({ err: error, domain }, 'Error verificando dominio');
     // En caso de error, rechazar por seguridad
     return res.status(500).send('Internal error');
   }

@@ -33,7 +33,7 @@ export const getBoletinDataHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json(data);
   } catch (error: any) {
-    console.error('Error obteniendo datos del boletín:', error);
+    req.log.error({ err: error }, 'Error obteniendo datos del boletín');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -67,7 +67,7 @@ export const getBoletinesClaseDataHandler = async (req: Request, res: Response) 
       boletines,
     });
   } catch (error: any) {
-    console.error('Error obteniendo datos de boletines de clase:', error);
+    req.log.error({ err: error }, 'Error obteniendo datos de boletines de clase');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

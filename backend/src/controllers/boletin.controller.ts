@@ -29,7 +29,7 @@ export const getBoletinPlantillaHandler = async (req: Request, res: Response) =>
     res.setHeader('Content-Disposition', `attachment; filename=boletin_${grado}_plantilla.docx`);
     return res.send(buffer);
   } catch (error: any) {
-    console.error('Error generando boletín plantilla:', error);
+    req.log.error({ err: error }, 'Error generando boletín plantilla');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -153,7 +153,7 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
   } catch (error: any) {
-    console.error('Error generando boletín estudiante:', error);
+    req.log.error({ err: error }, 'Error generando boletín estudiante');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -205,7 +205,7 @@ export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error generando boletines clase:', error);
+    req.log.error({ err: error }, 'Error generando boletines clase');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -236,7 +236,7 @@ export const generarBoletinPersonalizadoHandler = async (req: Request, res: Resp
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
   } catch (error: any) {
-    console.error('Error generando boletín personalizado:', error);
+    req.log.error({ err: error }, 'Error generando boletín personalizado');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

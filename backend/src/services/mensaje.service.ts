@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
 interface CrearConversacionInput {
@@ -65,7 +66,7 @@ export const crearConversacion = async (
 
   return prisma.conversacion.create({
     data: {
-      titulo: input.titulo,
+      titulo: sanitizeOptional(input.titulo),
       esGrupal: input.esGrupal || false,
       creadorId,
       institucionId,
@@ -276,7 +277,7 @@ export const enviarMensaje = async (
   // Crear mensaje
   const mensaje = await prisma.mensaje.create({
     data: {
-      contenido: input.contenido,
+      contenido: sanitizeText(input.contenido),
       conversacionId,
       remitenteId,
       archivos: input.archivos

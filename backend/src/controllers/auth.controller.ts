@@ -69,7 +69,7 @@ export const forgotPasswordHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Solo errores críticos del sistema (JWT_SECRET, DB, etc.)
-    console.error('Error en forgotPassword:', error);
+    req.log.error({ err: error }, 'Error en forgotPassword');
     return res.status(500).json({ message: 'Error interno del servidor' });
   }
 };
@@ -94,7 +94,7 @@ export const resetPasswordHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ message: error.message });
     }
     // Error inesperado - loguear y retornar mensaje genérico
-    console.error('Error en resetPassword:', error);
+    req.log.error({ err: error }, 'Error en resetPassword');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

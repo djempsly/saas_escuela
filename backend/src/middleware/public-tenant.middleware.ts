@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
 
 /**
  * Middleware público de resolución de tenant.
@@ -28,7 +29,7 @@ export const publicTenantResolver = async (
     // Si no hay BASE_DOMAIN configurado, este middleware no puede funcionar
     // en modo subdominio. Pasar al siguiente middleware.
     if (!baseDomain) {
-      console.warn('[PUBLIC TENANT] BASE_DOMAIN no está definido, saltando resolución por subdominio');
+      (req.log || logger).warn('BASE_DOMAIN no está definido, saltando resolución por subdominio');
     }
 
     let institucion = null;
@@ -85,7 +86,7 @@ export const publicTenantResolver = async (
 
     next();
   } catch (error) {
-    console.error('[PUBLIC TENANT] Error resolviendo tenant:', error);
+    (req.log || logger).error({ err: error }, 'Error resolviendo tenant público');
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

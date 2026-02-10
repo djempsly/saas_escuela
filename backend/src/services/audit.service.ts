@@ -1,5 +1,6 @@
 import { AccionAudit, Prisma } from '@prisma/client';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
 
 interface AuditLogParams {
   accion: AccionAudit;
@@ -28,7 +29,7 @@ export const registrarAuditLog = (params: AuditLogParams): void => {
       },
     })
     .catch((err) => {
-      console.error('Error registrando audit log:', err);
+      logger.error({ err }, 'Error registrando audit log');
     });
 };
 

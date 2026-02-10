@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
     const dominios = await getDominiosByInstitucion(req.resolvedInstitucionId!);
     res.json(dominios);
   } catch (error) {
-    console.error('[DOMINIOS] Error listando dominios:', error);
+    req.log.error({ err: error }, 'Error listando dominios');
     res.status(500).json({ error: 'Error al obtener dominios' });
   }
 });
@@ -53,7 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
     const resultado = await registrarDominio(req.resolvedInstitucionId!, dominio);
     res.status(201).json(resultado);
   } catch (error: unknown) {
-    console.error('[DOMINIOS] Error registrando dominio:', error);
+    req.log.error({ err: error }, 'Error registrando dominio');
     const message = error instanceof Error ? error.message : 'Error al registrar dominio';
     res.status(400).json({ error: message });
   }
@@ -69,7 +69,7 @@ router.post('/:id/verificar', async (req: Request<{ id: string }>, res: Response
     const resultado = await forzarVerificacion(req.params.id, req.resolvedInstitucionId!);
     res.json(resultado);
   } catch (error: unknown) {
-    console.error('[DOMINIOS] Error verificando dominio:', error);
+    req.log.error({ err: error }, 'Error verificando dominio');
     const message = error instanceof Error ? error.message : 'Error al verificar dominio';
     res.status(400).json({ error: message });
   }
@@ -85,7 +85,7 @@ router.delete('/:id', async (req: Request<{ id: string }>, res: Response) => {
     const resultado = await eliminarDominio(req.params.id, req.resolvedInstitucionId!);
     res.json(resultado);
   } catch (error: unknown) {
-    console.error('[DOMINIOS] Error eliminando dominio:', error);
+    req.log.error({ err: error }, 'Error eliminando dominio');
     const message = error instanceof Error ? error.message : 'Error al eliminar dominio';
     res.status(400).json({ error: message });
   }

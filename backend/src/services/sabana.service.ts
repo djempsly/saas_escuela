@@ -6,6 +6,8 @@
 
 import { SistemaEducativo } from '@prisma/client';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
+import { sanitizeOptional } from '../utils/sanitize';
 import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
 import { crearNotificacionesMasivas } from './notificacion.service';
 
@@ -494,7 +496,7 @@ export const updateCalificacionSabana = async (
     if (calExistente) {
       return prisma.calificacion.update({
         where: { id: calExistente.id },
-        data: { observaciones: valorTexto || null },
+        data: { observaciones: sanitizeOptional(valorTexto) || null },
       });
     } else {
       return prisma.calificacion.create({
@@ -502,7 +504,7 @@ export const updateCalificacionSabana = async (
           estudianteId,
           claseId,
           cicloLectivoId: clase.cicloLectivoId,
-          observaciones: valorTexto || null,
+          observaciones: sanitizeOptional(valorTexto) || null,
         },
       });
     }
@@ -689,7 +691,7 @@ export const publicarCalificaciones = async (
       );
     } catch (err) {
       // No falla la publicación si las notificaciones fallan
-      console.error('Error creando notificaciones:', err);
+      logger.error({ err }, 'Error creando notificaciones');
     }
   }
 

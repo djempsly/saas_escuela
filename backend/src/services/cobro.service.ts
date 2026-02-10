@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { ConceptoCobro, EstadoPago, MetodoPago } from '@prisma/client';
+import { sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
 interface CrearCobroInput {
@@ -57,7 +58,7 @@ export const crearCobro = async (input: CrearCobroInput, institucionId: string) 
   return prisma.cobro.create({
     data: {
       concepto: input.concepto,
-      descripcion: input.descripcion,
+      descripcion: sanitizeOptional(input.descripcion),
       monto: input.monto,
       fechaVencimiento: new Date(input.fechaVencimiento),
       estado: EstadoPago.PENDIENTE,
@@ -103,7 +104,7 @@ export const crearCobrosMasivos = async (input: CrearCobroMasivoInput, instituci
   const cobros = await prisma.cobro.createMany({
     data: estudiantes.map((est) => ({
       concepto: input.concepto,
-      descripcion: input.descripcion,
+      descripcion: sanitizeOptional(input.descripcion),
       monto: input.monto,
       fechaVencimiento: new Date(input.fechaVencimiento),
       estado: EstadoPago.PENDIENTE,

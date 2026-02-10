@@ -33,7 +33,7 @@ router.post(
         tipo,
       });
     } catch (error) {
-      console.error('Error uploading file:', error);
+      req.log.error({ err: error }, 'Error uploading file');
       res.status(500).json({ message: 'Error al subir el archivo' });
     }
   }

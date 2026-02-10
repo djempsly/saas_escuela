@@ -33,6 +33,10 @@ const envSchema = z.object({
   // CORS
   ALLOWED_ORIGINS: z.string().optional(),
 
+  // Sentry (opcional - si no hay DSN, queda deshabilitado)
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
+
   // Email (opcional - si no está, forgot password no enviará emails)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),

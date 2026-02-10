@@ -3,11 +3,16 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import * as Sentry from '@sentry/node';
 import routes from './routes';
 import publicRoutes from './routes/public.routes';
 import internalRoutes from './routes/internal.routes';
 import adminDominiosRoutes from './routes/admin-dominios.routes';
 import { errorHandler } from './middleware/error-handler.middleware';
+import { requestLogger } from './middleware/request-logger.middleware';
+import prisma from './config/db';
+import { checkS3Connection } from './services/s3.service';
+import { ValidationError } from './errors';
 
 const app: Application = express();
 
@@ -83,6 +88,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// ============ Request Logger (requestId + pino) ============
+app.use(requestLogger);
+
 // ============ Rate Limiters por Ruta ============
 // Aplicar rate limiting estricto a rutas de autenticacion
 app.use('/api/v1/auth/login', authLimiter);
@@ -112,12 +120,55 @@ app.use('/api/v1/admin/dominios', adminDominiosRoutes);
 app.use('/api/v1', routes);
 
 // ============ Health Check ============
-app.get('/', (req, res) => {
-  res.send('API funcionando correctamente');
+app.get('/', async (req, res, next) => {
+  interface CheckResult {
+    status: 'ok' | 'error';
+    latency: number;
+    error?: string;
+  }
+
+  const checks: Record<string, CheckResult> = {};
+
+  // ---- Base de datos ----
+  const dbStart = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.database = { status: 'ok', latency: Date.now() - dbStart };
+  } catch (err: any) {
+    checks.database = { status: 'error', latency: Date.now() - dbStart, error: err.message };
+  }
+
+  // ---- S3 Storage ----
+  const s3Start = Date.now();
+  try {
+    await checkS3Connection();
+    checks.storage = { status: 'ok', latency: Date.now() - s3Start };
+  } catch (err: any) {
+    checks.storage = { status: 'error', latency: Date.now() - s3Start, error: err.message };
+  }
+
+  const allHealthy = Object.values(checks).every((c) => c.status === 'ok');
+  const status = allHealthy ? 'healthy' : 'degraded';
+
+  // Si está degradado y se pide vía ?strict=true, propagar como error
+  if (!allHealthy && req.query.strict === 'true') {
+    const failed = Object.entries(checks)
+      .filter(([, c]) => c.status === 'error')
+      .map(([name]) => name);
+    return next(new ValidationError(`Servicios degradados: ${failed.join(', ')}`));
+  }
+
+  res.status(allHealthy ? 200 : 503).json({
+    status,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    checks,
+  });
 });
 
 // ============ Manejador de Errores Global ============
-// Usa el error handler mejorado que maneja Prisma, Zod y errores conocidos
+// Sentry captura el error primero, luego nuestro handler envía la respuesta
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 export default app;

@@ -164,12 +164,12 @@ export const createDirectorHandler = async (req: Request, res: Response) => {
 // GET /api/v1/admin/directores - Listar todos los directores
 export const getAllDirectoresHandler = async (req: Request, res: Response) => {
   try {
-    console.log('Fetching all directors...');
+    req.log.debug('Fetching all directors');
     const directores = await findAllDirectores();
-    console.log(`Found ${directores.length} directors`);
+    req.log.debug({ count: directores.length }, 'Found directors');
     return res.status(200).json({ data: directores });
   } catch (error: any) {
-    console.error('Error fetching directors:', error);
+    req.log.error({ err: error }, 'Error fetching directors');
     return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
   }
 };

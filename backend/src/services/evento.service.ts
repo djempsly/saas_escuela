@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { TipoEvento } from '@prisma/client';
+import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
 interface CrearEventoInput {
@@ -33,9 +34,9 @@ export const crearEvento = async (
 
   return prisma.evento.create({
     data: {
-      titulo: input.titulo,
-      descripcion: input.descripcion,
-      ubicacion: input.ubicacion,
+      titulo: sanitizeText(input.titulo),
+      descripcion: sanitizeOptional(input.descripcion),
+      ubicacion: sanitizeOptional(input.ubicacion),
       tipo: input.tipo,
       fechaInicio: new Date(input.fechaInicio),
       fechaFin: new Date(input.fechaFin),
@@ -87,9 +88,9 @@ export const actualizarEvento = async (
   return prisma.evento.update({
     where: { id: eventoId },
     data: {
-      titulo: input.titulo,
-      descripcion: input.descripcion,
-      ubicacion: input.ubicacion,
+      titulo: sanitizeOptional(input.titulo),
+      descripcion: sanitizeOptional(input.descripcion),
+      ubicacion: sanitizeOptional(input.ubicacion),
       tipo: input.tipo,
       fechaInicio: input.fechaInicio ? new Date(input.fechaInicio) : undefined,
       fechaFin: input.fechaFin ? new Date(input.fechaFin) : undefined,

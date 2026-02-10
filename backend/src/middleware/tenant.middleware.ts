@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Role } from '@prisma/client';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
 
 /**
  * Middleware que resuelve el institucionId correcto para la solicitud.
@@ -47,7 +48,7 @@ export const resolveTenantMiddleware = async (req: Request, res: Response, next:
 
     next();
   } catch (error) {
-    console.error('Error al resolver institución:', error);
+    (req.log || logger).error({ err: error }, 'Error al resolver institución');
     return res.status(500).json({ message: 'Error al resolver institución' });
   }
 };

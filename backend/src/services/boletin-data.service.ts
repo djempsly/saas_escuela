@@ -5,6 +5,7 @@
 
 import prisma from '../config/db';
 import { SistemaEducativo, Pais } from '@prisma/client';
+import { logger } from '../config/logger';
 
 // Tipos para los datos del boletín
 export interface BoletinDataResponse {
@@ -434,7 +435,7 @@ export async function getBoletinesClase(
       );
       boletines.push(boletin);
     } catch (error) {
-      console.error(`Error generando boletín para estudiante ${inscripcion.estudianteId}:`, error);
+      logger.error({ err: error, estudianteId: inscripcion.estudianteId }, 'Error generando boletín para estudiante');
     }
   }
 

@@ -1,4 +1,5 @@
 import { verificarDominiosPendientes } from '../services/domain.service';
+import { logger } from '../config/logger';
 
 // Intervalo de verificación: 1 hora (en milisegundos)
 const INTERVALO = 60 * 60 * 1000;
@@ -14,31 +15,33 @@ let intervalId: NodeJS.Timeout | null = null;
  * Debe llamarse al iniciar la aplicación.
  */
 export function iniciarJobVerificacionDNS(): void {
-  console.log('[JOB] Verificación de DNS iniciada. Intervalo: 1 hora.');
+  logger.info('Verificación de DNS iniciada. Intervalo: 1 hora.');
 
   // Ejecutar una vez al inicio (con delay para que el servidor esté listo)
   setTimeout(async () => {
     try {
-      console.log('[JOB] Ejecutando verificación inicial de dominios...');
+      logger.info('Ejecutando verificación inicial de dominios...');
       const resultado = await verificarDominiosPendientes();
-      console.log(
-        `[JOB] Verificación inicial completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
+      logger.info(
+        { verificados: resultado.verificados, pendientes: resultado.fallidos },
+        `Verificación inicial completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
       );
     } catch (error) {
-      console.error('[JOB] Error en verificación inicial:', error);
+      logger.error({ err: error }, 'Error en verificación inicial');
     }
   }, 5000); // 5 segundos después del inicio
 
   // Programar ejecución periódica
   intervalId = setInterval(async () => {
     try {
-      console.log('[JOB] Verificando dominios pendientes...');
+      logger.info('Verificando dominios pendientes...');
       const resultado = await verificarDominiosPendientes();
-      console.log(
-        `[JOB] Verificación completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
+      logger.info(
+        { verificados: resultado.verificados, pendientes: resultado.fallidos },
+        `Verificación completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
       );
     } catch (error) {
-      console.error('[JOB] Error en verificación de DNS:', error);
+      logger.error({ err: error }, 'Error en verificación de DNS');
     }
   }, INTERVALO);
 }
@@ -51,6 +54,6 @@ export function detenerJobVerificacionDNS(): void {
   if (intervalId) {
     clearInterval(intervalId);
     intervalId = null;
-    console.log('[JOB] Verificación de DNS detenida.');
+    logger.info('Verificación de DNS detenida.');
   }
 }

@@ -1,5 +1,6 @@
 import dns from 'dns/promises';
 import prisma from '../config/db';
+import { logger } from '../config/logger';
 
 const SERVER_IP = process.env.SERVER_IP;
 const BASE_DOMAIN = process.env.BASE_DOMAIN;
@@ -49,7 +50,7 @@ export async function verificarDominio(dominio: string): Promise<VerificacionRes
       mensaje: `El dominio ${dominio} no apunta a nuestro servidor. Configura: ${instructions.join(' o ')}`,
     };
   } catch (error) {
-    console.error(`[DOMAIN] Error verificando DNS para ${dominio}:`, error);
+    logger.error({ err: error, dominio }, 'Error verificando DNS');
     return {
       verificado: false,
       mensaje: 'Error al verificar DNS. Intenta de nuevo más tarde.',
@@ -222,12 +223,12 @@ export async function verificarDominiosPendientes(): Promise<{
 
       if (resultado.verificado) {
         verificados++;
-        console.log(`[DOMAIN JOB] Dominio verificado: ${registro.dominio}`);
+        logger.info({ dominio: registro.dominio }, 'Dominio verificado');
       } else {
         fallidos++;
       }
     } catch (error) {
-      console.error(`[DOMAIN JOB] Error verificando ${registro.dominio}:`, error);
+      logger.error({ err: error, dominio: registro.dominio }, 'Error verificando dominio');
       fallidos++;
     }
   }

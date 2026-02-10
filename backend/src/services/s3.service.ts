@@ -1,6 +1,7 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
+import { logger } from '../config/logger';
 
 function getConfig() {
   return {
@@ -104,8 +105,20 @@ export async function deleteFromS3(fileUrl: string): Promise<void> {
   try {
     await getS3Client().send(command);
   } catch (error) {
-    console.error('Error deleting from S3:', error);
+    logger.error({ err: error }, 'Error deleting from S3');
   }
+}
+
+/**
+ * Verifica la conexión a S3 haciendo HeadBucket.
+ * Lanza error si el bucket no existe o no hay credenciales.
+ */
+export async function checkS3Connection(): Promise<void> {
+  const { bucket } = getConfig();
+  if (!bucket) {
+    throw new Error('AWS_BUCKET_NAME no configurado');
+  }
+  await getS3Client().send(new HeadBucketCommand({ Bucket: bucket }));
 }
 
 /**
