@@ -1,4 +1,4 @@
-import { Role, SistemaEducativo, Idioma } from '@prisma/client';
+import { Prisma, Role, SistemaEducativo, Idioma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { generateSecurePassword, generateUsername } from '../utils/security';
@@ -380,6 +380,7 @@ export const getInstitucionBranding = async (id: string) => {
       codigoCentro: true,
       distritoEducativo: true,
       regionalEducacion: true,
+      sabanaColores: true,
     },
   });
 };
@@ -397,6 +398,7 @@ export const updateInstitucionConfig = async (
     codigoCentro?: string;
     distritoEducativo?: string;
     regionalEducacion?: string;
+    sabanaColores?: string;
   }
 ) => {
   const institucion = await prisma.institucion.findUnique({
@@ -418,6 +420,7 @@ export const updateInstitucionConfig = async (
     codigoCentro: string | null;
     distritoEducativo: string | null;
     regionalEducacion: string | null;
+    sabanaColores: Prisma.InputJsonValue;
   }> = {};
 
   if (input.colorPrimario) {
@@ -446,6 +449,13 @@ export const updateInstitucionConfig = async (
   }
   if (input.regionalEducacion !== undefined) {
     updateData.regionalEducacion = input.regionalEducacion || null;
+  }
+  if (input.sabanaColores) {
+    try {
+      updateData.sabanaColores = JSON.parse(input.sabanaColores);
+    } catch {
+      // Si no es JSON válido, ignorar
+    }
   }
 
   // Si no hay nada que actualizar, retornar la institución actual

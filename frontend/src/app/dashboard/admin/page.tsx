@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
                   <span className="text-xs">Gestión Usuarios</span>
                 </Button>
               </Link>
-              <Link href="/dashboard/admin/reportes">
+              <Link href="/dashboard/reportes">
                 <Button variant="outline" className="w-full h-20 flex-col">
                   <TrendingUp className="w-6 h-6 mb-2" />
                   <span className="text-xs">Ver Reportes</span>

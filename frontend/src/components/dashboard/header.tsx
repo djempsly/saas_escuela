@@ -13,8 +13,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, LogOut, User as UserIcon, Settings, Bell } from 'lucide-react';
+import { Menu, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { getMediaUrl } from '@/lib/api';
+import { NotificationBell } from './notification-bell';
 
 interface HeaderProps {
   branding: InstitutionBranding | null;
@@ -80,10 +81,7 @@ export function Header({ branding, user, onMenuClick }: HeaderProps) {
 
       <div className="flex items-center gap-4">
         {/* Notificaciones */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-        </Button>
+        <NotificationBell />
 
         {/* Menú de usuario */}
         <DropdownMenu>

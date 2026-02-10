@@ -102,6 +102,7 @@ interface InstitucionData {
   loginLogoUrl?: string;
   activo: boolean;
   autogestionActividades: boolean;
+  direccion?: string;
   codigoCentro?: string;
   distritoEducativo?: string;
   regionalEducacion?: string;
@@ -246,6 +247,7 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
     loginBgGradient: '',
     activo: true,
     autogestionActividades: false,
+    direccion: '',
     codigoCentro: '',
     distritoEducativo: '',
     regionalEducacion: '',
@@ -322,6 +324,7 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
         loginBgGradient: inst.loginBgGradient || '',
         activo: inst.activo,
         autogestionActividades: inst.autogestionActividades || false,
+        direccion: inst.direccion || '',
         codigoCentro: inst.codigoCentro || '',
         distritoEducativo: inst.distritoEducativo || '',
         regionalEducacion: inst.regionalEducacion || '',
@@ -528,6 +531,10 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
         configData.append('colorPrimario', formData.colorPrimario);
         configData.append('colorSecundario', formData.colorSecundario);
         configData.append('accentColor', formData.accentColor);
+        configData.append('direccion', formData.direccion);
+        configData.append('codigoCentro', formData.codigoCentro);
+        configData.append('distritoEducativo', formData.distritoEducativo);
+        configData.append('regionalEducacion', formData.regionalEducacion);
         if (formData.lema) configData.append('lema', formData.lema);
         if (logoFile) configData.append('logo', logoFile);
         if (loginBgFile) configData.append('fondoLogin', loginBgFile);
@@ -926,6 +933,15 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
                 {isEditMode && (
                   <div className="space-y-4 pt-4 border-t">
                     <h3 className="font-medium">Datos Ministeriales (opcional)</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="direccion">Dirección del Centro Educativo</Label>
+                      <Input
+                        id="direccion"
+                        value={formData.direccion}
+                        onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                        placeholder="Ej: Calle Principal #123, Santo Domingo"
+                      />
+                    </div>
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
                         <Label htmlFor="codigoCentro">Código de Centro</Label>

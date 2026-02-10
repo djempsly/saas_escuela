@@ -88,7 +88,207 @@ interface Ciclo {
   activo: boolean;
 }
 
+// Vista de asistencia del estudiante (componente interno)
+function MiAsistenciaEstudiante() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await asistenciaApi.getMiAsistencia();
+        setData(res.data?.data || res.data || null);
+      } catch (error) {
+        console.error('Error cargando mi asistencia:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const registros = data?.registros || data?.asistencias || [];
+  const resumen = data?.resumen || null;
+
+  // Agrupar registros por clase
+  const porClase: Record<string, { materia: string; registros: any[] }> = {};
+  for (const reg of (Array.isArray(registros) ? registros : [])) {
+    const claseNombre = reg.clase?.materia?.nombre || reg.materia || 'Sin materia';
+    if (!porClase[claseNombre]) {
+      porClase[claseNombre] = { materia: claseNombre, registros: [] };
+    }
+    porClase[claseNombre].registros.push(reg);
+  }
+
+  const getEstadoInfo = (estado: string) => {
+    switch (estado) {
+      case 'PRESENTE': return { icon: CheckCircle, color: 'text-green-600', label: 'Presente' };
+      case 'AUSENTE': return { icon: XCircle, color: 'text-red-600', label: 'Ausente' };
+      case 'TARDE': return { icon: Clock, color: 'text-yellow-600', label: 'Tarde' };
+      case 'JUSTIFICADO': return { icon: AlertCircle, color: 'text-blue-600', label: 'Justificado' };
+      default: return { icon: AlertCircle, color: 'text-muted-foreground', label: estado };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Mi Asistencia</h1>
+        <p className="text-muted-foreground">Registro de asistencia de los últimos 30 días</p>
+      </div>
+
+      {/* Resumen si está disponible */}
+      {resumen && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Presentes</p>
+                  <p className="text-xl font-bold text-green-600">{resumen.presentes || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Ausentes</p>
+                  <p className="text-xl font-bold text-red-600">{resumen.ausentes || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-yellow-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Tardes</p>
+                  <p className="text-xl font-bold text-yellow-600">{resumen.tardes || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Justificados</p>
+                  <p className="text-xl font-bold text-blue-600">{resumen.justificados || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Registros */}
+      {Object.keys(porClase).length > 0 ? (
+        Object.values(porClase).map((grupo) => (
+          <Card key={grupo.materia}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{grupo.materia}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {grupo.registros.map((reg: any, idx: number) => {
+                  const info = getEstadoInfo(reg.estado);
+                  const Icon = info.icon;
+                  return (
+                    <div key={idx} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {new Date(reg.fecha).toLocaleDateString('es-ES', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </span>
+                      </div>
+                      <span className={`flex items-center gap-1 text-sm font-medium ${info.color}`}>
+                        <Icon className="w-4 h-4" />
+                        {info.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      ) : registros.length > 0 ? (
+        /* Si los registros no tienen clase, mostrar como lista plana */
+        <Card>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              {registros.map((reg: any, idx: number) => {
+                const info = getEstadoInfo(reg.estado);
+                const Icon = info.icon;
+                return (
+                  <div key={idx} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-sm font-medium">
+                          {reg.clase?.materia?.nombre || 'Clase'}
+                        </span>
+                        <span className="text-sm text-muted-foreground ml-2">
+                          {new Date(reg.fecha).toLocaleDateString('es-ES', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`flex items-center gap-1 text-sm font-medium ${info.color}`}>
+                      <Icon className="w-4 h-4" />
+                      {info.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <ClipboardCheck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No hay registros de asistencia recientes</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function AsistenciaPage() {
+  const { user } = useAuthStore();
+
+  // Si es estudiante, mostrar vista propia
+  if (user?.role === 'ESTUDIANTE') {
+    return <MiAsistenciaEstudiante />;
+  }
+
+  return <AsistenciaStaffPage />;
+}
+
+function AsistenciaStaffPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const claseIdFromUrl = searchParams.get('clase');

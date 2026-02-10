@@ -296,6 +296,7 @@ export function BoletinIndividual({
   institucion?: {
     nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string;
     direccion: string | null; codigoCentro: string | null; distritoEducativo: string | null; regionalEducacion: string | null;
+    sabanaColores?: { colores?: Record<string, string>; sombras?: Record<string, string>; franja?: Record<string, string> } | null;
   } | null;
 }) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
@@ -352,8 +353,6 @@ export function BoletinIndividual({
 
   // Colores dinámicos según el grado
   const nivelNombre = sabanaData.nivel?.nombre || '';
-  const colorPrimario = nivelNombre.includes('6to') ? '#8B0000' :
-                        nivelNombre.includes('5to') ? '#166534' : '#1e3a8a';
   const colorClaro = nivelNombre.includes('6to') ? '#fef2f2' :
                      nivelNombre.includes('5to') ? '#f0fdf4' : '#eff6ff';
 
@@ -641,12 +640,13 @@ export function BoletinIndividual({
               width: 35.56cm !important;
             }
             @media print {
-              body { margin: 0; padding: 0; }
+              body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               .boletin-page {
                 page-break-after: always;
                 border: none !important;
                 width: 35.56cm !important;
               }
+              img { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             }
           </style>
         </head>
@@ -763,17 +763,22 @@ export function BoletinIndividual({
             {(() => {
               // const gn = sabanaData.nivel?.gradoNumero || 0;
               const gn = sabanaData.nivel?.gradoNumero || (() => {
-  const match = sabanaData.nivel?.nombre?.match(/(\d+)/);
-  return match ? parseInt(match[1]) : 0;
-})();
-              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'ro' : 'to';
-              const gradoColores: Record<number, string> = {
+              const match = sabanaData.nivel?.nombre?.match(/(\d+)/);
+              return match ? parseInt(match[1]) : 0;
+              })();
+              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'er' : 'to';
+              const defaultColores: Record<number, string> = {
                 1: '#2563eb', 2: '#16a34a', 3: '#9333ea',
                 4: '#dc2626', 5: '#ea580c', 6: '#0891b2',
               };
-              const gradoColor = gradoColores[gn] || '#1e3a8a';
-              console.log('gradoNumero:', sabanaData.nivel?.gradoNumero, typeof sabanaData.nivel?.gradoNumero);
-
+              const savedColores = institucion?.sabanaColores?.colores;
+              const gradoColor = (savedColores && savedColores[String(gn)]) || defaultColores[gn] || '#1e3a8a';
+              const defaultSombras: Record<number, string> = {
+                1: '#1e40af', 2: '#166534', 3: '#6b21a8',
+                4: '#991b1b', 5: '#c2410c', 6: '#0e7490',
+              };
+              const savedSombras = institucion?.sabanaColores?.sombras;
+              const gradoSombra = (savedSombras && savedSombras[String(gn)]) || defaultSombras[gn] || '#000';
               return (
                 <div style={{ display: 'flex', alignItems: 'flex-end', marginTop: '10px', marginBottom: '0' }}>
                   {/* Cuadro: Nombres y Apellidos */}
@@ -821,6 +826,7 @@ export function BoletinIndividual({
                           fontWeight: '900',
                           color: gradoColor,
                           lineHeight: '0.20',
+                          textShadow: `3px 3px 6px ${gradoSombra}`,
                         }}>
                           {gn}
                         </span>
@@ -832,7 +838,8 @@ export function BoletinIndividual({
                           position: 'absolute',
                           right: '-34px',
                           bottom: '10px',
-                          marginTop:'-10px'
+                          marginTop:'-10px',
+                          textShadow: `2px 2px 4px ${gradoSombra}`,
                         }}>
                           {sufijo}
                         </sup>
@@ -880,12 +887,13 @@ export function BoletinIndividual({
 
             {/* TÍTULO ASIGNATURAS GENERALES */}
             <div style={{
-              backgroundColor: colorPrimario,
-              color: 'white',
+              backgroundColor: '#fef3c7',
+              color: 'black',
               padding: '4px 8px',
               fontWeight: 'bold',
               fontSize: '10px',
-              marginBottom: '3px'
+              marginBottom: '3px',
+              border: '1px solid black',
             }}>
               {isHT ? 'MATIÈRES GÉNÉRALES' : 'ASIGNATURAS GENERALES (FORMACIÓN FUNDAMENTAL)'}
             </div>
@@ -898,7 +906,7 @@ export function BoletinIndividual({
               fontSize: '8px'
             }}>
               <thead>
-                <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
+                <tr style={{ backgroundColor: '#fef3c7', color: 'black' }}>
                   <th rowSpan={2} style={{ border: '1px solid black', padding: '3px', width: '12%', textAlign: 'left' }}>
                     {isHT ? 'MATIÈRES' : 'ASIGNATURAS'}
                   </th>
@@ -1243,12 +1251,14 @@ export function BoletinIndividual({
             {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
               <>
                 <div style={{
-                  backgroundColor: colorPrimario,
-                  color: 'white',
+                  backgroundColor: '#f5f1e1',
+                  color: 'black',
                   padding: '4px 8px',
                   fontWeight: 'bold',
-                  fontSize: '9px',
-                  marginBottom: '3px'
+                  fontSize: '14px',
+                  marginBottom: '3px',
+                  border: '1px solid black',
+                  textAlign: 'center',
                 }}>
                   BLOQUE DE LOS MÓDULOS FORMATIVOS
                 </div>
@@ -1258,7 +1268,7 @@ export function BoletinIndividual({
                   <thead>
                     {/* Fila 1: "Periodo de Aprobación" arriba a la izquierda + celdas RA vacías sin color */}
                     <tr>
-                      <th style={{ border: '1px solid black', padding: '4px', width: '14%', textAlign: 'left', fontSize: '7px', backgroundColor: colorPrimario, color: 'white' }}>
+                      <th style={{ border: '1px solid black', padding: '4px', width: '14%', textAlign: 'left', fontSize: '10px', backgroundColor: '#fef3c7', color: 'black' }}>
                         Periodo de Aprobación
                       </th>
                       {RAS_DISPLAY.map((ra) => (
@@ -1273,7 +1283,7 @@ export function BoletinIndividual({
                         color: 'black',
                         verticalAlign: 'middle',
                       }}>
-                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: '6px', fontWeight: 'bold', margin: '0 auto' }}>
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: 'bold', margin: '0 auto' }}>
                           CALIFICACIÓN FINAL
                         </div>
                       </th>
@@ -1304,12 +1314,12 @@ export function BoletinIndividual({
                       </th>
                     </tr>
                     {/* Fila 2: "MÓDULOS FORMATIVOS" (rowSpan=2) + 10 columnas RA sin número */}
-                    <tr style={{ backgroundColor: colorPrimario, color: 'white' }}>
+                    <tr style={{ backgroundColor: '#fef3c7', color: 'black' }}>
                       <th rowSpan={2} style={{ border: '1px solid black', padding: '4px', textAlign: 'left', fontSize: '7px', verticalAlign: 'middle' }}>
                         MÓDULOS FORMATIVOS
                       </th>
                       {RAS_DISPLAY.map((ra) => (
-                        <th key={ra} colSpan={3} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontSize: '6px' }}>
+                        <th key={ra} colSpan={3} style={{ border: '1px solid black', padding: '2px', textAlign: 'center', fontSize: '10px' }}>
                           RA
                         </th>
                       ))}
@@ -1647,7 +1657,7 @@ export function BoletinIndividual({
                       fontFamily: 'Arial, sans-serif', lineHeight: '1.5',
                     }}
                   />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                     <button
                       onClick={saveObservaciones}
                       disabled={isSavingObs || isReadOnly}
@@ -1695,21 +1705,30 @@ export function BoletinIndividual({
                 const match = sabanaData.nivel?.nombre?.match(/(\d+)/);
                 return match ? parseInt(match[1]) : 0;
               })();
-              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'ro' : 'to';
-              const gradoColores: Record<number, string> = {
+              const sufijo = gn === 2 ? 'do' : gn <= 3 ? 'er' : 'to';
+              const defaultColores: Record<number, string> = {
                 1: '#2563eb', 2: '#16a34a', 3: '#9333ea',
                 4: '#dc2626', 5: '#ea580c', 6: '#0891b2',
               };
-              const franjaColor = gradoColores[gn] || '#1e3a8a';
+              const savedColores = institucion?.sabanaColores?.colores;
+              const franjaColor = (savedColores && savedColores[String(gn)]) || defaultColores[gn] || '#1e3a8a';
+              const defaultSombras: Record<number, string> = {
+                1: '#1e40af', 2: '#166534', 3: '#6b21a8',
+                4: '#991b1b', 5: '#c2410c', 6: '#0e7490',
+              };
+              const savedSombras = institucion?.sabanaColores?.sombras;
+              const gradoSombra = (savedSombras && savedSombras[String(gn)]) || defaultSombras[gn] || '#000';
+              const savedFranja = institucion?.sabanaColores?.franja;
+              const franjaVerticalColor = (savedFranja && savedFranja[String(gn)]) || franjaColor;
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'row', height: '100%' }}>
                   {/* Franja VERTICAL a la IZQUIERDA con nombre del centro y lema */}
                   <div style={{
-                    backgroundColor: franjaColor,
+                    backgroundColor: franjaVerticalColor,
                     color: 'white',
-                    width: '45px',
-                    minWidth: '45px',
+                    width: '80px',
+                    minWidth: '80px',
                     height: '100%',
                     display: 'flex',
                     alignItems: 'center',
@@ -1719,14 +1738,17 @@ export function BoletinIndividual({
                       writingMode: 'vertical-rl',
                       transform: 'rotate(180deg)',
                       textAlign: 'center',
-                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}>
-                      <span style={{ fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px' }}>
+                      <span style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '2px', whiteSpace: 'nowrap' }}>
                         {institucion?.nombre || 'INSTITUCIÓN EDUCATIVA'}
                       </span>
                       {institucion?.lema && (
-                        <span style={{ fontSize: '9px', fontStyle: 'italic', marginLeft: '6px' }}>
-                          {' — '}{institucion.lema}
+                        <span style={{ fontSize: '27px', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                          {institucion.lema}
                         </span>
                       )}
                     </div>
@@ -1739,7 +1761,7 @@ export function BoletinIndividual({
                       <img
                         src="https://www.ministeriodeeducacion.gob.do/img/logo/logoMinerdHD.svg"
                         alt="MINERD"
-                        style={{ width: '100px' }}
+                        style={{ width: '100px', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as React.CSSProperties}
                       />
                     </div>
 
@@ -1774,6 +1796,7 @@ export function BoletinIndividual({
                               fontWeight: '900',
                               color: franjaColor,
                               lineHeight: '0.20',
+                              textShadow: `3px 3px 6px ${gradoSombra}`,
                             }}>
                               {gn}
                             </span>
@@ -1784,7 +1807,8 @@ export function BoletinIndividual({
                               position: 'absolute',
                               right: '-34px',
                               bottom: '10px',
-                              marginTop: '-10px'
+                              marginTop: '-10px',
+                              textShadow: `2px 2px 4px ${gradoSombra}`,
                             }}>
                               {sufijo}
                             </sup>
@@ -1807,7 +1831,7 @@ export function BoletinIndividual({
                     </div>
 
                     {/* Modalidad */}
-                    <div style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '10px', marginTop: '30px' }}>
                       MODALIDAD TÉCNICO PROFESIONAL
                     </div>
 
@@ -1837,13 +1861,13 @@ export function BoletinIndividual({
                     </div>
 
                     {/* Formulario oficial */}
-                    <div style={{ width: '90%', fontSize: '9px' }}>
+                    <div style={{ width: '90%', fontSize: '15px' }}>
                       {/* Fila superior: SECCIÓN y NÚMERO DE ORDEN */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
                           <span style={{
                             backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
-                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' as const,
                             whiteSpace: 'nowrap',
                           }}>SECCIÓN</span>
                           <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px' }}></div>
@@ -1851,7 +1875,7 @@ export function BoletinIndividual({
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
                           <span style={{
                             backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
-                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' as const,
                             whiteSpace: 'nowrap',
                           }}>NÚMERO DE ORDEN</span>
                           <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px' }}></div>
@@ -1871,10 +1895,10 @@ export function BoletinIndividual({
                         <div key={campo.label} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '8px' }}>
                           <span style={{
                             backgroundColor: '#2d3a2e', color: 'white', padding: '4px 8px',
-                            fontWeight: 'bold', fontSize: '8px', textTransform: 'uppercase' as const,
+                            fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' as const,
                             whiteSpace: 'nowrap', minWidth: '70px', textAlign: 'center',
                           }}>{campo.label}</span>
-                          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px', fontSize: '9px', paddingBottom: '2px' }}>
+                          <div style={{ flex: 1, borderBottom: '1px solid black', minHeight: '16px', fontSize: '15px', paddingBottom: '2px' }}>
                             {campo.value}
                           </div>
                         </div>
@@ -1901,10 +1925,11 @@ export function BoletinIndividual({
         }
         @media print {
           @page { size: 35.56cm 21.59cm; margin: 0; }
-          body { margin: 0; padding: 0; }
+          body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .no-print { display: none !important; }
           .print-only { display: block !important; }
           .boletin-page { page-break-after: always; border: none !important; width: 35.56cm !important; }
+          img { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
     </>
@@ -1931,6 +1956,7 @@ export default function SabanaNotasPage() {
   const [institucion, setInstitucion] = useState<{
     nombre: string; lema: string | null; logoUrl: string | null; colorPrimario: string;
     direccion: string | null; codigoCentro: string | null; distritoEducativo: string | null; regionalEducacion: string | null;
+    sabanaColores?: { colores?: Record<string, string>; sombras?: Record<string, string>; franja?: Record<string, string> } | null;
   } | null>(null);
 
   const isDocente = user?.role === 'DOCENTE';
@@ -1974,6 +2000,7 @@ export default function SabanaNotasPage() {
               codigoCentro: inst.codigoCentro || null,
               distritoEducativo: inst.distritoEducativo || null,
               regionalEducacion: inst.regionalEducacion || null,
+              sabanaColores: inst.sabanaColores || null,
             });
           } catch {
             console.error('Error cargando institución');

@@ -7,6 +7,7 @@
 import { SistemaEducativo } from '@prisma/client';
 import prisma from '../config/db';
 import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
+import { crearNotificacionesMasivas } from './notificacion.service';
 
 export interface SabanaCalificacion {
   // Notas Generales (P1-P4)
@@ -665,6 +666,32 @@ export const publicarCalificaciones = async (
       publicadoPor: userId,
     },
   });
+
+  // Crear notificaciones para estudiantes si hubo calificaciones publicadas
+  const totalPublicadas = calificacionesUpdate.count + competenciasUpdate.count;
+  if (totalPublicadas > 0) {
+    try {
+      const inscripciones = await prisma.inscripcion.findMany({
+        where: { claseId },
+        select: { estudianteId: true },
+      });
+
+      const estudianteUserIds = await prisma.user.findMany({
+        where: { id: { in: inscripciones.map((i) => i.estudianteId) } },
+        select: { id: true },
+      });
+
+      const materiaNombre = clase.materia?.nombre || 'tu clase';
+      await crearNotificacionesMasivas(
+        estudianteUserIds.map((u) => u.id),
+        'Calificaciones Publicadas',
+        `Se han publicado nuevas calificaciones en ${materiaNombre}. Revisa tu boletín.`
+      );
+    } catch (err) {
+      // No falla la publicación si las notificaciones fallan
+      console.error('Error creando notificaciones:', err);
+    }
+  }
 
   return {
     calificacionesPublicadas: calificacionesUpdate.count,

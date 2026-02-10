@@ -17,10 +17,10 @@ const router = Router();
 // Ruta pública para buscar clase por código (para inscripción)
 router.get('/codigo/:codigo', getClaseByCodigoHandler);
 
-// Rutas protegidas - todos los roles de staff pueden ver clases
+// Rutas protegidas - todos los roles pueden ver clases (incluyendo estudiantes)
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA, ROLES.ESTUDIANTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware
 );

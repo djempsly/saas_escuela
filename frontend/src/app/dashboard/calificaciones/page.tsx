@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useState, useCallback, Fragment } from 'react';
-import { sabanaApi, clasesApi, calificacionesApi } from '@/lib/api';
+import { sabanaApi, clasesApi, calificacionesApi, ciclosApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, BookOpen, Edit3, Eye, Check, X } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Loader2, BookOpen, Edit3, Eye, Check, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 // CSS para quitar spinners de inputs numéricos
@@ -81,8 +89,14 @@ export default function CalificacionesPage() {
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Vista estudiante (legacy)
+  // Vista estudiante
   const [studentCalificaciones, setStudentCalificaciones] = useState<any[]>([]);
+  const [studentCompetencias, setStudentCompetencias] = useState<any[]>([]);
+  const [ciclosLectivos, setCiclosLectivos] = useState<any[]>([]);
+  const [selectedCicloId, setSelectedCicloId] = useState('');
+  const [boletinData, setBoletinData] = useState<any>(null);
+  const [isLoadingBoletin, setIsLoadingBoletin] = useState(false);
+  const [boletinOpen, setBoletinOpen] = useState(false);
 
   const userRole = user?.role || '';
   const canRead = ROLES_LECTURA.includes(userRole) || userRole === 'ESTUDIANTE';
@@ -97,7 +111,20 @@ export default function CalificacionesPage() {
       try {
         if (isEstudiante) {
           const res = await calificacionesApi.getMisCalificaciones();
-          setStudentCalificaciones(res.data?.data || res.data || []);
+          const data = res.data?.data || res.data || {};
+          setStudentCalificaciones(data.calificaciones || data || []);
+          setStudentCompetencias(data.calificacionesCompetencia || []);
+          // Cargar ciclos lectivos para el selector de boletín
+          try {
+            const ciclosRes = await ciclosApi.getAll();
+            const ciclosData = ciclosRes.data?.data || ciclosRes.data || [];
+            setCiclosLectivos(Array.isArray(ciclosData) ? ciclosData : []);
+            // Seleccionar el ciclo activo por defecto
+            const activo = ciclosData.find((c: any) => c.activo);
+            if (activo) setSelectedCicloId(activo.id);
+          } catch {
+            // silently fail
+          }
         } else if (canRead) {
           const res = await clasesApi.getAll();
           const data = res.data?.data || res.data || [];
@@ -111,6 +138,20 @@ export default function CalificacionesPage() {
     };
     load();
   }, [isEstudiante, canRead]);
+
+  // Cargar boletín
+  const loadBoletin = useCallback(async () => {
+    if (!selectedCicloId || !isEstudiante) return;
+    setIsLoadingBoletin(true);
+    try {
+      const res = await calificacionesApi.getMiBoletin(selectedCicloId);
+      setBoletinData(res.data?.data || res.data || null);
+    } catch (err) {
+      toast.error('Error al cargar boletín');
+    } finally {
+      setIsLoadingBoletin(false);
+    }
+  }, [selectedCicloId, isEstudiante]);
 
   // Cargar calificaciones por competencia
   const loadGrades = useCallback(async () => {
@@ -296,70 +337,287 @@ export default function CalificacionesPage() {
     );
   }
 
-  // Vista Estudiante (legacy)
+  // Vista Estudiante
   if (isEstudiante) {
+    // Agrupar competencias por materia
+    const competenciasPorMateria: Record<string, { materia: string; competencias: any[] }> = {};
+    for (const comp of studentCompetencias) {
+      const materiaName = comp.clase?.materia?.nombre || 'Sin materia';
+      if (!competenciasPorMateria[materiaName]) {
+        competenciasPorMateria[materiaName] = { materia: materiaName, competencias: [] };
+      }
+      competenciasPorMateria[materiaName].competencias.push(comp);
+    }
+
+    const getGradeColor = (val: number | null) => {
+      if (val == null) return 'text-muted-foreground';
+      if (val >= 70) return 'text-green-600';
+      if (val >= 60) return 'text-yellow-600';
+      return 'text-red-600';
+    };
+
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Mis Calificaciones</h1>
-          <p className="text-muted-foreground">Consulta tus calificaciones</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Mis Calificaciones</h1>
+            <p className="text-muted-foreground">Consulta tus calificaciones y boletín</p>
+          </div>
+          <Dialog open={boletinOpen} onOpenChange={setBoletinOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  if (selectedCicloId && !boletinData) loadBoletin();
+                }}
+              >
+                <FileText className="w-4 h-4" />
+                Ver mi Boletín
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Mi Boletín de Calificaciones</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex gap-2 items-center">
+                  <label className="text-sm font-medium">Ciclo Lectivo:</label>
+                  <select
+                    value={selectedCicloId}
+                    onChange={(e) => {
+                      setSelectedCicloId(e.target.value);
+                      setBoletinData(null);
+                    }}
+                    className="px-3 py-1.5 border rounded-md text-sm"
+                  >
+                    <option value="">-- Seleccionar --</option>
+                    {ciclosLectivos.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre} {c.activo ? '(Activo)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    onClick={loadBoletin}
+                    disabled={!selectedCicloId || isLoadingBoletin}
+                  >
+                    {isLoadingBoletin ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cargar'}
+                  </Button>
+                </div>
+
+                {isLoadingBoletin ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : boletinData ? (
+                  <div className="space-y-4">
+                    {boletinData.institucion && (
+                      <div className="text-center border-b pb-3">
+                        <h3 className="font-bold text-lg">{boletinData.institucion.nombre}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {boletinData.estudiante?.nombre} {boletinData.estudiante?.apellido} - {boletinData.cicloLectivo?.nombre}
+                        </p>
+                      </div>
+                    )}
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left p-3 font-medium">Materia</th>
+                          {PERIODOS.map(p => (
+                            <th key={p.key} className="text-center p-2 font-medium w-14">{p.label}</th>
+                          ))}
+                          <th className="text-center p-2 font-medium w-16 bg-slate-100">Prom.</th>
+                          <th className="text-center p-2 font-medium w-20">Situación</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {boletinData.calificaciones?.map((cal: any, idx: number) => (
+                          <tr key={idx} className="border-t">
+                            <td className="p-3 font-medium">{cal.materia}</td>
+                            {PERIODOS.map(p => {
+                              const val = cal[p.key] as number | null;
+                              return (
+                                <td key={p.key} className={`text-center p-2 ${getGradeColor(val)}`}>
+                                  {val ?? '-'}
+                                </td>
+                              );
+                            })}
+                            <td className={`text-center p-2 font-bold bg-slate-50 ${getGradeColor(cal.promedioFinal)}`}>
+                              {cal.promedioFinal != null ? Number(cal.promedioFinal).toFixed(1) : '-'}
+                            </td>
+                            <td className="text-center p-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                cal.situacion === 'APROBADO' ? 'bg-green-100 text-green-700' :
+                                cal.situacion === 'REPROBADO' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {cal.situacion || '-'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {boletinData.promedioGeneral != null && (
+                      <div className="text-right font-bold text-sm">
+                        Promedio General: {Number(boletinData.promedioGeneral).toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground text-sm">
+                    Selecciona un ciclo lectivo y presiona &quot;Cargar&quot;
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : studentCalificaciones.length > 0 ? (
-          <Card>
-            <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full min-w-[600px]">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="text-left p-4 font-medium text-sm">Materia</th>
-                    {PERIODOS.map(p => (
-                      <Fragment key={p.key}>
-                        <th className="text-center p-2 font-medium text-sm w-16">{p.label}</th>
-                        <th className="text-center p-2 font-medium text-sm w-16 bg-amber-50">R{p.label}</th>
-                      </Fragment>
-                    ))}
-                    <th className="text-center p-4 font-medium text-sm w-24 bg-slate-100">Promedio</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentCalificaciones.map((cal: any, idx: number) => {
-                    const promedio = cal.promedioFinal ?? cal.promedio ?? null;
-                    return (
-                      <tr key={idx} className="border-t hover:bg-slate-50">
-                        <td className="p-4 font-medium text-sm">{cal.clase?.materia?.nombre || 'Sin materia'}</td>
-                        {PERIODOS.map(p => {
-                          const pVal = cal[p.key] as number | null;
-                          const rpVal = cal[p.rpKey] as number | null;
-                          const pColor = pVal != null ? (pVal >= 70 ? 'text-green-600' : pVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
-                          const rpColor = rpVal != null ? (rpVal >= 70 ? 'text-green-600' : rpVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
-                          return (
+        ) : (
+          <Tabs defaultValue="general" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="general">Vista General</TabsTrigger>
+              <TabsTrigger value="competencias">Vista por Competencias</TabsTrigger>
+            </TabsList>
+
+            {/* Vista General - tabla existente */}
+            <TabsContent value="general">
+              {studentCalificaciones.length > 0 ? (
+                <Card>
+                  <CardContent className="p-0 overflow-x-auto">
+                    <table className="w-full min-w-[600px]">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left p-4 font-medium text-sm">Materia</th>
+                          {PERIODOS.map(p => (
                             <Fragment key={p.key}>
-                              <td className={`text-center p-2 text-sm ${pColor}`}>{pVal ?? '-'}</td>
-                              <td className={`text-center p-2 text-sm bg-amber-50 ${rpColor}`}>{rpVal ?? '-'}</td>
+                              <th className="text-center p-2 font-medium text-sm w-16">{p.label}</th>
+                              <th className="text-center p-2 font-medium text-sm w-16 bg-amber-50">R{p.label}</th>
                             </Fragment>
+                          ))}
+                          <th className="text-center p-4 font-medium text-sm w-24 bg-slate-100">Promedio</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentCalificaciones.map((cal: any, idx: number) => {
+                          const promedio = cal.promedioFinal ?? cal.promedio ?? null;
+                          return (
+                            <tr key={idx} className="border-t hover:bg-slate-50">
+                              <td className="p-4 font-medium text-sm">{cal.clase?.materia?.nombre || 'Sin materia'}</td>
+                              {PERIODOS.map(p => {
+                                const pVal = cal[p.key] as number | null;
+                                const rpVal = cal[p.rpKey] as number | null;
+                                const pColor = pVal != null ? (pVal >= 70 ? 'text-green-600' : pVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                                const rpColor = rpVal != null ? (rpVal >= 70 ? 'text-green-600' : rpVal >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                                return (
+                                  <Fragment key={p.key}>
+                                    <td className={`text-center p-2 text-sm ${pColor}`}>{pVal ?? '-'}</td>
+                                    <td className={`text-center p-2 text-sm bg-amber-50 ${rpColor}`}>{rpVal ?? '-'}</td>
+                                  </Fragment>
+                                );
+                              })}
+                              <td className="text-center p-4 font-bold text-sm bg-slate-50">
+                                {promedio != null ? Number(promedio).toFixed(1) : '-'}
+                              </td>
+                            </tr>
                           );
                         })}
-                        <td className="text-center p-4 font-bold text-sm bg-slate-50">
-                          {promedio != null ? Number(promedio).toFixed(1) : '-'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No hay calificaciones registradas</p>
-            </CardContent>
-          </Card>
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No hay calificaciones registradas</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Vista por Competencias */}
+            <TabsContent value="competencias">
+              {Object.keys(competenciasPorMateria).length > 0 ? (
+                <div className="space-y-4">
+                  {Object.values(competenciasPorMateria).map((grupo) => (
+                    <Card key={grupo.materia}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">{grupo.materia}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0 overflow-x-auto">
+                        <table className="w-full min-w-[600px] text-sm">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="text-left p-3 font-medium">Competencia</th>
+                              {PERIODOS.map(p => (
+                                <Fragment key={p.key}>
+                                  <th className="text-center p-2 font-medium w-14">{p.label}</th>
+                                  <th className="text-center p-2 font-medium w-14 bg-amber-50">R{p.label}</th>
+                                </Fragment>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupo.competencias.map((comp: any, idx: number) => {
+                              const compInfo = COMPETENCIAS.find(c => c.id === comp.competencia);
+                              return (
+                                <tr key={idx} className="border-t hover:bg-slate-50">
+                                  <td className="p-3 font-medium">
+                                    <span className="text-xs text-muted-foreground mr-1">{compInfo?.corto || comp.competencia}</span>
+                                    {compInfo?.nombre || comp.competencia}
+                                  </td>
+                                  {PERIODOS.map(p => {
+                                    const pVal = comp[p.key] as number | null;
+                                    const rpVal = comp[p.rpKey] as number | null;
+                                    return (
+                                      <Fragment key={p.key}>
+                                        <td className={`text-center p-2 ${getGradeColor(pVal)}`}>{pVal ?? '-'}</td>
+                                        <td className={`text-center p-2 bg-amber-50 ${getGradeColor(rpVal)}`}>{rpVal ?? '-'}</td>
+                                      </Fragment>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No hay calificaciones por competencia publicadas</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Leyenda */}
+        {studentCalificaciones.length > 0 && (
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-green-500"></span> 70-100: Aprobado
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-yellow-500"></span> 60-69: En riesgo
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-red-500"></span> 0-59: Reprobado
+            </span>
+          </div>
         )}
       </div>
     );

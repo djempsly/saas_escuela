@@ -87,6 +87,20 @@ export const getDashboardStats = async (institucionId: string) => {
     },
   });
 
+  // Obtener sistemas educativos de la institución
+  const institucion = await prisma.institucion.findUnique({
+    where: { id: institucionId },
+    select: {
+      sistema: true,
+      sistemasEducativos: {
+        where: { activo: true },
+        select: { sistema: true },
+      },
+    },
+  });
+
+  const sistemasEducativos = institucion?.sistemasEducativos.map((s) => s.sistema) || [];
+
   return {
     cicloActivo: cicloActivo ? { id: cicloActivo.id, nombre: cicloActivo.nombre } : null,
     estadisticas: {
@@ -100,6 +114,7 @@ export const getDashboardStats = async (institucionId: string) => {
       promedioAsistencia,
     },
     proximosEventos,
+    sistemasEducativos,
   };
 };
 
@@ -193,11 +208,71 @@ export const getDashboardStatsEstudiante = async (estudianteId: string, instituc
     promedioGeneral = Math.round((suma / calificaciones.length) * 10) / 10;
   }
 
+  // Porcentaje de asistencia (últimos 30 días)
+  const hace30Dias = new Date();
+  hace30Dias.setDate(hace30Dias.getDate() - 30);
+
+  const asistencias = await prisma.asistencia.findMany({
+    where: {
+      estudianteId,
+      clase: { institucionId },
+      fecha: { gte: hace30Dias },
+    },
+    select: { estado: true },
+  });
+
+  let porcentajeAsistencia = 0;
+  if (asistencias.length > 0) {
+    const presentes = asistencias.filter(
+      (a) => a.estado === 'PRESENTE' || a.estado === 'TARDE' || a.estado === 'JUSTIFICADO'
+    ).length;
+    porcentajeAsistencia = Math.round((presentes / asistencias.length) * 100 * 10) / 10;
+  }
+
+  // Notificaciones no leídas
+  const notificacionesNoLeidas = await prisma.notificacion.count({
+    where: { usuarioId: estudianteId, leida: false },
+  });
+
+  // Calificaciones recientes publicadas
+  const calificacionesRecientes = await prisma.calificacion.findMany({
+    where: {
+      estudianteId,
+      clase: { institucionId },
+      publicado: true,
+      publicadoAt: { not: null },
+    },
+    orderBy: { publicadoAt: 'desc' },
+    take: 5,
+    include: {
+      clase: { include: { materia: true } },
+    },
+  });
+
+  // Próximos eventos
+  const hoy = new Date();
+  const proximosEventos = await prisma.evento.findMany({
+    where: {
+      institucionId,
+      fechaInicio: { gte: hoy },
+    },
+    orderBy: { fechaInicio: 'asc' },
+    take: 5,
+    select: {
+      id: true,
+      titulo: true,
+      fechaInicio: true,
+      tipo: true,
+    },
+  });
+
   return {
     estadisticas: {
       totalClases,
       tareasPendientes,
       promedioGeneral,
+      porcentajeAsistencia,
+      notificacionesNoLeidas,
     },
     clases: inscripciones.map((i) => ({
       id: i.clase.id,
@@ -205,5 +280,11 @@ export const getDashboardStatsEstudiante = async (estudianteId: string, instituc
       nivel: i.clase.nivel.nombre,
       docente: `${i.clase.docente.nombre} ${i.clase.docente.apellido}`,
     })),
+    calificacionesRecientes: calificacionesRecientes.map((c) => ({
+      materia: c.clase.materia.nombre,
+      promedioFinal: c.promedioFinal,
+      publicadoAt: c.publicadoAt,
+    })),
+    proximosEventos,
   };
 };

@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { importApi, nivelesApi, estudiantesApi } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
 import {
   Upload,
   Download,
@@ -66,6 +68,15 @@ interface DuplicateMatch {
 }
 
 export default function ImportarEstudiantesPage() {
+  const { user } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user?.role === 'ESTUDIANTE' || user?.role === 'DOCENTE') {
+      router.replace('/dashboard');
+    }
+  }, [user?.role, router]);
+
   const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [selectedNivel, setSelectedNivel] = useState('');
   const [autoEnroll, setAutoEnroll] = useState(false);

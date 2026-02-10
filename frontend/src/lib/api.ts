@@ -166,6 +166,8 @@ export const institucionesApi = {
     api.patch(`/instituciones/${id}/config`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  updateDirectorConfig: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/instituciones/${id}/config-director`, data),
   updateSensitive: (id: string, data: any) =>
     api.patch(`/instituciones/${id}/sensitive`, data),
   updateSistemasEducativos: (id: string, sistemasEducativos: string[]) =>
@@ -553,6 +555,18 @@ export const mensajesApi = {
   }) => api.post(`/mensajes/conversaciones/${conversacionId}/mensajes`, data),
   marcarComoLeida: (conversacionId: string) =>
     api.put(`/mensajes/conversaciones/${conversacionId}/leer`),
+};
+
+// Notificaciones API
+export const notificacionesApi = {
+  getAll: (params?: { limit?: number; offset?: number }) =>
+    api.get('/notificaciones', { params }),
+  getNoLeidas: () =>
+    api.get('/notificaciones/no-leidas'),
+  marcarComoLeida: (id: string) =>
+    api.put(`/notificaciones/${id}/leer`),
+  marcarTodasComoLeidas: () =>
+    api.put('/notificaciones/leer-todas'),
 };
 
 // Cobros API

@@ -153,6 +153,7 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
       codigoCentro: z.string().max(50).optional(),
       distritoEducativo: z.string().max(100).optional(),
       regionalEducacion: z.string().max(100).optional(),
+      sabanaColores: z.string().optional(),
     });
 
     const validated = configSchema.parse(req.body);
@@ -203,6 +204,7 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
       codigoCentro: validated.codigoCentro,
       distritoEducativo: validated.distritoEducativo,
       regionalEducacion: validated.regionalEducacion,
+      sabanaColores: validated.sabanaColores,
     });
 
     return res.status(200).json(config);
@@ -219,6 +221,38 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
       message: error.message || 'Error interno del servidor',
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+};
+
+// Actualizar configuración visual (DIRECTOR - solo colores y sabana)
+export const updateDirectorConfigHandler = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params as { id: string };
+
+    const schema = z.object({
+      colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+      colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+      sabanaColores: z.string().optional(),
+    });
+
+    const validated = schema.parse(req.body);
+
+    const config = await updateInstitucionConfig(id, {
+      colorPrimario: validated.colorPrimario,
+      colorSecundario: validated.colorSecundario,
+      sabanaColores: validated.sabanaColores,
+    });
+
+    return res.status(200).json(config);
+  } catch (error: any) {
+    console.error('Error updating director config:', error?.message || error);
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (error.message?.includes('no encontrada')) {
+      return res.status(404).json({ message: error.message });
+    }
+    return res.status(500).json({ message: error.message || 'Error interno del servidor' });
   }
 };
 

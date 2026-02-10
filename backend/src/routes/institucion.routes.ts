@@ -7,6 +7,7 @@ import {
   deleteInstitucionHandler,
   getBrandingHandler,
   updateConfigHandler,
+  updateDirectorConfigHandler,
   getBrandingBySlugHandler,
   getBrandingByDominioHandler,
   updateSensitiveConfigHandler,
@@ -40,6 +41,9 @@ router.get('/check-slug/:slug', checkSlugHandler);
 
 // Verificar disponibilidad de dominio (para formulario de creación)
 router.get('/check-dominio/:dominio', checkDominioHandler);
+
+// ===== RUTA PROTEGIDA - DIRECTOR (config visual limitada) =====
+router.patch('/:id/config-director', authMiddleware, roleMiddleware([ROLES.DIRECTOR]), updateDirectorConfigHandler);
 
 // ===== RUTAS PROTEGIDAS - Solo ADMIN =====
 router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));

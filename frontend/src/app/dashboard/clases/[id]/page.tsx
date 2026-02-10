@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { clasesApi, inscripcionesApi, sabanaApi } from '@/lib/api';
+import { clasesApi, inscripcionesApi, sabanaApi, calificacionesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import {
   ArrowLeft,
@@ -62,7 +62,8 @@ export default function ClaseDetailPage() {
   const [clase, setClase] = useState<Clase | null>(null);
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'estudiantes' | 'calificaciones'>('estudiantes');
+  const isEstudianteInit = user?.role === 'ESTUDIANTE';
+  const [activeTab, setActiveTab] = useState<'estudiantes' | 'calificaciones'>(isEstudianteInit ? 'calificaciones' : 'estudiantes');
 
   // Sabana state
   const [sabanaData, setSabanaData] = useState<SabanaData | null>(null);
@@ -71,18 +72,24 @@ export default function ClaseDetailPage() {
   const [viewMode, setViewMode] = useState<'list' | 'boletin'>('list');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Estado para calificaciones del estudiante
+  const [misCalificaciones, setMisCalificaciones] = useState<any>(null);
+  const [loadingMisCalificaciones, setLoadingMisCalificaciones] = useState(false);
+
   const isDocente = user?.role === 'DOCENTE';
+  const isEstudiante = user?.role === 'ESTUDIANTE';
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [claseRes, inscripcionesRes] = await Promise.all([
-          clasesApi.getById(claseId),
-          inscripcionesApi.getByClase(claseId),
-        ]);
-
+        const claseRes = await clasesApi.getById(claseId);
         setClase(claseRes.data?.data || claseRes.data);
-        setInscripciones(inscripcionesRes.data?.data || inscripcionesRes.data || []);
+
+        // Estudiantes no tienen acceso a ver inscripciones de la clase
+        if (!isEstudiante) {
+          const inscripcionesRes = await inscripcionesApi.getByClase(claseId);
+          setInscripciones(inscripcionesRes.data?.data || inscripcionesRes.data || []);
+        }
       } catch (error) {
         console.error('Error cargando clase:', error);
       } finally {
@@ -93,15 +100,14 @@ export default function ClaseDetailPage() {
     if (claseId) {
       fetchData();
     }
-  }, [claseId]);
+  }, [claseId, isEstudiante]);
 
-  // Cargar sábana cuando se activa la pestaña y tenemos los datos de la clase
+  // Cargar sábana cuando se activa la pestaña (solo docente/admin)
   useEffect(() => {
     const loadSabana = async () => {
-      if (activeTab === 'calificaciones' && clase && !sabanaData && !loadingSabana) {
+      if (activeTab === 'calificaciones' && clase && !sabanaData && !loadingSabana && !isEstudiante) {
         setLoadingSabana(true);
         try {
-          // Usamos el nivel y ciclo de la clase para cargar la sábana completa
           const response = await sabanaApi.getSabana(clase.nivel.id, clase.cicloLectivo.id);
           setSabanaData(response.data);
         } catch (error) {
@@ -113,7 +119,37 @@ export default function ClaseDetailPage() {
     };
 
     loadSabana();
-  }, [activeTab, clase, sabanaData, loadingSabana]);
+  }, [activeTab, clase, sabanaData, loadingSabana, isEstudiante]);
+
+  // Cargar calificaciones del estudiante
+  useEffect(() => {
+    const loadMisCalificaciones = async () => {
+      if (activeTab === 'calificaciones' && isEstudiante && !misCalificaciones && !loadingMisCalificaciones) {
+        setLoadingMisCalificaciones(true);
+        try {
+          const res = await calificacionesApi.getMisCalificaciones();
+          const data = res.data?.data || res.data || {};
+          // Filtrar solo la calificación de esta clase
+          const cals = data.calificaciones || data || [];
+          const calClase = Array.isArray(cals)
+            ? cals.find((c: any) => c.claseId === claseId || c.clase?.id === claseId)
+            : null;
+          // Competencias de esta clase
+          const comps = data.calificacionesCompetencia || [];
+          const compsClase = Array.isArray(comps)
+            ? comps.filter((c: any) => c.claseId === claseId || c.clase?.id === claseId)
+            : [];
+          setMisCalificaciones({ calificacion: calClase, competencias: compsClase });
+        } catch (error) {
+          console.error('Error cargando mis calificaciones:', error);
+        } finally {
+          setLoadingMisCalificaciones(false);
+        }
+      }
+    };
+
+    loadMisCalificaciones();
+  }, [activeTab, isEstudiante, misCalificaciones, loadingMisCalificaciones, claseId]);
 
   // Filtrar estudiantes de la sábana para mostrar solo los de esta clase
   const estudiantesClase = useMemo(() => {
@@ -185,7 +221,7 @@ export default function ClaseDetailPage() {
       </div>
 
       {/* Info Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className={`grid gap-4 ${isEstudiante ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -200,19 +236,21 @@ export default function ClaseDetailPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Users className="w-5 h-5 text-primary" />
+        {!isEstudiante && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Estudiantes</p>
+                  <p className="font-medium">{inscripciones.length} inscritos</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Estudiantes</p>
-                <p className="font-medium">{inscripciones.length} inscritos</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="pt-6">
@@ -243,48 +281,52 @@ export default function ClaseDetailPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Acciones Rapidas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Link href={`/dashboard/asistencia?clase=${claseId}`}>
-              <Button variant="outline">
-                <ClipboardCheck className="w-4 h-4 mr-2" />
-                Tomar Asistencia
-              </Button>
-            </Link>
-            <Link href={`/dashboard/sabana-notas?nivel=${clase.nivel.id}&ciclo=${clase.cicloLectivo.id}`}>
-              <Button variant="outline">
-                <FileText className="w-4 h-4 mr-2" />
-                Sábana Completa (Todos los alumnos)
-              </Button>
-            </Link>
-            <Link href={`/dashboard/tareas?claseId=${claseId}`}>
-              <Button variant="outline">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Tareas
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions (solo para docentes/admin, NO estudiantes) */}
+      {!isEstudiante && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Acciones Rapidas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/dashboard/asistencia?clase=${claseId}`}>
+                <Button variant="outline">
+                  <ClipboardCheck className="w-4 h-4 mr-2" />
+                  Tomar Asistencia
+                </Button>
+              </Link>
+              <Link href={`/dashboard/sabana-notas?nivel=${clase.nivel.id}&ciclo=${clase.cicloLectivo.id}`}>
+                <Button variant="outline">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Sábana Completa (Todos los alumnos)
+                </Button>
+              </Link>
+              <Link href={`/dashboard/tareas?claseId=${claseId}`}>
+                <Button variant="outline">
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Tareas
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 border-b">
-        <button
-          onClick={() => setActiveTab('estudiantes')}
-          className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-            activeTab === 'estudiantes'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Users className="w-4 h-4 inline mr-2" />
-          Estudiantes ({inscripciones.length})
-        </button>
+        {!isEstudiante && (
+          <button
+            onClick={() => setActiveTab('estudiantes')}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              activeTab === 'estudiantes'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            Estudiantes ({inscripciones.length})
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('calificaciones')}
           className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -294,12 +336,12 @@ export default function ClaseDetailPage() {
           }`}
         >
           <FileText className="w-4 h-4 inline mr-2" />
-          Sábana de Notas
+          {isEstudiante ? 'Mis Calificaciones' : 'Sábana de Notas'}
         </button>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'estudiantes' ? (
+      {activeTab === 'estudiantes' && !isEstudiante ? (
         <Card>
           <CardContent className="p-0">
             {inscripciones.length > 0 ? (
@@ -334,9 +376,118 @@ export default function ClaseDetailPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
+      ) : activeTab === 'calificaciones' && isEstudiante ? (
+        /* Vista de calificaciones del estudiante */
         <div className="space-y-4">
-            {/* Contenido de Sábana de Notas */}
+          {loadingMisCalificaciones ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : misCalificaciones?.calificacion ? (
+            <>
+              {/* Calificaciones generales */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Notas por Período</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full min-w-[500px] text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="text-left p-3 font-medium">Período</th>
+                        <th className="text-center p-3 font-medium">Nota</th>
+                        <th className="text-center p-3 font-medium bg-amber-50">Recuperación</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['p1', 'p2', 'p3', 'p4'].map((periodo, idx) => {
+                        const cal = misCalificaciones.calificacion;
+                        const nota = cal[periodo] as number | null;
+                        const rp = cal[`r${periodo}`] as number | null;
+                        const notaColor = nota != null ? (nota >= 70 ? 'text-green-600' : nota >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                        const rpColor = rp != null ? (rp >= 70 ? 'text-green-600' : rp >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                        return (
+                          <tr key={periodo} className="border-t">
+                            <td className="p-3 font-medium">Período {idx + 1}</td>
+                            <td className={`text-center p-3 font-semibold ${notaColor}`}>{nota ?? '-'}</td>
+                            <td className={`text-center p-3 bg-amber-50 ${rpColor}`}>{rp ?? '-'}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="border-t bg-slate-50">
+                        <td className="p-3 font-bold">Promedio Final</td>
+                        <td colSpan={2} className={`text-center p-3 font-bold text-lg ${
+                          misCalificaciones.calificacion.promedioFinal != null
+                            ? misCalificaciones.calificacion.promedioFinal >= 70 ? 'text-green-600' : 'text-red-600'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {misCalificaciones.calificacion.promedioFinal != null
+                            ? Number(misCalificaciones.calificacion.promedioFinal).toFixed(1)
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              {/* Competencias si existen */}
+              {misCalificaciones.competencias && misCalificaciones.competencias.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Notas por Competencia</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                    <table className="w-full min-w-[600px] text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left p-3 font-medium">Competencia</th>
+                          <th className="text-center p-2 font-medium w-14">P1</th>
+                          <th className="text-center p-2 font-medium w-14">P2</th>
+                          <th className="text-center p-2 font-medium w-14">P3</th>
+                          <th className="text-center p-2 font-medium w-14">P4</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {misCalificaciones.competencias.map((comp: any, idx: number) => {
+                          const COMP_NAMES: Record<string, string> = {
+                            COMUNICATIVA: 'Comunicativa',
+                            LOGICO: 'Pensamiento Lógico',
+                            CIENTIFICO: 'Científica y Tecnológica',
+                            ETICO: 'Ética y Ciudadana',
+                            DESARROLLO: 'Desarrollo Personal',
+                          };
+                          return (
+                            <tr key={idx} className="border-t">
+                              <td className="p-3 font-medium">{COMP_NAMES[comp.competencia] || comp.competencia}</td>
+                              {['p1', 'p2', 'p3', 'p4'].map((p) => {
+                                const val = comp[p] as number | null;
+                                const color = val != null ? (val >= 70 ? 'text-green-600' : val >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
+                                return (
+                                  <td key={p} className={`text-center p-2 ${color}`}>{val ?? '-'}</td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay calificaciones publicadas para esta materia</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : activeTab === 'calificaciones' ? (
+        /* Vista sábana para docentes/admin */
+        <div className="space-y-4">
             {loadingSabana ? (
                 <div className="flex justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -357,14 +508,14 @@ export default function ClaseDetailPage() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 {estudiantesClase.length === 0 ? (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <p>No se encontraron estudiantes para esta clase.</p>
                                     </div>
                                 ) : (
                                     <div className="divide-y">
-                                        {estudiantesClase.map((est, idx) => (
+                                        {estudiantesClase.map((est) => (
                                             <button
                                                 key={est.id}
                                                 className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-center gap-3"
@@ -398,7 +549,7 @@ export default function ClaseDetailPage() {
                             materias={sabanaData.materias}
                             sabanaData={sabanaData}
                             currentIndex={currentStudentIndex}
-                            totalEstudiantes={sabanaData.estudiantes.length} // Note: This navigation might iterate over ALL students in level, not just filtered ones. This is okay for "Sábana" context.
+                            totalEstudiantes={sabanaData.estudiantes.length}
                             onPrevious={() => currentStudentIndex > 0 && setCurrentStudentIndex(currentStudentIndex - 1)}
                             onNext={() => currentStudentIndex < sabanaData.estudiantes.length - 1 && setCurrentStudentIndex(currentStudentIndex + 1)}
                             onBack={() => setViewMode('list')}
@@ -416,7 +567,7 @@ export default function ClaseDetailPage() {
                 </div>
             )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

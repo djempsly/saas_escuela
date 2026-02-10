@@ -17,6 +17,7 @@ import {
   Layers,
   FileText,
   UserCheck,
+  School,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -32,6 +33,8 @@ interface DashboardStats {
     promedioAsistencia?: number;
     tareasPendientes?: number;
     promedioGeneral?: number;
+    porcentajeAsistencia?: number;
+    notificacionesNoLeidas?: number;
   };
   proximosEventos?: Array<{
     id: string;
@@ -46,6 +49,12 @@ interface DashboardStats {
     estudiantes?: number;
     docente?: string;
   }>;
+  calificacionesRecientes?: Array<{
+    materia: string;
+    promedioFinal: number | null;
+    publicadoAt: string | null;
+  }>;
+  sistemasEducativos?: string[];
 }
 
 export default function DashboardPage() {
@@ -55,6 +64,44 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const primaryColor = branding?.colorPrimario || '#1a365d';
+
+  const SISTEMA_LABELS: Record<string, string> = {
+    INICIAL_DO: 'Nivel Inicial',
+    PRIMARIA_DO: 'Primaria',
+    SECUNDARIA_GENERAL_DO: 'Secundaria General',
+    POLITECNICO_DO: 'Politécnico',
+    INICIAL_HT: 'Niveau Initial',
+    PRIMARIA_HT: 'Primaire',
+    SECUNDARIA_HT: 'Secondaire',
+  };
+
+  const getTipoCentro = (sistemas: string[]): string => {
+    if (!sistemas || sistemas.length === 0) return 'Sin configurar';
+
+    const has = (s: string) => sistemas.includes(s);
+    const hasInicial = has('INICIAL_DO') || has('INICIAL_HT');
+    const hasPrimaria = has('PRIMARIA_DO') || has('PRIMARIA_HT');
+    const hasSecundaria = has('SECUNDARIA_GENERAL_DO') || has('SECUNDARIA_HT');
+    const hasPolitecnico = has('POLITECNICO_DO');
+
+    const nivelesCount = [hasInicial, hasPrimaria, hasSecundaria, hasPolitecnico].filter(Boolean).length;
+
+    if (nivelesCount === 4) return 'Centro Integral (4 Niveles)';
+    if (nivelesCount === 3) {
+      if (!hasPolitecnico) return 'Centro de 3 Niveles (Inicial, Primaria y Secundaria)';
+      if (!hasInicial) return 'Centro de 3 Niveles (Primaria, Secundaria y Politécnico)';
+      return 'Centro de 3 Niveles';
+    }
+    if (hasPolitecnico && hasSecundaria) return 'Centro Politécnico con Secundaria';
+    if (hasPolitecnico) return 'Centro Politécnico';
+    if (hasSecundaria && hasPrimaria) return 'Centro Secundario con Primaria';
+    if (hasSecundaria) return 'Centro Secundario';
+    if (hasPrimaria && hasInicial) return 'Centro de Primaria y Nivel Inicial';
+    if (hasPrimaria) return 'Centro de Primaria';
+    if (hasInicial) return 'Centro de Nivel Inicial';
+
+    return 'Centro Educativo';
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -160,10 +207,10 @@ export default function DashboardPage() {
           description: 'Este ciclo',
         },
         {
-          title: 'Materias',
-          value: stats.clases?.length?.toLocaleString() || '0',
-          icon: BookOpen,
-          description: 'Activas',
+          title: 'Asistencia',
+          value: est.porcentajeAsistencia ? `${est.porcentajeAsistencia}%` : '0%',
+          icon: ClipboardCheck,
+          description: 'Últimos 30 días',
         },
       ];
     }
@@ -261,6 +308,96 @@ export default function DashboardPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Tipo de Centro (director/coordinador) */}
+      {stats?.sistemasEducativos && stats.sistemasEducativos.length > 0 &&
+        ['DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMICO', 'SECRETARIA', 'ADMIN'].includes(user?.role || '') && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <School className="w-5 h-5" />
+              Tipo de Centro
+            </CardTitle>
+            <CardDescription>
+              Clasificación y niveles educativos configurados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold"
+                style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+              >
+                <Building2 className="w-4 h-4" />
+                {getTipoCentro(stats.sistemasEducativos)}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {stats.sistemasEducativos.map((sistema) => (
+                  <span
+                    key={sistema}
+                    className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium"
+                  >
+                    {SISTEMA_LABELS[sistema] || sistema}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cada nivel tiene un formato de sábana de notas diferente. Los formatos disponibles se configuran según los niveles activos.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Calificaciones recientes (solo estudiante) */}
+      {user?.role === 'ESTUDIANTE' && stats?.calificacionesRecientes && stats.calificacionesRecientes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Calificaciones Recientes
+            </CardTitle>
+            <CardDescription>
+              Últimas notas publicadas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stats.calificacionesRecientes.map((cal, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{cal.materia}</p>
+                    {cal.publicadoAt && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(cal.publicadoAt).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`text-lg font-bold ${
+                      cal.promedioFinal != null
+                        ? cal.promedioFinal >= 70
+                          ? 'text-green-600'
+                          : cal.promedioFinal >= 60
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {cal.promedioFinal != null ? cal.promedioFinal.toFixed(1) : '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Contenido adicional según rol */}
