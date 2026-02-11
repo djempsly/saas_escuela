@@ -296,7 +296,7 @@ export const inscribirMasivo = async (
 
 // ============ Inscripción por Nivel (todas las clases) ============
 
-const COMPETENCIAS_POR_FORMATO: Record<FormatoSabana, string[]> = {
+export const COMPETENCIAS_POR_FORMATO: Record<FormatoSabana, string[]> = {
   INICIAL_DO: ['IL1', 'IL2', 'IL3', 'IL4', 'IL5'],
   INICIAL_HT: ['IL1', 'IL2', 'IL3', 'IL4', 'IL5'],
   PRIMARIA_DO: ['CF1', 'CF2', 'CF3', 'CF4', 'CF5'],

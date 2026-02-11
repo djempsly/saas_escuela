@@ -51,7 +51,7 @@ const validarAccesoClase = async (claseId: string, institucionId: string) => {
 };
 
 // Calcular promedio final según sistema educativo
-const calcularPromedioFinal = (
+export const calcularPromedioFinal = (
   sistema: SistemaEducativo,
   calificacion: CalificacionGeneralInput,
 ): { promedioFinal: number; situacion: string } => {
