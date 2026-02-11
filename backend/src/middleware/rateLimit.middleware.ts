@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
 /**
  * Rate limiter para endpoints de login (por IP)
@@ -49,7 +49,7 @@ export const changePasswordByUserLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    const userId = req.user?.usuarioId || req.ip || 'unknown';
+    const userId = req.user?.usuarioId || ipKeyGenerator(req.ip ?? 'unknown');
     return `change-pwd:${userId}`;
   },
 });
@@ -67,7 +67,7 @@ export const inscripcionByUserLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    const userId = req.user?.usuarioId || req.ip || 'unknown';
+    const userId = req.user?.usuarioId || ipKeyGenerator(req.ip ?? 'unknown');
     return `inscripcion:${userId}`;
   },
 });

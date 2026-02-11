@@ -4,9 +4,9 @@ import { logger } from './logger';
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 export const redis = new Redis(REDIS_URL, {
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   retryStrategy(times) {
-    if (times > 5) {
+    if (times > 3) {
       logger.error('Redis: máximo de reintentos alcanzado, dejando de reconectar');
       return null;
     }
