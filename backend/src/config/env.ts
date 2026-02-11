@@ -36,6 +36,9 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
+  // Redis (opcional - fallback a localhost:6379)
+  REDIS_URL: z.string().url().default('redis://localhost:6379'),
+
   // Email (opcional - si no está, forgot password no enviará emails)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),

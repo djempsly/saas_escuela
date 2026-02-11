@@ -4,12 +4,29 @@
  * Soporta: Primaria, Secundaria General, y Politécnico (Módulos Técnicos con RA)
  */
 
-import { SistemaEducativo } from '@prisma/client';
+import { SistemaEducativo, FormatoSabana } from '@prisma/client';
 import prisma from '../config/db';
 import { logger } from '../config/logger';
+import { redis } from '../config/redis';
 import { sanitizeOptional } from '../utils/sanitize';
 import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
 import { crearNotificacionesMasivas } from './notificacion.service';
+
+// Cache
+const SABANA_CACHE_TTL = 3600; // 1 hora
+const sabanaKey = (nivelId: string, cicloLectivoId: string) =>
+  `sabana:${nivelId}:${cicloLectivoId}`;
+
+export const invalidarCacheSabana = async (
+  nivelId: string,
+  cicloLectivoId: string,
+): Promise<void> => {
+  try {
+    await redis.del(sabanaKey(nivelId, cicloLectivoId));
+  } catch (err) {
+    logger.error({ err, nivelId, cicloLectivoId }, 'Error invalidando caché de sábana');
+  }
+};
 
 export interface SabanaCalificacion {
   // Notas Generales (P1-P4)
@@ -91,7 +108,7 @@ export interface SabanaData {
     id: string;
     nombre: string;
   };
-  sistemaEducativo: SistemaEducativo; // El sistema específico para ESTE nivel
+  formatoSabana: FormatoSabana;
   numeroPeriodos: number;
   materias: SabanaMateria[];
   estudiantes: SabanaEstudiante[];
@@ -104,38 +121,79 @@ export interface SabanaData {
 }
 
 /**
- * Helper para detectar el sistema educativo basado en el Nivel/Ciclo
- * Permite manejar instituciones mixtas (Primaria + Secundaria)
+ * Fallback: detecta formato por keywords en el nombre del nivel/ciclo.
+ * Solo se usa para niveles migrados que aún tienen el default de migración.
  */
-const detectarSistemaEducativo = (
-  nivel: any,
-  institucionSistemaDefault: SistemaEducativo,
-): SistemaEducativo => {
-  const nivelNombre = nivel.nombre.toUpperCase();
-  const cicloNombre = nivel.cicloEducativo?.nombre.toUpperCase() || '';
+const detectarFormatoPorKeyword = (
+  nivelNombre: string,
+  cicloNombre: string,
+  esHT: boolean,
+): FormatoSabana | null => {
+  const n = nivelNombre.toUpperCase();
+  const c = cicloNombre.toUpperCase();
 
-  // Detección Primaria / Fundamental
-  if (
-    nivelNombre.includes('PRIMARIA') ||
-    cicloNombre.includes('PRIMARIA') ||
-    cicloNombre.includes('PRIMER CICLO') ||
-    nivelNombre.includes('FONDAMENTAL') || // HT
-    cicloNombre.includes('FONDAMENTAL') // HT
-  ) {
-    return institucionSistemaDefault.includes('HT') ? 'PRIMARIA_HT' : 'PRIMARIA_DO';
+  if (n.includes('INICIAL') || c.includes('INICIAL') || n.includes('PRESCOLAIRE') || c.includes('PRESCOLAIRE')) {
+    return esHT ? 'INICIAL_HT' : 'INICIAL_DO';
   }
 
-  // Detección Secundaria
   if (
-    nivelNombre.includes('SECUNDARIA') ||
-    cicloNombre.includes('SECUNDARIA') ||
-    nivelNombre.includes('SECONDAIRE') || // HT (Nouveau Secondaire)
-    cicloNombre.includes('SECONDAIRE') // HT
+    n.includes('PRIMARIA') || c.includes('PRIMARIA') || c.includes('PRIMER CICLO') ||
+    n.includes('FONDAMENTAL') || c.includes('FONDAMENTAL')
   ) {
-    return institucionSistemaDefault.includes('HT') ? 'SECUNDARIA_HT' : institucionSistemaDefault;
+    return esHT ? 'PRIMARIA_HT' : 'PRIMARIA_DO';
   }
 
-  return institucionSistemaDefault;
+  if (
+    n.includes('SECUNDARIA') || c.includes('SECUNDARIA') ||
+    n.includes('SECONDAIRE') || c.includes('SECONDAIRE')
+  ) {
+    return esHT ? 'SECUNDARIA_HT' : 'SECUNDARIA_DO';
+  }
+
+  if (n.includes('POLITECNICO') || c.includes('POLITECNICO')) {
+    return 'POLITECNICO_DO';
+  }
+
+  return null;
+};
+
+/**
+ * Determina el FormatoSabana para un nivel.
+ * Usa nivel.formatoSabana directamente. Si el valor es el default de migración
+ * (SECUNDARIA_DO) y keyword matching sugiere algo diferente, usa el fallback.
+ */
+const detectarFormatoSabana = (
+  nivel: { id: string; nombre: string; formatoSabana: FormatoSabana; cicloEducativo?: { nombre: string } | null },
+  institucionSistema: SistemaEducativo,
+): FormatoSabana => {
+  // Si fue configurado explícitamente (no es el default de migración), usar directo
+  if (nivel.formatoSabana !== 'SECUNDARIA_DO') {
+    return nivel.formatoSabana;
+  }
+
+  // formatoSabana es SECUNDARIA_DO (posible default de migración)
+  // Verificar con keyword matching si el nombre sugiere otro formato
+  const esHT = institucionSistema.includes('HT');
+  const formatoByKeyword = detectarFormatoPorKeyword(
+    nivel.nombre,
+    nivel.cicloEducativo?.nombre || '',
+    esHT,
+  );
+
+  if (formatoByKeyword && formatoByKeyword !== 'SECUNDARIA_DO') {
+    logger.warn(
+      {
+        nivelId: nivel.id,
+        nivelNombre: nivel.nombre,
+        formatoSabanaActual: nivel.formatoSabana,
+        formatoDetectado: formatoByKeyword,
+      },
+      'Nivel con formatoSabana default no coincide con su nombre. Usando detección por keyword. Actualice nivel.formatoSabana.',
+    );
+    return formatoByKeyword;
+  }
+
+  return nivel.formatoSabana;
 };
 
 /**
@@ -162,26 +220,27 @@ export const getSabanaByNivel = async (
   if (!cicloLectivo || cicloLectivo.institucionId !== institucionId)
     throw new Error('Ciclo lectivo no encontrado');
 
-  // 2. Determinar Sistema y Periodos
-  const sistemaEducativo = detectarSistemaEducativo(nivel, nivel.institucion.sistema);
-  // Estándar general es 4 periodos (4 Parciales DO / 4 Contrôles HT).
-  // Si se requiere trimestral (3), se debería configurar a nivel de institución, pero por defecto usaremos 4 para compatibilidad visual.
-  const numeroPeriodos = 4;
+  // Cache: buscar en Redis
+  const cacheKey = sabanaKey(nivelId, cicloLectivoId);
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as SabanaData;
+    }
+  } catch (err) {
+    logger.error({ err }, 'Error leyendo caché de sábana');
+  }
+
+  // 2. Determinar Formato y Periodos
+  const formatoSabana = detectarFormatoSabana(nivel, nivel.institucion.sistema);
+  const numeroPeriodos = nivel.numeroPeriodos;
 
   // 3. Obtener Materias (Todas las de la institución)
-  const materiasDb = await prisma.materia.findMany({
+  const materias: SabanaMateria[] = await prisma.materia.findMany({
     where: { institucionId },
     orderBy: { orden: 'asc' },
+    select: { id: true, nombre: true, codigo: true, esOficial: true, orden: true, tipo: true },
   });
-
-  const materias: SabanaMateria[] = materiasDb.map((m) => ({
-    id: m.id,
-    nombre: m.nombre,
-    codigo: m.codigo,
-    esOficial: m.esOficial,
-    orden: m.orden,
-    tipo: m.tipo,
-  }));
 
   // 4. Obtener Clases y Estudiantes
   const clases = await prisma.clase.findMany({
@@ -419,10 +478,10 @@ export const getSabanaByNivel = async (
       };
     });
 
-  return {
+  const result: SabanaData = {
     nivel: { id: nivel.id, nombre: nivel.nombre, gradoNumero: nivel.gradoNumero },
     cicloLectivo: { id: cicloLectivo.id, nombre: cicloLectivo.nombre },
-    sistemaEducativo,
+    formatoSabana,
     numeroPeriodos,
     materias,
     estudiantes,
@@ -433,6 +492,15 @@ export const getSabanaByNivel = async (
       pais: nivel.institucion.pais,
     },
   };
+
+  // Cache: guardar en Redis (1 hora)
+  try {
+    await redis.setex(cacheKey, SABANA_CACHE_TTL, JSON.stringify(result));
+  } catch (err) {
+    logger.error({ err }, 'Error guardando caché de sábana');
+  }
+
+  return result;
 };
 
 /**
@@ -469,6 +537,7 @@ export const getCiclosLectivosParaSabana = async (institucionId: string) => {
   return prisma.cicloLectivo.findMany({
     where: { institucionId },
     orderBy: [{ activo: 'desc' }, { fechaInicio: 'desc' }],
+    select: { id: true, nombre: true, fechaInicio: true, fechaFin: true, activo: true },
   });
 };
 
@@ -489,10 +558,13 @@ export const updateCalificacionSabana = async (
 ) => {
   const clase = await prisma.clase.findUnique({
     where: { id: claseId },
-    include: {
-      materia: true,
-      cicloLectivo: true,
-      nivel: { include: { institucion: true } },
+    select: {
+      id: true,
+      docenteId: true,
+      nivelId: true,
+      cicloLectivoId: true,
+      nivel: { select: { institucionId: true } },
+      cicloLectivo: { select: { activo: true } },
     },
   });
 
@@ -507,6 +579,9 @@ export const updateCalificacionSabana = async (
   const esDocente = clase.docenteId === userId;
   const esDirector = userRole === 'DIRECTOR';
   if (!esDocente && !esDirector) throw new Error('Sin permiso para editar');
+
+  // Invalidar caché antes de escribir
+  await invalidarCacheSabana(clase.nivelId, clase.cicloLectivoId);
 
   // Guardar observaciones (texto, no numérico)
   if (periodo === 'observaciones') {
@@ -650,9 +725,13 @@ export const publicarCalificaciones = async (
   // Verificar la clase
   const clase = await prisma.clase.findUnique({
     where: { id: claseId },
-    include: {
-      materia: true,
-      nivel: { include: { institucion: true } },
+    select: {
+      id: true,
+      docenteId: true,
+      nivelId: true,
+      cicloLectivoId: true,
+      materia: { select: { nombre: true } },
+      nivel: { select: { institucionId: true } },
     },
   });
 
@@ -667,6 +746,9 @@ export const publicarCalificaciones = async (
   if (!esDocente && !esDirector && !esCoordinador) {
     throw new Error('Sin permiso para publicar calificaciones');
   }
+
+  // Invalidar caché al publicar
+  await invalidarCacheSabana(clase.nivelId, cicloLectivoId);
 
   const now = new Date();
 

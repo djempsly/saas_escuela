@@ -255,6 +255,8 @@ model Inscripcion {
   estudiante   User     @relation(fields: [estudianteId], references: [id])
 
   @@unique([estudianteId, claseId])
+  @@index([claseId])
+  @@index([estudianteId])
 }
 
 model Calificacion {
@@ -289,6 +291,7 @@ model Calificacion {
 
   @@unique([estudianteId, claseId, cicloLectivoId])
   @@index([estudianteId, cicloLectivoId])
+  @@index([claseId, cicloLectivoId])
 }
 
 model CalificacionCompetencia {
@@ -314,6 +317,8 @@ model CalificacionCompetencia {
   estudiante     User         @relation("CalificacionesCompetencia", fields: [estudianteId], references: [id])
 
   @@unique([estudianteId, claseId, cicloLectivoId, competencia])
+  @@index([claseId, cicloLectivoId])
+  @@index([estudianteId, cicloLectivoId])
 }
 
 model CalificacionTecnica {
@@ -326,6 +331,8 @@ model CalificacionTecnica {
   estudiante   User   @relation(fields: [estudianteId], references: [id])
 
   @@unique([estudianteId, claseId, ra_codigo])
+  @@index([claseId])
+  @@index([estudianteId])
 }
 
 model Asistencia {

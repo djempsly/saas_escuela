@@ -20,10 +20,13 @@ services:
       - SERVER_IP=${SERVER_IP}
       - PORT=4000
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - REDIS_URL=redis://redis:6379
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -55,6 +58,22 @@ services:
       retries: 5
       start_period: 10s
 
+  # ============ Redis ============
+  redis:
+    image: redis:7-alpine
+    container_name: plataforma-redis
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   # ============ Caddy - Proxy reverso con SSL automático ============
   # Caddy genera certificados SSL automáticamente para cada dominio
   # usando Let's Encrypt. NO necesitas configurar nada por cada cliente.
@@ -79,6 +98,8 @@ services:
 volumes:
   postgres_data:
     name: plataforma_postgres_data
+  redis_data:
+    name: plataforma_redis_data
   uploads_data:
     name: plataforma_uploads
   caddy_data:

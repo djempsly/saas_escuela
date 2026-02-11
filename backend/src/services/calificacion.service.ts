@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { SistemaEducativo, TipoMateria } from '@prisma/client';
+import { invalidarCacheSabana } from './sabana.service';
 
 // Interfaces para los diferentes tipos de calificaciones
 interface CalificacionGeneralInput {
@@ -30,10 +31,14 @@ interface CalificacionTecnicaInput {
 const validarAccesoClase = async (claseId: string, institucionId: string) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },
-    include: {
-      materia: true,
-      cicloLectivo: true,
-      institucion: true,
+    select: {
+      id: true,
+      codigo: true,
+      docenteId: true,
+      nivelId: true,
+      cicloLectivoId: true,
+      materia: { select: { id: true, nombre: true, tipo: true, codigo: true, esOficial: true, orden: true } },
+      institucion: { select: { sistema: true } },
     },
   });
 
@@ -197,29 +202,29 @@ export const guardarCalificacion = async (
     },
   });
 
-  if (existente) {
-    return prisma.calificacion.update({
-      where: { id: existente.id },
-      data: dataToSave,
-      include: {
-        estudiante: { select: { id: true, nombre: true, apellido: true } },
-        clase: { include: { materia: true } },
-      },
-    });
-  } else {
-    return prisma.calificacion.create({
-      data: {
-        ...dataToSave,
-        estudianteId: input.estudianteId,
-        claseId: input.claseId,
-        cicloLectivoId: clase.cicloLectivoId,
-      },
-      include: {
-        estudiante: { select: { id: true, nombre: true, apellido: true } },
-        clase: { include: { materia: true } },
-      },
-    });
-  }
+  const calInclude = {
+    estudiante: { select: { id: true, nombre: true, apellido: true } },
+    clase: { select: { id: true, codigo: true, materia: { select: { id: true, nombre: true, tipo: true } } } },
+  } as const;
+
+  const resultado = existente
+    ? await prisma.calificacion.update({
+        where: { id: existente.id },
+        data: dataToSave,
+        include: calInclude,
+      })
+    : await prisma.calificacion.create({
+        data: {
+          ...dataToSave,
+          estudianteId: input.estudianteId,
+          claseId: input.claseId,
+          cicloLectivoId: clase.cicloLectivoId,
+        },
+        include: calInclude,
+      });
+
+  await invalidarCacheSabana(clase.nivelId, clase.cicloLectivoId);
+  return resultado;
 };
 
 // Guardar calificación técnica (RA) - Solo Politécnico
@@ -259,7 +264,7 @@ export const guardarCalificacionTecnica = async (
   }
 
   // Upsert del RA
-  return prisma.calificacionTecnica.upsert({
+  const resultado = await prisma.calificacionTecnica.upsert({
     where: {
       estudianteId_claseId_ra_codigo: {
         estudianteId: input.estudianteId,
@@ -276,9 +281,12 @@ export const guardarCalificacionTecnica = async (
     },
     include: {
       estudiante: { select: { id: true, nombre: true, apellido: true } },
-      clase: { include: { materia: true } },
+      clase: { select: { id: true, codigo: true, materia: { select: { id: true, nombre: true, tipo: true } } } },
     },
   });
+
+  await invalidarCacheSabana(clase.nivelId, clase.cicloLectivoId);
+  return resultado;
 };
 
 // Obtener calificaciones de una clase (incluye TODOS los estudiantes inscritos)
@@ -383,13 +391,15 @@ export const getCalificacionesByEstudiante = async (
     where: whereClause,
     include: {
       clase: {
-        include: {
-          materia: true,
-          nivel: true,
+        select: {
+          id: true,
+          codigo: true,
+          materia: { select: { id: true, nombre: true, tipo: true, codigo: true } },
+          nivel: { select: { id: true, nombre: true } },
           docente: { select: { nombre: true, apellido: true } },
         },
       },
-      cicloLectivo: true,
+      cicloLectivo: { select: { id: true, nombre: true, activo: true } },
     },
     orderBy: { clase: { materia: { nombre: 'asc' } } },
   });
@@ -401,7 +411,7 @@ export const getCalificacionesByEstudiante = async (
       clase: { institucionId },
     },
     include: {
-      clase: { include: { materia: true } },
+      clase: { select: { id: true, materia: { select: { id: true, nombre: true, tipo: true } } } },
     },
   });
 
@@ -418,7 +428,7 @@ export const getCalificacionesByEstudiante = async (
   const calificacionesCompetencia = await prisma.calificacionCompetencia.findMany({
     where: whereComp,
     include: {
-      clase: { include: { materia: true } },
+      clase: { select: { id: true, materia: { select: { id: true, nombre: true, tipo: true } } } },
     },
   });
 
@@ -448,6 +458,7 @@ export const getBoletinEstudiante = async (
 
   const ciclo = await prisma.cicloLectivo.findFirst({
     where: { id: cicloLectivoId, institucionId },
+    select: { id: true, nombre: true, fechaInicio: true, fechaFin: true, activo: true },
   });
 
   if (!ciclo) {
@@ -468,9 +479,10 @@ export const getBoletinEstudiante = async (
     },
     include: {
       clase: {
-        include: {
-          materia: true,
-          nivel: true,
+        select: {
+          id: true,
+          materia: { select: { id: true, nombre: true, tipo: true } },
+          nivel: { select: { id: true, nombre: true } },
           docente: { select: { nombre: true, apellido: true } },
         },
       },
@@ -491,8 +503,18 @@ export const getBoletinEstudiante = async (
       clase: { institucionId },
       publicado: true,
     },
-    include: {
-      clase: { include: { materia: true } },
+    select: {
+      id: true,
+      competencia: true,
+      claseId: true,
+      p1: true,
+      p2: true,
+      p3: true,
+      p4: true,
+      rp1: true,
+      rp2: true,
+      rp3: true,
+      rp4: true,
     },
   });
 
