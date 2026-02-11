@@ -1,12 +1,57 @@
 import prisma from '../config/db';
 import { NivelInput } from '../utils/zod.schemas';
 import { NotFoundError } from '../errors';
+import { determinarFormatoSabana } from '../utils/formato-sabana';
+
+/**
+ * Resuelve los campos de formatoSabana para un nivel a partir de su cicloEducativo.
+ * Si el admin proporcionó formatoSabana manualmente, se respeta.
+ * Si no, se auto-asigna según cicloEducativo + sistema de institución.
+ */
+async function resolverFormato(
+  cicloEducativoId: string | undefined | null,
+  institucionId: string,
+  formatoManual?: string,
+) {
+  // Si el admin pasó formato manual, respetarlo
+  if (formatoManual) return {};
+
+  // Si no hay cicloEducativoId, no se puede determinar
+  if (!cicloEducativoId) return {};
+
+  const ciclo = await prisma.cicloEducativo.findFirst({
+    where: { id: cicloEducativoId, institucionId },
+    select: { nombre: true, tipo: true },
+  });
+  if (!ciclo) return {};
+
+  const institucion = await prisma.institucion.findUnique({
+    where: { id: institucionId },
+    select: { sistema: true },
+  });
+  if (!institucion) return {};
+
+  const resultado = determinarFormatoSabana(ciclo, institucion.sistema);
+  if (!resultado) return {};
+
+  return resultado;
+}
 
 export const createNivel = async (input: NivelInput, institucionId: string) => {
+  const { formatoSabana: formatoManual, ...restInput } = input;
+
+  // Auto-asignar formato si no se proporcionó manualmente
+  const formatoAuto = await resolverFormato(
+    input.cicloEducativoId,
+    institucionId,
+    formatoManual,
+  );
+
   return prisma.nivel.create({
     data: {
-      ...input,
+      ...restInput,
       institucionId,
+      ...(formatoManual ? { formatoSabana: formatoManual } : formatoAuto),
     },
   });
 };
@@ -35,8 +80,7 @@ export const updateNivel = async (
   institucionId: string,
   input: Partial<NivelInput & { cicloEducativoId?: string | null }>,
 ) => {
-  // Extract cicloEducativoId from input
-  const { cicloEducativoId, ...restInput } = input;
+  const { cicloEducativoId, formatoSabana: formatoManual, ...restInput } = input;
 
   // If cicloEducativoId is provided, verify it belongs to the same institution
   if (cicloEducativoId) {
@@ -48,11 +92,17 @@ export const updateNivel = async (
     }
   }
 
+  // Auto-asignar formato si se cambia el cicloEducativo y no se pasa formato manual
+  const formatoAuto = cicloEducativoId
+    ? await resolverFormato(cicloEducativoId, institucionId, formatoManual)
+    : {};
+
   return prisma.nivel.updateMany({
     where: { id, institucionId },
     data: {
       ...restInput,
       ...(cicloEducativoId !== undefined && { cicloEducativoId }),
+      ...(formatoManual ? { formatoSabana: formatoManual } : formatoAuto),
     },
   });
 };
@@ -76,19 +126,33 @@ export const assignNivelToCicloEducativo = async (
     throw new NotFoundError('Nivel no encontrado');
   }
 
-  // If assigning to a ciclo, verify it belongs to same institution
+  // If assigning to a ciclo, verify it and auto-assign formato
+  let formatoData = {};
   if (cicloEducativoId) {
     const ciclo = await prisma.cicloEducativo.findFirst({
       where: { id: cicloEducativoId, institucionId },
+      select: { id: true, nombre: true, tipo: true },
     });
     if (!ciclo) {
       throw new NotFoundError('Ciclo educativo no encontrado');
+    }
+
+    const institucion = await prisma.institucion.findUnique({
+      where: { id: institucionId },
+      select: { sistema: true },
+    });
+
+    if (institucion) {
+      const resultado = determinarFormatoSabana(ciclo, institucion.sistema);
+      if (resultado) {
+        formatoData = resultado;
+      }
     }
   }
 
   return prisma.nivel.update({
     where: { id: nivelId },
-    data: { cicloEducativoId },
+    data: { cicloEducativoId, ...formatoData },
     include: {
       cicloEducativo: { select: { id: true, nombre: true } },
     },

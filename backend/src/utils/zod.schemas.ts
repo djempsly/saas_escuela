@@ -6,6 +6,7 @@ import {
   TipoMateria,
   EstadoAsistencia,
   Idioma,
+  FormatoSabana,
 } from '@prisma/client';
 
 // Re-export Enums as objects to ensure they are available as values and types
@@ -149,8 +150,12 @@ export const cicloLectivoSchema = z.object({
 export const nivelSchema = z.object({
   body: z.object({
     nombre: z.string().min(1),
-    gradoNumero: z.number().int().min(1).max(12).optional(), // Grado numérico (1-12)
+    gradoNumero: z.number().int().min(1).max(12).optional(),
     coordinadorId: z.string().optional(),
+    cicloEducativoId: z.string().optional(),
+    formatoSabana: z.nativeEnum(FormatoSabana).optional(),
+    numeroPeriodos: z.number().int().min(1).max(4).optional(),
+    usaModulosTec: z.boolean().optional(),
   }),
 });
 

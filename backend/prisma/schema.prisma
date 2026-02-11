@@ -185,16 +185,17 @@ model CicloLectivo {
 }
 
 model CicloEducativo {
-  id            String      @id @default(cuid())
+  id            String              @id @default(cuid())
   nombre        String
   descripcion   String?
-  orden         Int         @default(1)
+  tipo          TipoCicloEducativo?
+  orden         Int                 @default(1)
   institucionId String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  institucion   Institucion @relation(fields: [institucionId], references: [id])
-  niveles       Nivel[]     @relation("NivelCicloEducativo")
-  coordinadores User[]      @relation("CoordinadorCicloEducativo")
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  institucion   Institucion         @relation(fields: [institucionId], references: [id])
+  niveles       Nivel[]             @relation("NivelCicloEducativo")
+  coordinadores User[]              @relation("CoordinadorCicloEducativo")
 
   @@unique([nombre, institucionId])
 }
@@ -710,5 +711,13 @@ enum FormatoSabana {
   SECUNDARIA_DO
   SECUNDARIA_HT
   POLITECNICO_DO
+  ADULTOS
+}
+
+enum TipoCicloEducativo {
+  INICIAL
+  PRIMARIA
+  SECUNDARIA
+  POLITECNICO
   ADULTOS
 }

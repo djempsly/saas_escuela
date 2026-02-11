@@ -10,11 +10,13 @@ import {
 } from '../services/cicloEducativo.service';
 import { sanitizeErrorMessage } from '../utils/security';
 import { z } from 'zod';
+import { TipoCicloEducativo } from '@prisma/client';
 
 const cicloEducativoSchema = z.object({
   nombre: z.string().min(1, 'Nombre requerido'),
   descripcion: z.string().optional(),
   orden: z.number().int().positive().optional(),
+  tipo: z.nativeEnum(TipoCicloEducativo).optional(),
 });
 
 const assignNivelesSchema = z.object({
