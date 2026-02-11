@@ -1,6 +1,7 @@
 import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../errors';
 import { CrearUsuarioInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 
@@ -26,7 +27,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
   if (email) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      throw new Error('El correo electrónico ya está en uso');
+      throw new ConflictError('El correo electrónico ya está en uso');
     }
   }
 
@@ -61,18 +62,18 @@ export const resetUserPasswordManual = async (
   const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
 
   if (!targetUser) {
-    throw new Error('Usuario no encontrado');
+    throw new NotFoundError('Usuario no encontrado');
   }
 
   // SEGURIDAD: Verificar que el usuario objetivo esté activo
   if (!targetUser.activo) {
-    throw new Error('No se puede resetear la contraseña de un usuario desactivado');
+    throw new ValidationError('No se puede resetear la contraseña de un usuario desactivado');
   }
 
   // 1. Multi-tenant Check: Must be in same institution (unless Requester is ADMIN)
   if (requester.role !== Role.ADMIN) {
     if (targetUser.institucionId !== requester.institucionId) {
-      throw new Error('No tienes permisos para gestionar este usuario (Institución distinta)');
+      throw new ForbiddenError('No tienes permisos para gestionar este usuario (Institución distinta)');
     }
   }
 
@@ -80,14 +81,14 @@ export const resetUserPasswordManual = async (
   if (requester.role === Role.ADMIN) {
     // ADMIN no puede resetear a otro ADMIN (para evitar escalación)
     if (targetUser.role === Role.ADMIN && targetUser.id !== requester.id) {
-      throw new Error('No tienes permisos para resetear la contraseña de otro administrador');
+      throw new ForbiddenError('No tienes permisos para resetear la contraseña de otro administrador');
     }
   }
 
   // 3. Hierarchy Check - DIRECTOR
   if (requester.role === Role.DIRECTOR) {
     if (targetUser.role === Role.ADMIN || targetUser.role === Role.DIRECTOR) {
-      throw new Error('No tienes permisos para resetear la contraseña de este usuario (Jerarquía)');
+      throw new ForbiddenError('No tienes permisos para resetear la contraseña de este usuario (Jerarquía)');
     }
   }
 
@@ -100,7 +101,7 @@ export const resetUserPasswordManual = async (
       Role.COORDINADOR_ACADEMICO,
     ];
     if (privilegedRoles.includes(targetUser.role)) {
-      throw new Error('No tienes permisos para resetear la contraseña de personal directivo');
+      throw new ForbiddenError('No tienes permisos para resetear la contraseña de personal directivo');
     }
   }
 
@@ -300,7 +301,7 @@ export const updateUserProfile = async (
       },
     });
     if (existingUser) {
-      throw new Error('El correo electrónico ya está en uso');
+      throw new ConflictError('El correo electrónico ya está en uso');
     }
   }
 
@@ -345,12 +346,12 @@ export const updateUserById = async (
   const user = await prisma.user.findUnique({ where: { id: userId } });
 
   if (!user) {
-    throw new Error('Usuario no encontrado');
+    throw new NotFoundError('Usuario no encontrado');
   }
 
   // Verificar permisos multi-tenant
   if (requesterRole !== Role.ADMIN && user.institucionId !== requesterInstitucionId) {
-    throw new Error('No tienes permisos para modificar este usuario');
+    throw new ForbiddenError('No tienes permisos para modificar este usuario');
   }
 
   // Verificar si el email ya está en uso
@@ -362,7 +363,7 @@ export const updateUserById = async (
       },
     });
     if (existingUser) {
-      throw new Error('El correo electrónico ya está en uso');
+      throw new ConflictError('El correo electrónico ya está en uso');
     }
   }
 
@@ -411,7 +412,7 @@ export const getCoordinacionInfo = async (userId: string) => {
   });
 
   if (!user) {
-    throw new Error('Usuario no encontrado');
+    throw new NotFoundError('Usuario no encontrado');
   }
 
   return {
@@ -463,7 +464,7 @@ export const assignCiclosToCoordinator = async (
   });
 
   if (!user) {
-    throw new Error('Coordinador no encontrado');
+    throw new NotFoundError('Coordinador no encontrado');
   }
 
   // Verify all ciclos belong to the same institution
@@ -472,7 +473,7 @@ export const assignCiclosToCoordinator = async (
       where: { id: { in: cicloIds }, institucionId },
     });
     if (ciclos.length !== cicloIds.length) {
-      throw new Error('Algunos ciclos educativos no son válidos');
+      throw new ValidationError('Algunos ciclos educativos no son válidos');
     }
   }
 
@@ -512,7 +513,7 @@ export const assignNivelesToCoordinator = async (
   });
 
   if (!user) {
-    throw new Error('Coordinador no encontrado');
+    throw new NotFoundError('Coordinador no encontrado');
   }
 
   // First, remove this coordinator from all niveles

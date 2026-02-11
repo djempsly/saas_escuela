@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { NivelInput } from '../utils/zod.schemas';
+import { NotFoundError } from '../errors';
 
 export const createNivel = async (input: NivelInput, institucionId: string) => {
   return prisma.nivel.create({
@@ -43,7 +44,7 @@ export const updateNivel = async (
       where: { id: cicloEducativoId, institucionId },
     });
     if (!ciclo) {
-      throw new Error('Ciclo educativo no encontrado');
+      throw new NotFoundError('Ciclo educativo no encontrado');
     }
   }
 
@@ -72,7 +73,7 @@ export const assignNivelToCicloEducativo = async (
     where: { id: nivelId, institucionId },
   });
   if (!nivel) {
-    throw new Error('Nivel no encontrado');
+    throw new NotFoundError('Nivel no encontrado');
   }
 
   // If assigning to a ciclo, verify it belongs to same institution
@@ -81,7 +82,7 @@ export const assignNivelToCicloEducativo = async (
       where: { id: cicloEducativoId, institucionId },
     });
     if (!ciclo) {
-      throw new Error('Ciclo educativo no encontrado');
+      throw new NotFoundError('Ciclo educativo no encontrado');
     }
   }
 

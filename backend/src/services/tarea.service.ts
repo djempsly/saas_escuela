@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { EstadoTarea, EstadoEntrega, TipoRecurso } from '@prisma/client';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
@@ -42,7 +43,7 @@ const validarAccesoClase = async (claseId: string, institucionId: string) => {
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   return clase;
@@ -58,7 +59,7 @@ export const crearTarea = async (
 
   // Verificar que el usuario es el docente de la clase
   if (clase.docenteId !== docenteId) {
-    throw new Error('Solo el docente de la clase puede crear tareas');
+    throw new ForbiddenError('Solo el docente de la clase puede crear tareas');
   }
 
   return prisma.tarea.create({
@@ -93,15 +94,15 @@ export const actualizarTarea = async (
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (tarea.docenteId !== docenteId) {
-    throw new Error('Solo el docente que creó la tarea puede editarla');
+    throw new ForbiddenError('Solo el docente que creó la tarea puede editarla');
   }
 
   const sanitizedInput = {
@@ -132,15 +133,15 @@ export const eliminarTarea = async (tareaId: string, docenteId: string, instituc
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (tarea.docenteId !== docenteId) {
-    throw new Error('Solo el docente que creó la tarea puede eliminarla');
+    throw new ForbiddenError('Solo el docente que creó la tarea puede eliminarla');
   }
 
   // Eliminar recursos, archivos de entregas y entregas primero
@@ -258,11 +259,11 @@ export const getTareaById = async (
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   // Verificar acceso según rol
@@ -277,11 +278,11 @@ export const getTareaById = async (
     });
 
     if (!inscripcion) {
-      throw new Error('No estás inscrito en esta clase');
+      throw new ForbiddenError('No estás inscrito en esta clase');
     }
 
     if (tarea.estado !== EstadoTarea.PUBLICADA) {
-      throw new Error('Esta tarea no está disponible');
+      throw new ValidationError('Esta tarea no está disponible');
     }
   }
 
@@ -301,15 +302,15 @@ export const agregarRecurso = async (
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (tarea.docenteId !== docenteId) {
-    throw new Error('Solo el docente puede agregar recursos');
+    throw new ForbiddenError('Solo el docente puede agregar recursos');
   }
 
   return prisma.recursoTarea.create({
@@ -335,15 +336,15 @@ export const entregarTarea = async (
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (tarea.estado !== EstadoTarea.PUBLICADA) {
-    throw new Error('Esta tarea no acepta entregas');
+    throw new ValidationError('Esta tarea no acepta entregas');
   }
 
   // Verificar inscripción
@@ -357,7 +358,7 @@ export const entregarTarea = async (
   });
 
   if (!inscripcion) {
-    throw new Error('No estás inscrito en esta clase');
+    throw new ForbiddenError('No estás inscrito en esta clase');
   }
 
   // Determinar estado (a tiempo o atrasado)
@@ -444,24 +445,24 @@ export const calificarEntrega = async (
   });
 
   if (!entrega) {
-    throw new Error('Entrega no encontrada');
+    throw new NotFoundError('Entrega no encontrada');
   }
 
   if (entrega.tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (entrega.tarea.docenteId !== docenteId) {
-    throw new Error('Solo el docente de la tarea puede calificar');
+    throw new ForbiddenError('Solo el docente de la tarea puede calificar');
   }
 
   // Validar calificación
   if (entrega.tarea.puntajeMaximo && input.calificacion > entrega.tarea.puntajeMaximo) {
-    throw new Error(`La calificación no puede superar ${entrega.tarea.puntajeMaximo}`);
+    throw new ValidationError(`La calificación no puede superar ${entrega.tarea.puntajeMaximo}`);
   }
 
   if (input.calificacion < 0) {
-    throw new Error('La calificación no puede ser negativa');
+    throw new ValidationError('La calificación no puede ser negativa');
   }
 
   return prisma.entregaTarea.update({
@@ -490,15 +491,15 @@ export const getEntregasTarea = async (
   });
 
   if (!tarea) {
-    throw new Error('Tarea no encontrada');
+    throw new NotFoundError('Tarea no encontrada');
   }
 
   if (tarea.clase.institucionId !== institucionId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   if (tarea.docenteId !== docenteId) {
-    throw new Error('Solo el docente puede ver las entregas');
+    throw new ForbiddenError('Solo el docente puede ver las entregas');
   }
 
   // Obtener todos los estudiantes inscritos

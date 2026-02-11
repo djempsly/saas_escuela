@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { ConceptoCobro, EstadoPago, MetodoPago } from '@prisma/client';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors';
 import { sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
@@ -40,7 +41,7 @@ export const crearCobro = async (input: CrearCobroInput, institucionId: string) 
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   // Verificar ciclo lectivo
@@ -52,7 +53,7 @@ export const crearCobro = async (input: CrearCobroInput, institucionId: string) 
   });
 
   if (!ciclo) {
-    throw new Error('Ciclo lectivo no encontrado');
+    throw new NotFoundError('Ciclo lectivo no encontrado');
   }
 
   return prisma.cobro.create({
@@ -84,7 +85,7 @@ export const crearCobrosMasivos = async (input: CrearCobroMasivoInput, instituci
   });
 
   if (!ciclo) {
-    throw new Error('Ciclo lectivo no encontrado');
+    throw new NotFoundError('Ciclo lectivo no encontrado');
   }
 
   // Verificar estudiantes
@@ -98,7 +99,7 @@ export const crearCobrosMasivos = async (input: CrearCobroMasivoInput, instituci
   });
 
   if (estudiantes.length !== input.estudianteIds.length) {
-    throw new Error('Uno o más estudiantes no encontrados');
+    throw new NotFoundError('Uno o más estudiantes no encontrados');
   }
 
   const cobros = await prisma.cobro.createMany({
@@ -169,7 +170,7 @@ export const getCobrosByEstudiante = async (
 ) => {
   // Verificar acceso
   if (role === 'ESTUDIANTE' && usuarioId !== estudianteId) {
-    throw new Error('No autorizado');
+    throw new ForbiddenError('No autorizado');
   }
 
   const estudiante = await prisma.user.findFirst({
@@ -180,7 +181,7 @@ export const getCobrosByEstudiante = async (
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   const cobros = await prisma.cobro.findMany({
@@ -266,11 +267,11 @@ export const registrarPago = async (
   });
 
   if (!cobro) {
-    throw new Error('Cobro no encontrado');
+    throw new NotFoundError('Cobro no encontrado');
   }
 
   if (cobro.estado === EstadoPago.PAGADO) {
-    throw new Error('Este cobro ya está pagado completamente');
+    throw new ValidationError('Este cobro ya está pagado completamente');
   }
 
   // Calcular monto pendiente
@@ -278,11 +279,11 @@ export const registrarPago = async (
   const montoPendiente = Number(cobro.monto) - montoPagado;
 
   if (input.monto > montoPendiente) {
-    throw new Error(`El monto máximo a pagar es ${montoPendiente}`);
+    throw new ValidationError(`El monto máximo a pagar es ${montoPendiente}`);
   }
 
   if (input.monto <= 0) {
-    throw new Error('El monto debe ser mayor a 0');
+    throw new ValidationError('El monto debe ser mayor a 0');
   }
 
   // Crear el pago
@@ -345,7 +346,7 @@ export const getCobroById = async (cobroId: string, institucionId: string) => {
   });
 
   if (!cobro) {
-    throw new Error('Cobro no encontrado');
+    throw new NotFoundError('Cobro no encontrado');
   }
 
   // Calcular saldo pendiente

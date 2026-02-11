@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
+import { NotFoundError, ValidationError } from '../errors';
 
 export interface CicloEducativoInput {
   nombre: string;
@@ -63,7 +64,7 @@ export const updateCicloEducativo = async (
     where: { id, institucionId },
   });
   if (!existing) {
-    throw new Error('Ciclo educativo no encontrado');
+    throw new NotFoundError('Ciclo educativo no encontrado');
   }
 
   return prisma.cicloEducativo.update({
@@ -90,7 +91,7 @@ export const deleteCicloEducativo = async (id: string, institucionId: string) =>
     where: { id, institucionId },
   });
   if (!existing) {
-    throw new Error('Ciclo educativo no encontrado');
+    throw new NotFoundError('Ciclo educativo no encontrado');
   }
 
   // Remove association from niveles first
@@ -114,7 +115,7 @@ export const assignNivelesACiclo = async (
     where: { id: cicloId, institucionId },
   });
   if (!ciclo) {
-    throw new Error('Ciclo educativo no encontrado');
+    throw new NotFoundError('Ciclo educativo no encontrado');
   }
 
   // First, remove all niveles from this ciclo
@@ -147,7 +148,7 @@ export const assignCoordinadoresACiclo = async (
     where: { id: cicloId, institucionId },
   });
   if (!ciclo) {
-    throw new Error('Ciclo educativo no encontrado');
+    throw new NotFoundError('Ciclo educativo no encontrado');
   }
 
   // Verify all coordinators belong to the same institution
@@ -160,7 +161,7 @@ export const assignCoordinadoresACiclo = async (
   });
 
   if (coordinadores.length !== coordinadorIds.length) {
-    throw new Error('Algunos coordinadores no son válidos');
+    throw new ValidationError('Algunos coordinadores no son válidos');
   }
 
   // Update the ciclo with new coordinators

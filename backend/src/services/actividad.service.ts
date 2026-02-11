@@ -1,6 +1,7 @@
 import prisma from '../config/db';
 import { deleteFile } from '../middleware/upload.middleware';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
+import { NotFoundError } from '../errors';
 
 interface ActividadInput {
   titulo: string;
@@ -147,7 +148,7 @@ export const updateActividad = async (id: string, input: Partial<ActividadInput>
   });
 
   if (!existing) {
-    throw new Error('Actividad no encontrada');
+    throw new NotFoundError('Actividad no encontrada');
   }
 
   // Determinar tipoMedia basado en lo que se proporcione
@@ -204,7 +205,7 @@ export const deleteActividad = async (id: string) => {
   });
 
   if (!actividad) {
-    throw new Error('Actividad no encontrada');
+    throw new NotFoundError('Actividad no encontrada');
   }
 
   // Eliminar archivo asociado si existe

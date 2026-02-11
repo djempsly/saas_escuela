@@ -2,6 +2,7 @@ import { Prisma, Role, SistemaEducativo, Idioma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { logger } from '../config/logger';
+import { ConflictError, NotFoundError, ValidationError } from '../errors';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 import { getMateriasOficiales } from '../utils/materias-oficiales';
 
@@ -61,7 +62,7 @@ export const createInstitucion = async (input: any) => {
     !sistemaEducativo ||
     !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)
   ) {
-    throw new Error(`Sistema educativo inválido o no proporcionado: ${sistemaEducativo}`);
+    throw new ValidationError(`Sistema educativo inválido o no proporcionado: ${sistemaEducativo}`);
   }
 
   // Validar sistemas educativos adicionales si se proporcionan
@@ -91,7 +92,7 @@ export const createInstitucion = async (input: any) => {
   // Verificar unicidad del slug
   const existingSlug = await prisma.institucion.findUnique({ where: { slug } });
   if (existingSlug) {
-    throw new Error('El slug ya está en uso por otra institución');
+    throw new ConflictError('El slug ya está en uso por otra institución');
   }
 
   // Verificar unicidad del dominio personalizado si se proporciona
@@ -100,7 +101,7 @@ export const createInstitucion = async (input: any) => {
       where: { dominioPersonalizado },
     });
     if (existingDominio) {
-      throw new Error('El dominio personalizado ya está en uso');
+      throw new ConflictError('El dominio personalizado ya está en uso');
     }
   }
 
@@ -108,10 +109,10 @@ export const createInstitucion = async (input: any) => {
   if (directorId) {
     const existingDirector = await prisma.user.findUnique({ where: { id: directorId } });
     if (!existingDirector) {
-      throw new Error('Director no encontrado');
+      throw new NotFoundError('Director no encontrado');
     }
     if (existingDirector.role !== Role.DIRECTOR) {
-      throw new Error('El usuario seleccionado no tiene rol de Director');
+      throw new ValidationError('El usuario seleccionado no tiene rol de Director');
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -163,7 +164,7 @@ export const createInstitucion = async (input: any) => {
 
   // Caso 2: Crear nuevo director
   if (!director) {
-    throw new Error(
+    throw new ValidationError(
       'Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)',
     );
   }
@@ -174,7 +175,7 @@ export const createInstitucion = async (input: any) => {
       where: { email: director.email },
     });
     if (existingUser) {
-      throw new Error('El correo electrónico del director ya está en uso');
+      throw new ConflictError('El correo electrónico del director ya está en uso');
     }
   }
 
@@ -325,7 +326,7 @@ export const deleteInstitucion = async (id: string) => {
   });
 
   if (!institucion) {
-    throw new Error('Institución no encontrada');
+    throw new NotFoundError('Institución no encontrada');
   }
 
   // Verificar si tiene registros relacionados críticos
@@ -334,7 +335,7 @@ export const deleteInstitucion = async (id: string) => {
     institucion.niveles.length > 0 ||
     institucion.clases.length > 0
   ) {
-    throw new Error(
+    throw new ValidationError(
       `No se puede eliminar la institución porque tiene registros asociados: ` +
         `${institucion.usuarios.length} usuarios, ` +
         `${institucion.niveles.length} niveles, ` +
@@ -428,7 +429,7 @@ export const updateInstitucionConfig = async (
   });
 
   if (!institucion) {
-    throw new Error('Institución no encontrada');
+    throw new NotFoundError('Institución no encontrada');
   }
 
   // Construir objeto de actualización solo con campos que tienen valor
@@ -658,7 +659,7 @@ export const updateSensitiveConfig = async (
   });
 
   if (!institucion) {
-    throw new Error('Institución no encontrada');
+    throw new NotFoundError('Institución no encontrada');
   }
 
   // Verificar unicidad del slug si se está cambiando
@@ -667,7 +668,7 @@ export const updateSensitiveConfig = async (
       where: { slug: input.slug },
     });
     if (existingSlug) {
-      throw new Error('El slug ya está en uso por otra institución');
+      throw new ConflictError('El slug ya está en uso por otra institución');
     }
   }
 
@@ -680,7 +681,7 @@ export const updateSensitiveConfig = async (
       where: { dominioPersonalizado: input.dominioPersonalizado },
     });
     if (existingDominio) {
-      throw new Error('El dominio personalizado ya está en uso');
+      throw new ConflictError('El dominio personalizado ya está en uso');
     }
   }
 
@@ -746,17 +747,17 @@ export const updateSistemasEducativos = async (
   });
 
   if (!institucion) {
-    throw new Error('Institución no encontrada');
+    throw new NotFoundError('Institución no encontrada');
   }
 
   if (!sistemasEducativos || sistemasEducativos.length === 0) {
-    throw new Error('Debe proporcionar al menos un sistema educativo');
+    throw new ValidationError('Debe proporcionar al menos un sistema educativo');
   }
 
   // Validar que todos los sistemas son válidos
   for (const sistema of sistemasEducativos) {
     if (!Object.values(SistemaEducativo).includes(sistema)) {
-      throw new Error(`Sistema educativo inválido: ${sistema}`);
+      throw new ValidationError(`Sistema educativo inválido: ${sistema}`);
     }
   }
 
@@ -845,7 +846,7 @@ export const seedMateriasOficiales = async (
   });
 
   if (!institucion) {
-    throw new Error('Institución no encontrada');
+    throw new NotFoundError('Institución no encontrada');
   }
 
   // Usar los sistemas proporcionados o los de la institución

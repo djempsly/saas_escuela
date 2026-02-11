@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { EstadoAsistencia } from '@prisma/client';
+import { NotFoundError, ValidationError } from '../errors';
 
 interface AsistenciaItem {
   estudianteId: string;
@@ -19,17 +20,17 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   // Validar que la fecha no sea fin de semana
   const fechaValidar = new Date(input.fecha);
   const diaSemana = fechaValidar.getUTCDay();
   if (diaSemana === 0) {
-    throw new Error('No se puede registrar asistencia en día domingo');
+    throw new ValidationError('No se puede registrar asistencia en día domingo');
   }
   if (diaSemana === 6) {
-    throw new Error('No se puede registrar asistencia en día sábado');
+    throw new ValidationError('No se puede registrar asistencia en día sábado');
   }
 
   // Validar que la fecha no sea feriado
@@ -49,7 +50,7 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
   });
 
   if (feriado) {
-    throw new Error(`No se puede registrar asistencia en día feriado: ${feriado.titulo}`);
+    throw new ValidationError(`No se puede registrar asistencia en día feriado: ${feriado.titulo}`);
   }
 
   // Verificar que todos los estudiantes están inscritos en la clase
@@ -65,7 +66,7 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
   const noInscritos = estudianteIds.filter((id) => !inscritosIds.has(id));
 
   if (noInscritos.length > 0) {
-    throw new Error(`Estudiantes no inscritos en la clase: ${noInscritos.join(', ')}`);
+    throw new ValidationError(`Estudiantes no inscritos en la clase: ${noInscritos.join(', ')}`);
   }
 
   // Normalizar la fecha (solo fecha, sin hora)
@@ -125,7 +126,7 @@ export const getAsistenciaByClaseYFecha = async (
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   const fechaNormalizada = new Date(fecha);
@@ -195,7 +196,7 @@ export const getReporteAsistenciaByClase = async (
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   // Obtener estudiantes inscritos
@@ -266,7 +267,7 @@ export const getReporteAsistenciaByEstudiante = async (
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   // Obtener inscripciones del estudiante
@@ -363,7 +364,7 @@ export const getFechasAsistencia = async (claseId: string, institucionId: string
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   const asistencias = await prisma.asistencia.findMany({

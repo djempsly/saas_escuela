@@ -1,6 +1,6 @@
 import { FormatoSabana } from '@prisma/client';
 import prisma from '../config/db';
-import { NotFoundError, ValidationError, ConflictError } from '../errors';
+import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from '../errors';
 import { InscripcionInput } from '../utils/zod.schemas';
 
 export const inscribirEstudiante = async (input: InscripcionInput, institucionId: string) => {
@@ -15,12 +15,12 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada o no pertenece a la institución');
+    throw new NotFoundError('Clase no encontrada o no pertenece a la institución');
   }
 
   // Verificar que el ciclo lectivo está activo
   if (!clase.cicloLectivo.activo) {
-    throw new Error('No se puede inscribir: el ciclo lectivo no está activo');
+    throw new ValidationError('No se puede inscribir: el ciclo lectivo no está activo');
   }
 
   // Verificar que el estudiante existe y pertenece a la institución
@@ -30,7 +30,7 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado o no pertenece a la institución');
+    throw new NotFoundError('Estudiante no encontrado o no pertenece a la institución');
   }
 
   // Verificar si ya está inscrito
@@ -44,7 +44,7 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
   });
 
   if (existente) {
-    throw new Error('El estudiante ya está inscrito en esta clase');
+    throw new ConflictError('El estudiante ya está inscrito en esta clase');
   }
 
   // Crear la inscripción
@@ -90,11 +90,11 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   });
 
   if (!clase) {
-    throw new Error('Código de clase no válido');
+    throw new NotFoundError('Código de clase no válido');
   }
 
   if (!clase.cicloLectivo.activo) {
-    throw new Error('No se puede inscribir: el ciclo lectivo no está activo');
+    throw new ValidationError('No se puede inscribir: el ciclo lectivo no está activo');
   }
 
   // Verificar que el estudiante pertenece a la misma institución
@@ -104,7 +104,7 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   });
 
   if (!estudiante) {
-    throw new Error('No tienes permiso para inscribirte en esta clase');
+    throw new ForbiddenError('No tienes permiso para inscribirte en esta clase');
   }
 
   // Verificar si ya está inscrito
@@ -118,7 +118,7 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   });
 
   if (existente) {
-    throw new Error('Ya estás inscrito en esta clase');
+    throw new ConflictError('Ya estás inscrito en esta clase');
   }
 
   // Crear inscripción
@@ -194,7 +194,7 @@ export const eliminarInscripcion = async (id: string, institucionId: string) => 
   });
 
   if (!inscripcion) {
-    throw new Error('Inscripción no encontrada');
+    throw new NotFoundError('Inscripción no encontrada');
   }
 
   // Eliminar calificaciones asociadas
@@ -234,11 +234,11 @@ export const inscribirMasivo = async (
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   if (!clase.cicloLectivo.activo) {
-    throw new Error('Ciclo lectivo no activo');
+    throw new ValidationError('Ciclo lectivo no activo');
   }
 
   const resultados = {

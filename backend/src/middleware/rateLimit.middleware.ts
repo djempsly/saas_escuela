@@ -1,8 +1,9 @@
+import { Request } from 'express';
 import rateLimit from 'express-rate-limit';
 
 /**
- * Rate limiter para endpoints de login
- * Limita a 5 intentos por IP cada 15 minutos
+ * Rate limiter para endpoints de login (por IP)
+ * Limita a 50 intentos por IP cada 15 minutos
  */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
@@ -13,6 +14,62 @@ export const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // No contar intentos exitosos
+});
+
+/**
+ * Rate limiter para login por identificador (email/username)
+ * Previene fuerza bruta contra una cuenta específica
+ * 10 intentos por cuenta cada 15 minutos
+ */
+export const loginByIdentifierLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10,
+  message: {
+    message: 'Demasiados intentos para esta cuenta. Por favor, intente de nuevo en 15 minutos.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req: Request) => {
+    const identificador = req.body?.identificador || 'unknown';
+    return `login:${String(identificador).toLowerCase()}`;
+  },
+});
+
+/**
+ * Rate limiter por userId para endpoints autenticados
+ * 5 intentos por usuario cada hora
+ */
+export const changePasswordByUserLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 5,
+  message: {
+    message: 'Demasiados intentos de cambio de contraseña. Por favor, intente de nuevo más tarde.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const userId = req.user?.usuarioId || req.ip || 'unknown';
+    return `change-pwd:${userId}`;
+  },
+});
+
+/**
+ * Rate limiter por userId para inscripciones
+ * 20 inscripciones por usuario cada 15 minutos
+ */
+export const inscripcionByUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20,
+  message: {
+    message: 'Demasiadas solicitudes de inscripción. Por favor, intente de nuevo más tarde.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const userId = req.user?.usuarioId || req.ip || 'unknown';
+    return `inscripcion:${userId}`;
+  },
 });
 
 /**

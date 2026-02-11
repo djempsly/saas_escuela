@@ -8,6 +8,7 @@ import { SistemaEducativo, FormatoSabana } from '@prisma/client';
 import prisma from '../config/db';
 import { logger } from '../config/logger';
 import { redis } from '../config/redis';
+import { ForbiddenError, NotFoundError, ValidationError } from '../errors';
 import { sanitizeOptional } from '../utils/sanitize';
 import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
 import { crearNotificacionesMasivas } from './notificacion.service';
@@ -214,11 +215,11 @@ export const getSabanaByNivel = async (
     },
   });
 
-  if (!nivel || nivel.institucionId !== institucionId) throw new Error('Nivel no encontrado');
+  if (!nivel || nivel.institucionId !== institucionId) throw new NotFoundError('Nivel no encontrado');
 
   const cicloLectivo = await prisma.cicloLectivo.findUnique({ where: { id: cicloLectivoId } });
   if (!cicloLectivo || cicloLectivo.institucionId !== institucionId)
-    throw new Error('Ciclo lectivo no encontrado');
+    throw new NotFoundError('Ciclo lectivo no encontrado');
 
   // Cache: buscar en Redis
   const cacheKey = sabanaKey(nivelId, cicloLectivoId);
@@ -568,17 +569,17 @@ export const updateCalificacionSabana = async (
     },
   });
 
-  if (!clase) throw new Error('Clase no encontrada');
-  if (clase.nivel.institucionId !== userInstitucionId) throw new Error('Sin permiso');
+  if (!clase) throw new NotFoundError('Clase no encontrada');
+  if (clase.nivel.institucionId !== userInstitucionId) throw new ForbiddenError('Sin permiso');
 
   // Bloquear edición si el ciclo no está activo
   if (!clase.cicloLectivo.activo) {
-    throw new Error('No se pueden editar calificaciones de un ciclo lectivo inactivo');
+    throw new ValidationError('No se pueden editar calificaciones de un ciclo lectivo inactivo');
   }
 
   const esDocente = clase.docenteId === userId;
   const esDirector = userRole === 'DIRECTOR';
-  if (!esDocente && !esDirector) throw new Error('Sin permiso para editar');
+  if (!esDocente && !esDirector) throw new ForbiddenError('Sin permiso para editar');
 
   // Invalidar caché antes de escribir
   await invalidarCacheSabana(clase.nivelId, clase.cicloLectivoId);
@@ -735,8 +736,8 @@ export const publicarCalificaciones = async (
     },
   });
 
-  if (!clase) throw new Error('Clase no encontrada');
-  if (clase.nivel.institucionId !== institucionId) throw new Error('Sin permiso');
+  if (!clase) throw new NotFoundError('Clase no encontrada');
+  if (clase.nivel.institucionId !== institucionId) throw new ForbiddenError('Sin permiso');
 
   // Verificar permisos: docente de la clase, coordinador, o director
   const esDocente = clase.docenteId === userId;
@@ -744,7 +745,7 @@ export const publicarCalificaciones = async (
   const esCoordinador = userRole === 'COORDINADOR' || userRole === 'COORDINADOR_ACADEMICO';
 
   if (!esDocente && !esDirector && !esCoordinador) {
-    throw new Error('Sin permiso para publicar calificaciones');
+    throw new ForbiddenError('Sin permiso para publicar calificaciones');
   }
 
   // Invalidar caché al publicar

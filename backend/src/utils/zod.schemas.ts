@@ -24,6 +24,14 @@ export const PAISES = {
   HT: Pais.HT,
 } as const;
 
+// --- PASSWORD VALIDATION ---
+
+export const passwordSchema = z
+  .string()
+  .min(8, 'La contraseña debe tener al menos 8 caracteres')
+  .regex(/[A-Z]/, 'La contraseña debe contener al menos una letra mayúscula')
+  .regex(/[0-9]/, 'La contraseña debe contener al menos un número');
+
 // --- AUTH & SETUP ---
 
 export const loginSchema = z.object({
@@ -43,14 +51,20 @@ export const forgotPasswordSchema = z.object({
 export const resetPasswordSchema = z.object({
   body: z.object({
     token: z.string().min(1),
-    newPassword: z.string().min(6, 'Mínimo 6 caracteres'),
+    newPassword: passwordSchema,
   }),
 });
 
 export const changePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1, 'Contraseña actual requerida'),
-    newPassword: z.string().min(6, 'Mínimo 6 caracteres'),
+    newPassword: passwordSchema,
+  }),
+});
+
+export const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1, 'Refresh token requerido'),
   }),
 });
 

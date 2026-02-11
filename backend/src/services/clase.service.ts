@@ -1,6 +1,7 @@
 import prisma from '../config/db';
 import { ClaseInput } from '../utils/zod.schemas';
 import crypto from 'crypto';
+import { ConflictError, NotFoundError, ValidationError } from '../errors';
 
 const generateCodigoClase = (): string => {
   return `CLS-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -15,10 +16,10 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
     prisma.cicloLectivo.findFirst({ where: { id: input.cicloLectivoId, institucionId } }),
   ]);
 
-  if (!materia) throw new Error('Materia no encontrada o no pertenece a la institucion');
-  if (!nivel) throw new Error('Nivel no encontrado o no pertenece a la institucion');
-  if (!docente) throw new Error('Docente no encontrado o no pertenece a la institucion');
-  if (!ciclo) throw new Error('Ciclo lectivo no encontrado o no pertenece a la institucion');
+  if (!materia) throw new NotFoundError('Materia no encontrada o no pertenece a la institucion');
+  if (!nivel) throw new NotFoundError('Nivel no encontrado o no pertenece a la institucion');
+  if (!docente) throw new NotFoundError('Docente no encontrado o no pertenece a la institucion');
+  if (!ciclo) throw new NotFoundError('Ciclo lectivo no encontrado o no pertenece a la institucion');
 
   // SEGURIDAD: Verificar que no exista otra clase con la misma materia, nivel, ciclo y sección
   // No puede haber dos materias con el mismo nombre en el mismo grado
@@ -38,7 +39,7 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
 
   if (claseExistente) {
     const seccionMsg = input.seccion ? ` sección ${input.seccion}` : '';
-    throw new Error(
+    throw new ConflictError(
       `Ya existe una clase de "${claseExistente.materia.nombre}" en "${claseExistente.nivel.nombre}"${seccionMsg} para este ciclo lectivo. ` +
         `Si necesita otra sección, especifique una sección diferente (ej: A, B, C).`,
     );
@@ -54,7 +55,7 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
     });
     if (existente) {
       const seccionMsg = input.seccion ? ` seccion ${input.seccion}` : '';
-      throw new Error(`Ya existe una clase con codigo "${codigo}" en este nivel${seccionMsg}.`);
+      throw new ConflictError(`Ya existe una clase con codigo "${codigo}" en este nivel${seccionMsg}.`);
     }
   }
 
@@ -131,7 +132,7 @@ export const updateClase = async (
     const docente = await prisma.user.findFirst({
       where: { id: input.docenteId, institucionId, role: 'DOCENTE' },
     });
-    if (!docente) throw new Error('Docente no encontrado o no pertenece a la institución');
+    if (!docente) throw new NotFoundError('Docente no encontrado o no pertenece a la institución');
   }
 
   return prisma.clase.updateMany({
@@ -147,7 +148,7 @@ export const deleteClase = async (id: string, institucionId: string) => {
   });
 
   if (inscripciones > 0) {
-    throw new Error(`No se puede eliminar: hay ${inscripciones} estudiantes inscritos`);
+    throw new ValidationError(`No se puede eliminar: hay ${inscripciones} estudiantes inscritos`);
   }
 
   return prisma.clase.deleteMany({

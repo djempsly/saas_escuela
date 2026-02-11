@@ -1,6 +1,7 @@
 import dns from 'dns/promises';
 import prisma from '../config/db';
 import { logger } from '../config/logger';
+import { ConflictError, NotFoundError, ValidationError } from '../errors';
 
 const SERVER_IP = process.env.SERVER_IP;
 const BASE_DOMAIN = process.env.BASE_DOMAIN;
@@ -73,13 +74,13 @@ export async function registrarDominio(institucionId: string, dominio: string) {
 
   // Validar que no sea un subdominio de la plataforma
   if (BASE_DOMAIN && dominioLimpio.endsWith(`.${BASE_DOMAIN}`)) {
-    throw new Error('No puedes registrar subdominios de la plataforma como dominio personalizado');
+    throw new ValidationError('No puedes registrar subdominios de la plataforma como dominio personalizado');
   }
 
   // Validar formato básico de dominio
   const dominioRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
   if (!dominioRegex.test(dominioLimpio)) {
-    throw new Error('Formato de dominio inválido');
+    throw new ValidationError('Formato de dominio inválido');
   }
 
   // Verificar que no esté registrado por otra institución
@@ -89,9 +90,9 @@ export async function registrarDominio(institucionId: string, dominio: string) {
 
   if (existente) {
     if (existente.institucionId === institucionId) {
-      throw new Error('Este dominio ya está registrado para tu institución');
+      throw new ConflictError('Este dominio ya está registrado para tu institución');
     }
-    throw new Error('Este dominio ya está registrado por otra institución');
+    throw new ConflictError('Este dominio ya está registrado por otra institución');
   }
 
   // Crear el registro
@@ -145,7 +146,7 @@ export async function forzarVerificacion(dominioId: string, institucionId: strin
   });
 
   if (!registro) {
-    throw new Error('Dominio no encontrado');
+    throw new NotFoundError('Dominio no encontrado');
   }
 
   const resultado = await verificarDominio(registro.dominio);
@@ -186,7 +187,7 @@ export async function eliminarDominio(dominioId: string, institucionId: string) 
   });
 
   if (resultado.count === 0) {
-    throw new Error('Dominio no encontrado o no pertenece a tu institución');
+    throw new NotFoundError('Dominio no encontrado o no pertenece a tu institución');
   }
 
   return { message: 'Dominio eliminado correctamente' };

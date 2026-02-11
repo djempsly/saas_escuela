@@ -2,6 +2,7 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { generateSecurePassword, generateUsername } from '../utils/security';
+import { ConflictError, NotFoundError, ValidationError } from '../errors';
 
 interface CreateDirectorInput {
   nombre: string;
@@ -17,7 +18,7 @@ export const createDirector = async (input: CreateDirectorInput, institucionId?:
   if (email) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      throw new Error('El correo electrónico ya está en uso');
+      throw new ConflictError('El correo electrónico ya está en uso');
     }
   }
 
@@ -70,11 +71,11 @@ export const reassignDirector = async (
   });
 
   if (!director) {
-    throw new Error('Director no encontrado');
+    throw new NotFoundError('Director no encontrado');
   }
 
   if (director.role !== Role.DIRECTOR) {
-    throw new Error('El usuario no tiene rol de Director');
+    throw new ValidationError('El usuario no tiene rol de Director');
   }
 
   // Verificar que la nueva institución existe
@@ -83,12 +84,12 @@ export const reassignDirector = async (
   });
 
   if (!newInstitucion) {
-    throw new Error('Institución destino no encontrada');
+    throw new NotFoundError('Institución destino no encontrada');
   }
 
   // Verificar que la nueva institución no tiene ya un director asignado
   if (newInstitucion.directorId && newInstitucion.directorId !== directorId) {
-    throw new Error('La institución destino ya tiene un director asignado');
+    throw new ConflictError('La institución destino ya tiene un director asignado');
   }
 
   const oldInstitucionId = director.institucionId;

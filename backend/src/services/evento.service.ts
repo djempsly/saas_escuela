@@ -1,6 +1,7 @@
 import prisma from '../config/db';
 import { TipoEvento } from '@prisma/client';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
+import { ForbiddenError, NotFoundError } from '../errors';
 
 // Interfaces
 interface CrearEventoInput {
@@ -28,7 +29,7 @@ export const crearEvento = async (
     });
 
     if (!clase) {
-      throw new Error('Clase no encontrada');
+      throw new NotFoundError('Clase no encontrada');
     }
   }
 
@@ -66,12 +67,12 @@ export const actualizarEvento = async (
   });
 
   if (!evento) {
-    throw new Error('Evento no encontrado');
+    throw new NotFoundError('Evento no encontrado');
   }
 
   // Solo el creador o DIRECTOR pueden editar
   if (evento.creadorId !== usuarioId && role !== 'DIRECTOR') {
-    throw new Error('No autorizado para editar este evento');
+    throw new ForbiddenError('No autorizado para editar este evento');
   }
 
   // Si se cambia la clase, verificar que pertenece a la institución
@@ -81,7 +82,7 @@ export const actualizarEvento = async (
     });
 
     if (!clase) {
-      throw new Error('Clase no encontrada');
+      throw new NotFoundError('Clase no encontrada');
     }
   }
 
@@ -117,12 +118,12 @@ export const eliminarEvento = async (
   });
 
   if (!evento) {
-    throw new Error('Evento no encontrado');
+    throw new NotFoundError('Evento no encontrado');
   }
 
   // Solo el creador o DIRECTOR pueden eliminar
   if (evento.creadorId !== usuarioId && role !== 'DIRECTOR') {
-    throw new Error('No autorizado para eliminar este evento');
+    throw new ForbiddenError('No autorizado para eliminar este evento');
   }
 
   return prisma.evento.delete({ where: { id: eventoId } });
@@ -237,7 +238,7 @@ export const getEventoById = async (
   });
 
   if (!evento) {
-    throw new Error('Evento no encontrado');
+    throw new NotFoundError('Evento no encontrado');
   }
 
   // Verificar acceso para estudiantes
@@ -252,7 +253,7 @@ export const getEventoById = async (
     });
 
     if (!inscripcion) {
-      throw new Error('No tienes acceso a este evento');
+      throw new ForbiddenError('No tienes acceso a este evento');
     }
   }
 
@@ -263,7 +264,7 @@ export const getEventoById = async (
     });
 
     if (!clase && evento.creadorId !== usuarioId) {
-      throw new Error('No tienes acceso a este evento');
+      throw new ForbiddenError('No tienes acceso a este evento');
     }
   }
 

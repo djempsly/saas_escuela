@@ -48,6 +48,7 @@ model User {
   participaciones             ParticipanteConversacion[]
   tareasCreadas               Tarea[]                    @relation("TareasCreadas")
   auditLogs                   AuditLog[]                 @relation("AuditLogs")
+  refreshTokens               RefreshToken[]
   institucion                 Institucion?               @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
   coordinadorCiclosEducativos CicloEducativo[]           @relation("CoordinadorCicloEducativo")
 }
@@ -575,6 +576,18 @@ model SystemSettings {
   maxInstitutionsPerPlan  Int      @default(10)
   defaultSessionTimeout   Int      @default(24)
   updatedAt               DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum Role {

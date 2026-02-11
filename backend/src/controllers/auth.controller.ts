@@ -6,6 +6,8 @@ import {
   resetPassword,
   changePassword,
   manualResetPassword,
+  refreshAccessToken,
+  logout,
 } from '../services/auth.service';
 import {
   loginSchema,
@@ -13,6 +15,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   changePasswordSchema,
+  refreshTokenSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 
@@ -169,6 +172,39 @@ export const manualResetPasswordHandler = async (req: Request, res: Response) =>
       error.message.includes('institución')
     ) {
       return res.status(403).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const refreshTokenHandler = async (req: Request, res: Response) => {
+  try {
+    const validatedData = refreshTokenSchema.parse({ body: req.body });
+    const result = await refreshAccessToken(validatedData.body.refreshToken);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
+    }
+    if (
+      error.message.includes('inválido') ||
+      error.message.includes('expirado') ||
+      error.message.includes('desactivado')
+    ) {
+      return res.status(401).json({ message: error.message });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const logoutHandler = async (req: Request, res: Response) => {
+  try {
+    const validatedData = refreshTokenSchema.parse({ body: req.body });
+    await logout(validatedData.body.refreshToken);
+    return res.status(200).json({ message: 'Sesión cerrada correctamente' });
+  } catch (error: any) {
+    if (error.issues) {
+      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

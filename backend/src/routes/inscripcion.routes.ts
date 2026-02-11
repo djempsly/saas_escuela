@@ -11,15 +11,17 @@ import {
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
+import { inscripcionByUserLimiter } from '../middleware/rateLimit.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
 
-// Ruta para que estudiantes se auto-inscriban por código
+// Ruta para que estudiantes se auto-inscriban por código (rate limit por userId)
 router.post(
   '/por-codigo',
   authMiddleware,
   roleMiddleware([ROLES.ESTUDIANTE]),
+  inscripcionByUserLimiter,
   inscribirPorCodigoHandler,
 );
 

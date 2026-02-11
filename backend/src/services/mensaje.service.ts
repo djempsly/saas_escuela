@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { ForbiddenError, NotFoundError } from '../errors';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 
 // Interfaces
@@ -29,7 +30,7 @@ export const crearConversacion = async (
   });
 
   if (participantes.length !== input.participanteIds.length) {
-    throw new Error('Uno o más participantes no encontrados');
+    throw new NotFoundError('Uno o más participantes no encontrados');
   }
 
   // Agregar el creador a los participantes si no está
@@ -161,7 +162,7 @@ export const getMensajes = async (
   });
 
   if (!participante) {
-    throw new Error('No eres participante de esta conversación');
+    throw new ForbiddenError('No eres participante de esta conversación');
   }
 
   const conversacion = await prisma.conversacion.findFirst({
@@ -176,7 +177,7 @@ export const getMensajes = async (
   });
 
   if (!conversacion) {
-    throw new Error('Conversación no encontrada');
+    throw new NotFoundError('Conversación no encontrada');
   }
 
   const where: any = { conversacionId };
@@ -219,7 +220,7 @@ export const getMensajesNuevos = async (
   });
 
   if (!participante) {
-    throw new Error('No eres participante de esta conversación');
+    throw new ForbiddenError('No eres participante de esta conversación');
   }
 
   const conversacion = await prisma.conversacion.findFirst({
@@ -227,7 +228,7 @@ export const getMensajesNuevos = async (
   });
 
   if (!conversacion) {
-    throw new Error('Conversación no encontrada');
+    throw new NotFoundError('Conversación no encontrada');
   }
 
   return prisma.mensaje.findMany({
@@ -261,7 +262,7 @@ export const enviarMensaje = async (
   });
 
   if (!participante) {
-    throw new Error('No eres participante de esta conversación');
+    throw new ForbiddenError('No eres participante de esta conversación');
   }
 
   const conversacion = await prisma.conversacion.findFirst({
@@ -269,7 +270,7 @@ export const enviarMensaje = async (
   });
 
   if (!conversacion) {
-    throw new Error('Conversación no encontrada');
+    throw new NotFoundError('Conversación no encontrada');
   }
 
   // Crear mensaje
@@ -314,7 +315,7 @@ export const marcarComoLeida = async (
   });
 
   if (!conversacion) {
-    throw new Error('Conversación no encontrada');
+    throw new NotFoundError('Conversación no encontrada');
   }
 
   return prisma.participanteConversacion.update({

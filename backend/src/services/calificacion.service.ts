@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { SistemaEducativo, TipoMateria } from '@prisma/client';
+import { NotFoundError, ValidationError } from '../errors';
 import { invalidarCacheSabana } from './sabana.service';
 
 // Interfaces para los diferentes tipos de calificaciones
@@ -43,7 +44,7 @@ const validarAccesoClase = async (claseId: string, institucionId: string) => {
   });
 
   if (!clase) {
-    throw new Error('Clase no encontrada');
+    throw new NotFoundError('Clase no encontrada');
   }
 
   return clase;
@@ -145,7 +146,7 @@ export const guardarCalificacion = async (
 
   // Si es Politécnico y materia técnica, no permitir aquí
   if (sistema === SistemaEducativo.POLITECNICO_DO && clase.materia.tipo === TipoMateria.TECNICA) {
-    throw new Error(
+    throw new ValidationError(
       'Para materias técnicas en Politécnico, use el endpoint de calificación técnica (RA)',
     );
   }
@@ -161,7 +162,7 @@ export const guardarCalificacion = async (
   });
 
   if (!inscripcion) {
-    throw new Error('Estudiante no inscrito en esta clase');
+    throw new ValidationError('Estudiante no inscrito en esta clase');
   }
 
   // Preparar datos según sistema
@@ -236,12 +237,12 @@ export const guardarCalificacionTecnica = async (
 
   // Verificar que es Politécnico
   if (clase.institucion.sistema !== SistemaEducativo.POLITECNICO_DO) {
-    throw new Error('Calificaciones técnicas solo aplican para Politécnicos');
+    throw new ValidationError('Calificaciones técnicas solo aplican para Politécnicos');
   }
 
   // Verificar que la materia es técnica
   if (clase.materia.tipo !== TipoMateria.TECNICA) {
-    throw new Error('Esta materia no es de tipo técnica. Use calificación general.');
+    throw new ValidationError('Esta materia no es de tipo técnica. Use calificación general.');
   }
 
   // Verificar inscripción
@@ -255,12 +256,12 @@ export const guardarCalificacionTecnica = async (
   });
 
   if (!inscripcion) {
-    throw new Error('Estudiante no inscrito en esta clase');
+    throw new ValidationError('Estudiante no inscrito en esta clase');
   }
 
   // Validar valor (0-100)
   if (input.valor < 0 || input.valor > 100) {
-    throw new Error('El valor debe estar entre 0 y 100');
+    throw new ValidationError('El valor debe estar entre 0 y 100');
   }
 
   // Upsert del RA
@@ -374,7 +375,7 @@ export const getCalificacionesByEstudiante = async (
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   const whereClause: any = {
@@ -453,7 +454,7 @@ export const getBoletinEstudiante = async (
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   const ciclo = await prisma.cicloLectivo.findFirst({
@@ -462,7 +463,7 @@ export const getBoletinEstudiante = async (
   });
 
   if (!ciclo) {
-    throw new Error('Ciclo lectivo no encontrado');
+    throw new NotFoundError('Ciclo lectivo no encontrado');
   }
 
   const institucion = await prisma.institucion.findUnique({

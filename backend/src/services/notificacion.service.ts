@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { sanitizeText } from '../utils/sanitize';
+import { NotFoundError } from '../errors';
 
 export const getNotificaciones = async (
   usuarioId: string,
@@ -32,7 +33,7 @@ export const marcarComoLeida = async (id: string, usuarioId: string) => {
   });
 
   if (!notificacion) {
-    throw new Error('Notificación no encontrada');
+    throw new NotFoundError('Notificación no encontrada');
   }
 
   return prisma.notificacion.update({

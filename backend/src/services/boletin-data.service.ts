@@ -6,6 +6,7 @@
 import prisma from '../config/db';
 import { SistemaEducativo, Pais } from '@prisma/client';
 import { logger } from '../config/logger';
+import { NotFoundError, ValidationError } from '../errors';
 
 // Tipos para los datos del boletín
 export interface BoletinDataResponse {
@@ -174,11 +175,11 @@ export async function getBoletinData(
   });
 
   if (!estudiante) {
-    throw new Error('Estudiante no encontrado');
+    throw new NotFoundError('Estudiante no encontrado');
   }
 
   if (!estudiante.institucion) {
-    throw new Error('Estudiante sin institución asignada');
+    throw new ValidationError('Estudiante sin institución asignada');
   }
 
   // Obtener ciclo lectivo
@@ -190,7 +191,7 @@ export async function getBoletinData(
   });
 
   if (!ciclo) {
-    throw new Error('Ciclo lectivo no encontrado');
+    throw new NotFoundError('Ciclo lectivo no encontrado');
   }
 
   // Obtener calificaciones del estudiante
