@@ -104,7 +104,7 @@ export const getCobrosByEstudianteHandler = async (req: Request, res: Response) 
       id,
       req.resolvedInstitucionId,
       getUserId(req),
-      getUserRole(req)
+      getUserRole(req),
     );
 
     return res.status(200).json(result);
@@ -140,12 +140,7 @@ export const registrarPagoHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const result = await registrarPago(
-      id,
-      req.body,
-      getUserId(req),
-      req.resolvedInstitucionId
-    );
+    const result = await registrarPago(id, req.body, getUserId(req), req.resolvedInstitucionId);
 
     registrarAuditLog({
       accion: 'CREAR',
@@ -208,7 +203,7 @@ export const getReportePagosHandler = async (req: Request, res: Response) => {
     const reporte = await getReportePagos(
       req.resolvedInstitucionId,
       new Date(fechaInicio),
-      new Date(fechaFin)
+      new Date(fechaFin),
     );
 
     return res.status(200).json(reporte);
@@ -224,10 +219,7 @@ export const getEstadisticasHandler = async (req: Request, res: Response) => {
     }
 
     const { cicloLectivoId } = req.query as { cicloLectivoId?: string };
-    const estadisticas = await getEstadisticasCobros(
-      req.resolvedInstitucionId,
-      cicloLectivoId
-    );
+    const estadisticas = await getEstadisticasCobros(req.resolvedInstitucionId, cicloLectivoId);
 
     return res.status(200).json(estadisticas);
   } catch (error: unknown) {

@@ -33,7 +33,13 @@ router.get('/institucion/:slug', getActividadesBySlugHandler);
 router.get('/institucion-id/:id', getActividadesByInstitucionHandler);
 
 // Listar todas las actividades para admin (DEBE ir antes de /:id)
-router.get('/admin', authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), resolveTenantMiddleware, getActividadesAdminHandler);
+router.get(
+  '/admin',
+  authMiddleware,
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
+  resolveTenantMiddleware,
+  getActividadesAdminHandler,
+);
 
 // Obtener actividad por ID
 router.get('/:id', getActividadByIdHandler);

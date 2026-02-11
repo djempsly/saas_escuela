@@ -20,7 +20,7 @@ router.use(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR_ACADEMICO]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 // CRUD routes

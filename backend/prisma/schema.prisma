@@ -41,6 +41,8 @@ model User {
   directorDe                  Institucion?               @relation("DirectorInstitucion")
   mensajesEnviados            Mensaje[]                  @relation("MensajesEnviados")
   coordinadorDe               Nivel[]                    @relation("CoordinadorNivel")
+  nivelActualId               String?
+  nivelActual                 Nivel?                     @relation("EstudianteNivelActual", fields: [nivelActualId], references: [id])
   notificaciones              Notificacion[]
   pagosRegistrados            Pago[]                     @relation("PagosRegistrados")
   participaciones             ParticipanteConversacion[]
@@ -155,7 +157,12 @@ model Nivel {
   coordinadorId    String?
   cicloEducativoId String?
   gradoNumero      Int?
+  formatoSabana    FormatoSabana   @default(SECUNDARIA_DO)
+  numeroPeriodos   Int             @default(4)
+  usaCompetencias  Boolean         @default(true)
+  usaModulosTec    Boolean         @default(false)
   clases           Clase[]
+  estudiantesActuales User[]       @relation("EstudianteNivelActual")
   cicloEducativo   CicloEducativo? @relation("NivelCicloEducativo", fields: [cicloEducativoId], references: [id])
   coordinador      User?           @relation("CoordinadorNivel", fields: [coordinadorId], references: [id])
   institucion      Institucion     @relation(fields: [institucionId], references: [id])
@@ -236,6 +243,7 @@ model Clase {
   tareas                    Tarea[]
 
   @@unique([codigo, nivelId, seccion, institucionId])
+  @@index([nivelId, cicloLectivoId])
 }
 
 model Inscripcion {
@@ -280,6 +288,7 @@ model Calificacion {
   estudiante     User         @relation(fields: [estudianteId], references: [id])
 
   @@unique([estudianteId, claseId, cicloLectivoId])
+  @@index([estudianteId, cicloLectivoId])
 }
 
 model CalificacionCompetencia {
@@ -671,4 +680,15 @@ enum AccionAudit {
   ACTUALIZAR
   ELIMINAR
   IMPORTAR
+}
+
+enum FormatoSabana {
+  INICIAL_DO
+  INICIAL_HT
+  PRIMARIA_DO
+  PRIMARIA_HT
+  SECUNDARIA_DO
+  SECUNDARIA_HT
+  POLITECNICO_DO
+  ADULTOS
 }

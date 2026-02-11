@@ -52,7 +52,7 @@ const validarAccesoClase = async (claseId: string, institucionId: string) => {
 export const crearTarea = async (
   input: CrearTareaInput,
   docenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await validarAccesoClase(input.claseId, institucionId);
 
@@ -85,7 +85,7 @@ export const actualizarTarea = async (
   tareaId: string,
   input: Partial<CrearTareaInput>,
   docenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },
@@ -108,7 +108,9 @@ export const actualizarTarea = async (
     ...input,
     ...(input.titulo !== undefined && { titulo: sanitizeText(input.titulo) }),
     ...(input.descripcion !== undefined && { descripcion: sanitizeText(input.descripcion) }),
-    ...(input.instrucciones !== undefined && { instrucciones: sanitizeOptional(input.instrucciones) }),
+    ...(input.instrucciones !== undefined && {
+      instrucciones: sanitizeOptional(input.instrucciones),
+    }),
   };
 
   return prisma.tarea.update({
@@ -123,11 +125,7 @@ export const actualizarTarea = async (
 };
 
 // Eliminar tarea
-export const eliminarTarea = async (
-  tareaId: string,
-  docenteId: string,
-  institucionId: string
-) => {
+export const eliminarTarea = async (tareaId: string, docenteId: string, institucionId: string) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },
     include: { clase: true },
@@ -160,7 +158,7 @@ export const getTareas = async (
   usuarioId: string,
   role: string,
   institucionId: string,
-  claseId?: string
+  claseId?: string,
 ) => {
   if (role === 'DOCENTE') {
     // Docente ve las tareas de sus clases
@@ -235,7 +233,7 @@ export const getTareaById = async (
   tareaId: string,
   usuarioId: string,
   role: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },
@@ -243,18 +241,19 @@ export const getTareaById = async (
       clase: { include: { materia: true, nivel: true } },
       docente: { select: { id: true, nombre: true, apellido: true } },
       recursos: true,
-      entregas: role === 'ESTUDIANTE'
-        ? {
-            where: { estudianteId: usuarioId },
-            include: { archivos: true },
-          }
-        : {
-            include: {
-              estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
-              archivos: true,
+      entregas:
+        role === 'ESTUDIANTE'
+          ? {
+              where: { estudianteId: usuarioId },
+              include: { archivos: true },
+            }
+          : {
+              include: {
+                estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
+                archivos: true,
+              },
+              orderBy: { estudiante: { apellido: 'asc' } },
             },
-            orderBy: { estudiante: { apellido: 'asc' } },
-          },
     },
   });
 
@@ -294,7 +293,7 @@ export const agregarRecurso = async (
   tareaId: string,
   recurso: RecursoInput,
   docenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },
@@ -328,7 +327,7 @@ export const entregarTarea = async (
   tareaId: string,
   input: EntregarTareaInput,
   estudianteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },
@@ -435,7 +434,7 @@ export const calificarEntrega = async (
   entregaId: string,
   input: CalificarEntregaInput,
   docenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const entrega = await prisma.entregaTarea.findFirst({
     where: { id: entregaId },
@@ -483,7 +482,7 @@ export const calificarEntrega = async (
 export const getEntregasTarea = async (
   tareaId: string,
   docenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const tarea = await prisma.tarea.findFirst({
     where: { id: tareaId },

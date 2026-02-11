@@ -17,7 +17,7 @@ interface EnviarMensajeInput {
 export const crearConversacion = async (
   input: CrearConversacionInput,
   creadorId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verificar que todos los participantes existen y pertenecen a la institución
   const participantes = await prisma.user.findMany({
@@ -127,9 +127,7 @@ export const getConversaciones = async (usuarioId: string, institucionId: string
       const noLeidos = await prisma.mensaje.count({
         where: {
           conversacionId: conv.id,
-          createdAt: participante?.ultimoLeido
-            ? { gt: participante.ultimoLeido }
-            : undefined,
+          createdAt: participante?.ultimoLeido ? { gt: participante.ultimoLeido } : undefined,
           remitenteId: { not: usuarioId },
         },
       });
@@ -138,7 +136,7 @@ export const getConversaciones = async (usuarioId: string, institucionId: string
         ...conv,
         noLeidos,
       };
-    })
+    }),
   );
 
   return result;
@@ -150,7 +148,7 @@ export const getMensajes = async (
   usuarioId: string,
   institucionId: string,
   limit = 50,
-  cursor?: string
+  cursor?: string,
 ) => {
   // Verificar participación
   const participante = await prisma.participanteConversacion.findUnique({
@@ -208,7 +206,7 @@ export const getMensajesNuevos = async (
   conversacionId: string,
   usuarioId: string,
   institucionId: string,
-  desde: Date
+  desde: Date,
 ) => {
   // Verificar participación
   const participante = await prisma.participanteConversacion.findUnique({
@@ -250,7 +248,7 @@ export const enviarMensaje = async (
   conversacionId: string,
   input: EnviarMensajeInput,
   remitenteId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verificar participación
   const participante = await prisma.participanteConversacion.findUnique({
@@ -309,7 +307,7 @@ export const enviarMensaje = async (
 export const marcarComoLeida = async (
   conversacionId: string,
   usuarioId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const conversacion = await prisma.conversacion.findFirst({
     where: { id: conversacionId, institucionId },
@@ -350,9 +348,7 @@ export const getNoLeidos = async (usuarioId: string, institucionId: string) => {
     const count = await prisma.mensaje.count({
       where: {
         conversacionId: participacion.conversacionId,
-        createdAt: participacion.ultimoLeido
-          ? { gt: participacion.ultimoLeido }
-          : undefined,
+        createdAt: participacion.ultimoLeido ? { gt: participacion.ultimoLeido } : undefined,
         remitenteId: { not: usuarioId },
       },
     });
@@ -366,7 +362,7 @@ export const getNoLeidos = async (usuarioId: string, institucionId: string) => {
 export const getUsuariosDisponibles = async (
   usuarioId: string,
   role: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Obtener usuarios de la misma institución (excluyendo al usuario actual)
   const usuarios = await prisma.user.findMany({

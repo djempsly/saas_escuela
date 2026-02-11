@@ -1,4 +1,5 @@
 import express, { Application } from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -21,19 +22,24 @@ app.set('trust proxy', 1);
 
 // ============ SEGURIDAD: Headers HTTP con Helmet ============
 // Protege contra ataques comunes como XSS, clickjacking, etc.
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        scriptSrc: ["'self'"],
+        connectSrc: ["'self'"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
+
+// ============ Compresión HTTP (gzip/brotli) ============
+app.use(compression());
 
 // ============ SEGURIDAD: Rate Limiting ============
 // Rate limiting general para toda la API
@@ -61,28 +67,35 @@ const authLimiter = rateLimit({
 // ============ CORS ============
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+  : [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:5173',
+    ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Permitir requests sin origin (como curl, Postman, o server-to-server)
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (como curl, Postman, o server-to-server)
+      if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      // En desarrollo, permitir cualquier localhost
-      if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('No permitido por CORS'));
+        // En desarrollo, permitir cualquier localhost
+        if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
+          callback(null, true);
+        } else {
+          callback(new Error('No permitido por CORS'));
+        }
       }
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 
 // ============ Middlewares de Parsing ============
 app.use(express.json({ limit: '10mb' }));

@@ -4,7 +4,7 @@ import { sanitizeText } from '../utils/sanitize';
 export const getNotificaciones = async (
   usuarioId: string,
   limit: number = 20,
-  offset: number = 0
+  offset: number = 0,
 ) => {
   const [notificaciones, total] = await Promise.all([
     prisma.notificacion.findMany({
@@ -51,7 +51,7 @@ export const marcarTodasComoLeidas = async (usuarioId: string) => {
 export const crearNotificacionesMasivas = async (
   usuarioIds: string[],
   titulo: string,
-  mensaje: string
+  mensaje: string,
 ) => {
   if (usuarioIds.length === 0) return { count: 0 };
 

@@ -22,7 +22,7 @@ router.use(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 router.post('/', createNivelHandler);

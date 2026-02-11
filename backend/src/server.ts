@@ -27,6 +27,8 @@ app.listen(PORT, () => {
   if (isProd && env.BASE_DOMAIN && env.SERVER_IP) {
     iniciarJobVerificacionDNS();
   } else if (isProd) {
-    logger.warn('BASE_DOMAIN o SERVER_IP no configurados. Job de verificación de dominios desactivado.');
+    logger.warn(
+      'BASE_DOMAIN o SERVER_IP no configurados. Job de verificación de dominios desactivado.',
+    );
   }
 });

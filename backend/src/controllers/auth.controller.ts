@@ -1,6 +1,19 @@
 import { Request, Response } from 'express';
-import { registerSuperAdmin, login, forgotPassword, resetPassword, changePassword, manualResetPassword } from '../services/auth.service';
-import { loginSchema, registerSuperAdminSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema } from '../utils/zod.schemas';
+import {
+  registerSuperAdmin,
+  login,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  manualResetPassword,
+} from '../services/auth.service';
+import {
+  loginSchema,
+  registerSuperAdminSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+} from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
@@ -18,8 +31,8 @@ export const registerSuperAdminHandler = async (req: Request, res: Response) => 
           username: result.user.username,
           role: result.user.role,
         },
-        tempPassword: result.tempPassword
-      }
+        tempPassword: result.tempPassword,
+      },
     });
   } catch (error: any) {
     if (error.issues) {
@@ -47,7 +60,10 @@ export const loginHandler = async (req: Request, res: Response) => {
       return res.status(401).json({ message: error.message });
     }
     // Error de acceso a institución
-    if (error.message.includes('No tienes acceso') || error.message.includes('Institución no encontrada')) {
+    if (
+      error.message.includes('No tienes acceso') ||
+      error.message.includes('Institución no encontrada')
+    ) {
       return res.status(403).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -62,7 +78,8 @@ export const forgotPasswordHandler = async (req: Request, res: Response) => {
     // SEGURIDAD: SIEMPRE retornar el mismo mensaje, sin importar si el usuario existe o no.
     // Esto previene la enumeración de usuarios.
     return res.status(200).json({
-      message: 'Si el identificador está registrado y tiene email, recibirás instrucciones para resetear tu contraseña. Si no tienes email registrado, contacta al Director de tu institución.'
+      message:
+        'Si el identificador está registrado y tiene email, recibirás instrucciones para resetear tu contraseña. Si no tienes email registrado, contacta al Director de tu institución.',
     });
   } catch (error: any) {
     if (error.issues) {

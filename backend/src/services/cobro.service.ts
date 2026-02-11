@@ -125,7 +125,7 @@ export const getCobros = async (
     concepto?: ConceptoCobro;
     estudianteId?: string;
     cicloLectivoId?: string;
-  }
+  },
 ) => {
   const where: any = { institucionId };
 
@@ -165,7 +165,7 @@ export const getCobrosByEstudiante = async (
   estudianteId: string,
   institucionId: string,
   usuarioId: string,
-  role: string
+  role: string,
 ) => {
   // Verificar acceso
   if (role === 'ESTUDIANTE' && usuarioId !== estudianteId) {
@@ -204,10 +204,7 @@ export const getCobrosByEstudiante = async (
   };
 
   for (const cobro of cobros) {
-    const montoPagado = cobro.pagos.reduce(
-      (sum, pago) => sum + Number(pago.monto),
-      0
-    );
+    const montoPagado = cobro.pagos.reduce((sum, pago) => sum + Number(pago.monto), 0);
     const montoTotal = Number(cobro.monto);
 
     if (cobro.estado === EstadoPago.PAGADO) {
@@ -261,7 +258,7 @@ export const registrarPago = async (
   cobroId: string,
   input: RegistrarPagoInput,
   registradoPorId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const cobro = await prisma.cobro.findFirst({
     where: { id: cobroId, institucionId },
@@ -363,11 +360,7 @@ export const getCobroById = async (cobroId: string, institucionId: string) => {
 };
 
 // Generar reporte de pagos
-export const getReportePagos = async (
-  institucionId: string,
-  fechaInicio: Date,
-  fechaFin: Date
-) => {
+export const getReportePagos = async (institucionId: string, fechaInicio: Date, fechaFin: Date) => {
   const pagos = await prisma.pago.findMany({
     where: {
       cobro: { institucionId },

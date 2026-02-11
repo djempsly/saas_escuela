@@ -24,7 +24,7 @@ export function iniciarJobVerificacionDNS(): void {
       const resultado = await verificarDominiosPendientes();
       logger.info(
         { verificados: resultado.verificados, pendientes: resultado.fallidos },
-        `Verificación inicial completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
+        `Verificación inicial completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`,
       );
     } catch (error) {
       logger.error({ err: error }, 'Error en verificación inicial');
@@ -38,7 +38,7 @@ export function iniciarJobVerificacionDNS(): void {
       const resultado = await verificarDominiosPendientes();
       logger.info(
         { verificados: resultado.verificados, pendientes: resultado.fallidos },
-        `Verificación completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`
+        `Verificación completada. Verificados: ${resultado.verificados}, Pendientes: ${resultado.fallidos}`,
       );
     } catch (error) {
       logger.error({ err: error }, 'Error en verificación de DNS');

@@ -65,7 +65,7 @@ export const getDashboardStats = async (institucionId: string) => {
   let promedioAsistencia = 0;
   if (asistencias.length > 0) {
     const presentes = asistencias.filter(
-      (a) => a.estado === 'PRESENTE' || a.estado === 'TARDE' || a.estado === 'JUSTIFICADO'
+      (a) => a.estado === 'PRESENTE' || a.estado === 'TARDE' || a.estado === 'JUSTIFICADO',
     ).length;
     promedioAsistencia = Math.round((presentes / asistencias.length) * 100 * 10) / 10;
   }
@@ -224,7 +224,7 @@ export const getDashboardStatsEstudiante = async (estudianteId: string, instituc
   let porcentajeAsistencia = 0;
   if (asistencias.length > 0) {
     const presentes = asistencias.filter(
-      (a) => a.estado === 'PRESENTE' || a.estado === 'TARDE' || a.estado === 'JUSTIFICADO'
+      (a) => a.estado === 'PRESENTE' || a.estado === 'TARDE' || a.estado === 'JUSTIFICADO',
     ).length;
     porcentajeAsistencia = Math.round((presentes / asistencias.length) * 100 * 10) / 10;
   }

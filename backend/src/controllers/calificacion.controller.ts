@@ -44,7 +44,10 @@ export const guardarCalificacionTecnicaHandler = async (req: Request, res: Respo
       return res.status(403).json({ message: 'No autorizado' });
     }
     const validated = calificacionTecnicaSchema.parse({ body: req.body });
-    const calificacion = await guardarCalificacionTecnica(validated.body, req.resolvedInstitucionId);
+    const calificacion = await guardarCalificacionTecnica(
+      validated.body,
+      req.resolvedInstitucionId,
+    );
     return res.status(200).json(calificacion);
   } catch (error: any) {
     if (error.issues) {
@@ -88,7 +91,7 @@ export const getCalificacionesEstudianteHandler = async (req: Request, res: Resp
     const calificaciones = await getCalificacionesByEstudiante(
       estudianteId,
       req.resolvedInstitucionId,
-      cicloLectivoId
+      cicloLectivoId,
     );
     return res.status(200).json(calificaciones);
   } catch (error: any) {
@@ -108,7 +111,7 @@ export const getMisCalificacionesHandler = async (req: Request, res: Response) =
     const calificaciones = await getCalificacionesByEstudiante(
       req.user.usuarioId.toString(),
       req.resolvedInstitucionId,
-      cicloLectivoId
+      cicloLectivoId,
     );
     return res.status(200).json(calificaciones);
   } catch (error: any) {
@@ -128,7 +131,7 @@ export const getBoletinHandler = async (req: Request, res: Response) => {
     const boletin = await getBoletinEstudiante(
       estudianteId,
       cicloLectivoId,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(boletin);
   } catch (error: any) {
@@ -148,7 +151,7 @@ export const getMiBoletinHandler = async (req: Request, res: Response) => {
     const boletin = await getBoletinEstudiante(
       req.user.usuarioId.toString(),
       cicloLectivoId,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(boletin);
   } catch (error: any) {
@@ -169,7 +172,7 @@ export const guardarCalificacionesMasivasHandler = async (req: Request, res: Res
       validated.body.claseId,
       validated.body.periodo,
       validated.body.calificaciones,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(resultado);
   } catch (error: any) {

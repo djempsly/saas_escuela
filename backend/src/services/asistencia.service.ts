@@ -104,7 +104,7 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
           },
         });
       }
-    })
+    }),
   );
 
   return {
@@ -117,7 +117,7 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
 export const getAsistenciaByClaseYFecha = async (
   claseId: string,
   fecha: Date,
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },
@@ -152,9 +152,7 @@ export const getAsistenciaByClaseYFecha = async (
   });
 
   // Crear mapa de asistencias por estudianteId
-  const asistenciasMap = new Map(
-    asistenciasExistentes.map((a) => [a.estudianteId, a])
-  );
+  const asistenciasMap = new Map(asistenciasExistentes.map((a) => [a.estudianteId, a]));
 
   // Combinar: todos los estudiantes con su asistencia (o null si no hay registro)
   const asistencias = inscripciones.map((insc) => {
@@ -185,7 +183,7 @@ export const getReporteAsistenciaByClase = async (
   claseId: string,
   fechaInicio: Date,
   fechaFin: Date,
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },
@@ -219,7 +217,7 @@ export const getReporteAsistenciaByClase = async (
   // Agrupar asistencias por estudiante
   const reporte = inscripciones.map((inscripcion) => {
     const asistenciasEstudiante = asistencias.filter(
-      (a) => a.estudianteId === inscripcion.estudianteId
+      (a) => a.estudianteId === inscripcion.estudianteId,
     );
 
     const conteo = {
@@ -259,7 +257,7 @@ export const getReporteAsistenciaByEstudiante = async (
   estudianteId: string,
   fechaInicio: Date,
   fechaFin: Date,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verificar que el estudiante pertenece a la institución
   const estudiante = await prisma.user.findFirst({

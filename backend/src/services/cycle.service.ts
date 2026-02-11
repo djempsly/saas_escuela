@@ -23,7 +23,11 @@ export const findCicloLectivoById = async (id: string, institucionId: string) =>
   });
 };
 
-export const updateCicloLectivo = async (id: string, institucionId: string, input: Partial<CicloLectivoInput>) => {
+export const updateCicloLectivo = async (
+  id: string,
+  institucionId: string,
+  input: Partial<CicloLectivoInput>,
+) => {
   return prisma.cicloLectivo.updateMany({
     where: { id, institucionId },
     data: input,

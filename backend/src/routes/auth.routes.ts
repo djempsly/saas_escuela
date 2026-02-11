@@ -5,14 +5,14 @@ import {
   forgotPasswordHandler,
   resetPasswordHandler,
   changePasswordHandler,
-  manualResetPasswordHandler
+  manualResetPasswordHandler,
 } from '../controllers/auth.controller';
 import {
   loginLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
   registerLimiter,
-  changePasswordLimiter
+  changePasswordLimiter,
 } from '../middleware/rateLimit.middleware';
 import { authMiddleware } from '../middleware/auth.middleware';
 
@@ -34,6 +34,11 @@ router.post('/reset-password', resetPasswordLimiter, resetPasswordHandler);
 router.post('/change-password', authMiddleware, changePasswordLimiter, changePasswordHandler);
 
 // Manual reset password - requiere autenticación (ADMIN/DIRECTOR)
-router.post('/manual-reset-password', authMiddleware, changePasswordLimiter, manualResetPasswordHandler);
+router.post(
+  '/manual-reset-password',
+  authMiddleware,
+  changePasswordLimiter,
+  manualResetPasswordHandler,
+);
 
 export default router;

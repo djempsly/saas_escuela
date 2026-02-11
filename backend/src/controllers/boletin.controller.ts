@@ -1,5 +1,11 @@
 import { Request, Response } from 'express';
-import { generarBoletin, BoletinConfig, DatosEstudiante, Calificacion, Grado } from '../services/boletin.service';
+import {
+  generarBoletin,
+  BoletinConfig,
+  DatosEstudiante,
+  Calificacion,
+  Grado,
+} from '../services/boletin.service';
 import prisma from '../config/db';
 import { sanitizeErrorMessage } from '../utils/security';
 
@@ -25,7 +31,10 @@ export const getBoletinPlantillaHandler = async (req: Request, res: Response) =>
 
     const buffer = await generarBoletin(config);
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
     res.setHeader('Content-Disposition', `attachment; filename=boletin_${grado}_plantilla.docx`);
     return res.send(buffer);
   } catch (error: any) {
@@ -44,8 +53,8 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       ? req.params.estudianteId[0]
       : req.params.estudianteId;
     const cicloLectivoId = Array.isArray(req.query.cicloId)
-      ? req.query.cicloId[0] as string
-      : req.query.cicloId as string | undefined;
+      ? (req.query.cicloId[0] as string)
+      : (req.query.cicloId as string | undefined);
 
     if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
@@ -98,8 +107,8 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       },
       orderBy: {
         clase: {
-          materia: { nombre: 'asc' }
-        }
+          materia: { nombre: 'asc' },
+        },
       },
     });
 
@@ -108,8 +117,12 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       nombre: `${estudiante.nombre} ${estudiante.apellido}`,
       seccion: inscripcion?.clase?.materia?.nombre || '',
       numeroOrden: inscripcion?.id?.slice(-4) || '',
-      añoEscolarInicio: calificacionesDB[0]?.cicloLectivo?.fechaInicio?.getFullYear()?.toString() || new Date().getFullYear().toString(),
-      añoEscolarFin: calificacionesDB[0]?.cicloLectivo?.fechaFin?.getFullYear()?.toString() || (new Date().getFullYear() + 1).toString(),
+      añoEscolarInicio:
+        calificacionesDB[0]?.cicloLectivo?.fechaInicio?.getFullYear()?.toString() ||
+        new Date().getFullYear().toString(),
+      añoEscolarFin:
+        calificacionesDB[0]?.cicloLectivo?.fechaFin?.getFullYear()?.toString() ||
+        (new Date().getFullYear() + 1).toString(),
       centroEducativo: estudiante.institucion?.nombre || '',
       codigoCentro: estudiante.institucion?.codigoCentro || '',
       tanda: inscripcion?.clase?.tanda || 'MATUTINA',
@@ -128,8 +141,10 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
     };
     // Usar gradoNumero si está definido, sino fallback a regex del nombre
     // Nota: gradoNumero se agregó al schema, ejecutar prisma generate después de migración
-    const nivelNumero = (nivel as { gradoNumero?: number } | undefined)?.gradoNumero?.toString() ||
-      nivel?.nombre?.match(/(\d)/)?.[1] || '1';
+    const nivelNumero =
+      (nivel as { gradoNumero?: number } | undefined)?.gradoNumero?.toString() ||
+      nivel?.nombre?.match(/(\d)/)?.[1] ||
+      '1';
     const grado = gradoMap[nivelNumero] || '1er';
 
     // Transformar calificaciones al formato del boletín
@@ -149,7 +164,10 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
       .replace(/\s+/g, '_')
       .toLowerCase();
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
   } catch (error: any) {
@@ -164,9 +182,7 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
  */
 export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
   try {
-    const claseId = Array.isArray(req.params.claseId)
-      ? req.params.claseId[0]
-      : req.params.claseId;
+    const claseId = Array.isArray(req.params.claseId) ? req.params.claseId[0] : req.params.claseId;
 
     if (!req.resolvedInstitucionId) {
       return res.status(403).json({ message: 'No autorizado' });
@@ -222,17 +238,16 @@ export const generarBoletinPersonalizadoHandler = async (req: Request, res: Resp
       calificaciones?: Calificacion[];
     };
 
-    const buffer = await generarBoletin(
-      config || {},
-      datosEstudiante,
-      calificaciones
-    );
+    const buffer = await generarBoletin(config || {}, datosEstudiante, calificaciones);
 
     const nombreArchivo = datosEstudiante?.nombre
       ? `boletin_${datosEstudiante.nombre.replace(/\s+/g, '_')}.docx`
       : 'boletin.docx';
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
   } catch (error: any) {

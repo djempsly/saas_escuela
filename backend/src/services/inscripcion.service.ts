@@ -144,13 +144,18 @@ export const findInscripcionesByClase = async (claseId: string, institucionId: s
       clase: { institucionId },
     },
     include: {
-      estudiante: { select: { id: true, nombre: true, apellido: true, email: true, fotoUrl: true } },
+      estudiante: {
+        select: { id: true, nombre: true, apellido: true, email: true, fotoUrl: true },
+      },
     },
     orderBy: { estudiante: { apellido: 'asc' } },
   });
 };
 
-export const findInscripcionesByEstudiante = async (estudianteId: string, institucionId: string) => {
+export const findInscripcionesByEstudiante = async (
+  estudianteId: string,
+  institucionId: string,
+) => {
   return prisma.inscripcion.findMany({
     where: {
       estudianteId,
@@ -204,7 +209,7 @@ export const eliminarInscripcion = async (id: string, institucionId: string) => 
 export const inscribirMasivo = async (
   claseId: string,
   estudianteIds: string[],
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },

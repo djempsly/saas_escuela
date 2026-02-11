@@ -11,15 +11,18 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    req.log.info({
-      action: 'request_completed',
-      method: req.method,
-      url: req.originalUrl,
-      statusCode: res.statusCode,
-      duration,
-      userId: req.user?.usuarioId,
-      institucionId: req.resolvedInstitucionId,
-    }, `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+    req.log.info(
+      {
+        action: 'request_completed',
+        method: req.method,
+        url: req.originalUrl,
+        statusCode: res.statusCode,
+        duration,
+        userId: req.user?.usuarioId,
+        institucionId: req.resolvedInstitucionId,
+      },
+      `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`,
+    );
   });
 
   next();

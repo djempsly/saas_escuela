@@ -55,7 +55,7 @@ export const getAsistenciaByFechaHandler = async (req: Request, res: Response) =
     const asistencias = await getAsistenciaByClaseYFecha(
       claseId,
       new Date(fecha),
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(asistencias);
   } catch (error: any) {
@@ -79,7 +79,7 @@ export const getReporteClaseHandler = async (req: Request, res: Response) => {
       claseId,
       fechaInicio,
       fechaFin,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
   } catch (error: any) {
@@ -110,7 +110,7 @@ export const getReporteEstudianteHandler = async (req: Request, res: Response) =
       estudianteId,
       new Date(fechaInicio),
       new Date(fechaFin),
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
   } catch (error: any) {
@@ -147,14 +147,16 @@ export const getMiAsistenciaHandler = async (req: Request, res: Response) => {
     const { fechaInicio, fechaFin } = req.query as { fechaInicio: string; fechaFin: string };
 
     // Default: último mes
-    const inicio = fechaInicio ? new Date(fechaInicio) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const inicio = fechaInicio
+      ? new Date(fechaInicio)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const fin = fechaFin ? new Date(fechaFin) : new Date();
 
     const reporte = await getReporteAsistenciaByEstudiante(
       req.user.usuarioId.toString(),
       inicio,
       fin,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
   } catch (error: any) {

@@ -33,8 +33,8 @@ export type Grado = '1er' | '2do' | '3er' | '4to' | '5to' | '6to';
 
 export interface BoletinConfig {
   grado?: Grado;
-  colorNota?: string;      // Hex sin # (ej: "D5E4AE")
-  colorHeader?: string;    // Color para headers
+  colorNota?: string; // Hex sin # (ej: "D5E4AE")
+  colorHeader?: string; // Color para headers
   colorSubheader?: string; // Color para subheaders
 }
 
@@ -167,7 +167,7 @@ const crearTablaCalificaciones = (
   colorNota: string,
   colorHeader: string,
   colorSubheader: string,
-  calificaciones?: Calificacion[]
+  calificaciones?: Calificacion[],
 ): Table => {
   const anchoPeriodo = 380;
   const anchoPromedio = 400;
@@ -271,26 +271,63 @@ const crearTablaCalificaciones = (
 
   // P1-P4 para cada competencia (4 veces)
   for (let i = 0; i < 4; i++) {
-    periodos.forEach(p => {
-      fila1Children.push(crearCelda(p, { width: anchoPeriodo, fill: colorSubheader, bold: true, fontSize: 7 }));
+    periodos.forEach((p) => {
+      fila1Children.push(
+        crearCelda(p, { width: anchoPeriodo, fill: colorSubheader, bold: true, fontSize: 7 }),
+      );
     });
   }
 
   // Sub-headers completiva
-  fila1Children.push(crearCelda('50%\nC. F.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('C.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('50%\nC.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('C.C.F.', { width: anchoCompletiva, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila1Children.push(
+    crearCelda('50%\nC. F.', {
+      width: anchoCompletiva,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila1Children.push(
+    crearCelda('C.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila1Children.push(
+    crearCelda('50%\nC.E.C.', {
+      width: anchoCompletiva,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila1Children.push(
+    crearCelda('C.C.F.', { width: anchoCompletiva, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   // Sub-headers extraordinaria
-  fila1Children.push(crearCelda('30%\nC.F.', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('C.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('70%\nC.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('C.EX.F.', { width: anchoExtraord, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila1Children.push(
+    crearCelda('30%\nC.F.', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila1Children.push(
+    crearCelda('C.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila1Children.push(
+    crearCelda('70%\nC.E. EX', {
+      width: anchoExtraord,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila1Children.push(
+    crearCelda('C.EX.F.', { width: anchoExtraord, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   // Sub-headers especial
-  fila1Children.push(crearCelda('C.F.', { width: anchoEspecial, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila1Children.push(crearCelda('C.E.', { width: anchoEspecial, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila1Children.push(
+    crearCelda('C.F.', { width: anchoEspecial, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila1Children.push(
+    crearCelda('C.E.', { width: anchoEspecial, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   const fila1 = new TableRow({ children: fila1Children });
 
@@ -307,35 +344,78 @@ const crearTablaCalificaciones = (
 
   // P1-P4 repetido 4 veces
   for (let i = 0; i < 4; i++) {
-    periodos.forEach(p => {
-      fila2Children.push(crearCelda(p, { width: anchoPeriodo, fill: colorSubheader, bold: true, fontSize: 7 }));
+    periodos.forEach((p) => {
+      fila2Children.push(
+        crearCelda(p, { width: anchoPeriodo, fill: colorSubheader, bold: true, fontSize: 7 }),
+      );
     });
   }
 
   // PC1-PC4
-  ['PC1', 'PC2', 'PC3', 'PC4'].forEach(pc => {
-    fila2Children.push(crearCelda(pc, { width: anchoPromedio, fill: colorSubheader, bold: true, fontSize: 7 }));
+  ['PC1', 'PC2', 'PC3', 'PC4'].forEach((pc) => {
+    fila2Children.push(
+      crearCelda(pc, { width: anchoPromedio, fill: colorSubheader, bold: true, fontSize: 7 }),
+    );
   });
 
   // Completiva
-  fila2Children.push(crearCelda('50%\nC. F.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('C.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('50%\nC.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('C.C.F.', { width: anchoCompletiva, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila2Children.push(
+    crearCelda('50%\nC. F.', {
+      width: anchoCompletiva,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila2Children.push(
+    crearCelda('C.E.C.', { width: anchoCompletiva, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila2Children.push(
+    crearCelda('50%\nC.E.C.', {
+      width: anchoCompletiva,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila2Children.push(
+    crearCelda('C.C.F.', { width: anchoCompletiva, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   // Extraordinaria
-  fila2Children.push(crearCelda('30%\nC.F.', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('C.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('70%\nC.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('C.EX.F.', { width: anchoExtraord, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila2Children.push(
+    crearCelda('30%\nC.F.', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila2Children.push(
+    crearCelda('C.E. EX', { width: anchoExtraord, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila2Children.push(
+    crearCelda('70%\nC.E. EX', {
+      width: anchoExtraord,
+      fill: colorHeader,
+      bold: true,
+      fontSize: 6,
+    }),
+  );
+  fila2Children.push(
+    crearCelda('C.EX.F.', { width: anchoExtraord, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   // Especial
-  fila2Children.push(crearCelda('C.F.', { width: anchoEspecial, fill: colorHeader, bold: true, fontSize: 6 }));
-  fila2Children.push(crearCelda('C.E.', { width: anchoEspecial, fill: colorSubheader, bold: true, fontSize: 6 }));
+  fila2Children.push(
+    crearCelda('C.F.', { width: anchoEspecial, fill: colorHeader, bold: true, fontSize: 6 }),
+  );
+  fila2Children.push(
+    crearCelda('C.E.', { width: anchoEspecial, fill: colorSubheader, bold: true, fontSize: 6 }),
+  );
 
   // A y R
-  fila2Children.push(crearCelda('A', { width: anchoSituacion, fill: colorHeader, bold: true, fontSize: 7 }));
-  fila2Children.push(crearCelda('R', { width: anchoSituacion, fill: colorHeader, bold: true, fontSize: 7 }));
+  fila2Children.push(
+    crearCelda('A', { width: anchoSituacion, fill: colorHeader, bold: true, fontSize: 7 }),
+  );
+  fila2Children.push(
+    crearCelda('R', { width: anchoSituacion, fill: colorHeader, bold: true, fontSize: 7 }),
+  );
 
   const fila2 = new TableRow({ children: fila2Children });
 
@@ -343,49 +423,105 @@ const crearTablaCalificaciones = (
   const filasAreas = AREAS_CURRICULARES.map((area, idx) => {
     const cal = calificaciones?.[idx];
     const children: TableCell[] = [
-      crearCelda('ÁREAS\nCURRICULARES', { width: anchoAreaLabel, fill: colorHeader, bold: true, fontSize: 6 }),
-      crearCelda(area, { width: anchoAreaNombre, fill: COLORES.BLANCO, fontSize: 8, alignment: AlignmentType.LEFT }),
+      crearCelda('ÁREAS\nCURRICULARES', {
+        width: anchoAreaLabel,
+        fill: colorHeader,
+        bold: true,
+        fontSize: 6,
+      }),
+      crearCelda(area, {
+        width: anchoAreaNombre,
+        fill: COLORES.BLANCO,
+        fontSize: 8,
+        alignment: AlignmentType.LEFT,
+      }),
     ];
 
     // 16 celdas para períodos (4 competencias x 4 períodos)
-    const periodosData = [
-      cal?.comunicativa,
-      cal?.pensamientoLogico,
-      cal?.cientifica,
-      cal?.etica,
-    ];
+    const periodosData = [cal?.comunicativa, cal?.pensamientoLogico, cal?.cientifica, cal?.etica];
 
-    periodosData.forEach(comp => {
-      ['p1', 'p2', 'p3', 'p4'].forEach(p => {
+    periodosData.forEach((comp) => {
+      ['p1', 'p2', 'p3', 'p4'].forEach((p) => {
         const valor = comp?.[p as keyof typeof comp];
-        children.push(crearCelda(valor?.toString() || '', { width: anchoPeriodo, fill: colorNota }));
+        children.push(
+          crearCelda(valor?.toString() || '', { width: anchoPeriodo, fill: colorNota }),
+        );
       });
     });
 
     // 4 promedios
-    ['pc1', 'pc2', 'pc3', 'pc4'].forEach(pc => {
+    ['pc1', 'pc2', 'pc3', 'pc4'].forEach((pc) => {
       const valor = cal?.promedios?.[pc as keyof typeof cal.promedios];
       children.push(crearCelda(valor?.toString() || '', { width: anchoPromedio, fill: colorNota }));
     });
 
     // Cal final
-    children.push(crearCelda(cal?.calFinal?.toString() || '', { width: anchoCalFinal, fill: colorSubheader }));
+    children.push(
+      crearCelda(cal?.calFinal?.toString() || '', { width: anchoCalFinal, fill: colorSubheader }),
+    );
 
     // Completiva
-    children.push(crearCelda(cal?.completiva?.cf50?.toString() || '', { width: anchoCompletiva, fill: colorNota }));
-    children.push(crearCelda(cal?.completiva?.cec?.toString() || '', { width: anchoCompletiva, fill: colorNota }));
-    children.push(crearCelda(cal?.completiva?.cec50?.toString() || '', { width: anchoCompletiva, fill: colorNota }));
-    children.push(crearCelda(cal?.completiva?.ccf?.toString() || '', { width: anchoCompletiva, fill: colorSubheader }));
+    children.push(
+      crearCelda(cal?.completiva?.cf50?.toString() || '', {
+        width: anchoCompletiva,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.completiva?.cec?.toString() || '', {
+        width: anchoCompletiva,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.completiva?.cec50?.toString() || '', {
+        width: anchoCompletiva,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.completiva?.ccf?.toString() || '', {
+        width: anchoCompletiva,
+        fill: colorSubheader,
+      }),
+    );
 
     // Extraordinaria
-    children.push(crearCelda(cal?.extraordinaria?.cf30?.toString() || '', { width: anchoExtraord, fill: colorNota }));
-    children.push(crearCelda(cal?.extraordinaria?.ceEx?.toString() || '', { width: anchoExtraord, fill: colorNota }));
-    children.push(crearCelda(cal?.extraordinaria?.ceEx70?.toString() || '', { width: anchoExtraord, fill: colorNota }));
-    children.push(crearCelda(cal?.extraordinaria?.cexf?.toString() || '', { width: anchoExtraord, fill: colorSubheader }));
+    children.push(
+      crearCelda(cal?.extraordinaria?.cf30?.toString() || '', {
+        width: anchoExtraord,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.extraordinaria?.ceEx?.toString() || '', {
+        width: anchoExtraord,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.extraordinaria?.ceEx70?.toString() || '', {
+        width: anchoExtraord,
+        fill: colorNota,
+      }),
+    );
+    children.push(
+      crearCelda(cal?.extraordinaria?.cexf?.toString() || '', {
+        width: anchoExtraord,
+        fill: colorSubheader,
+      }),
+    );
 
     // Especial
-    children.push(crearCelda(cal?.especial?.cf?.toString() || '', { width: anchoEspecial, fill: colorNota }));
-    children.push(crearCelda(cal?.especial?.ce?.toString() || '', { width: anchoEspecial, fill: colorSubheader }));
+    children.push(
+      crearCelda(cal?.especial?.cf?.toString() || '', { width: anchoEspecial, fill: colorNota }),
+    );
+    children.push(
+      crearCelda(cal?.especial?.ce?.toString() || '', {
+        width: anchoEspecial,
+        fill: colorSubheader,
+      }),
+    );
 
     // Situación A/R
     children.push(crearCelda(cal?.situacion?.aprobado ? '✓' : '', { width: anchoSituacion }));
@@ -407,7 +543,7 @@ const crearTablaCalificaciones = (
 export async function generarBoletin(
   config: BoletinConfig = {},
   datosEstudiante?: DatosEstudiante,
-  calificaciones?: Calificacion[]
+  calificaciones?: Calificacion[],
 ): Promise<Buffer> {
   const {
     grado = '1er',
@@ -476,19 +612,19 @@ export async function generarBoletin(
               new TextRun({
                 text: `Año escolar: ${datosEstudiante?.añoEscolarInicio || '20____'}-${datosEstudiante?.añoEscolarFin || '20____'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
               new TextRun({ text: '\t\t\t', size: 20 }),
               new TextRun({
                 text: `Sección: ${datosEstudiante?.seccion || '________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
               new TextRun({ text: '\t\t', size: 20 }),
               new TextRun({
                 text: `Número de orden: ${datosEstudiante?.numeroOrden || '________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
             ],
           }),
@@ -521,19 +657,19 @@ export async function generarBoletin(
               new TextRun({
                 text: `Código del centro: ${datosEstudiante?.codigoCentro || '________________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
               new TextRun({ text: '\t', size: 20 }),
               new TextRun({
                 text: `Tanda: ${datosEstudiante?.tanda || '__________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
               new TextRun({ text: '\t', size: 20 }),
               new TextRun({
                 text: `Teléfono del centro: ${datosEstudiante?.telefonoCentro || '________________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
             ],
           }),
@@ -544,13 +680,13 @@ export async function generarBoletin(
               new TextRun({
                 text: `Provincia: ${datosEstudiante?.provincia || '________________________________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
               new TextRun({ text: '\t\t', size: 20 }),
               new TextRun({
                 text: `Municipio: ${datosEstudiante?.municipio || '________________________________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
             ],
           }),
@@ -569,7 +705,7 @@ export async function generarBoletin(
               new TextRun({
                 text: `Sección: ${datosEstudiante?.seccion || '________'}`,
                 size: 20,
-                font: 'Arial'
+                font: 'Arial',
               }),
             ],
           }),
@@ -596,7 +732,12 @@ export async function generarBoletin(
           new Paragraph({
             spacing: { before: 200, after: 100 },
             children: [
-              new TextRun({ text: 'SITUACIÓN DEL/DE LA ESTUDIANTE', bold: true, size: 20, font: 'Arial' }),
+              new TextRun({
+                text: 'SITUACIÓN DEL/DE LA ESTUDIANTE',
+                bold: true,
+                size: 20,
+                font: 'Arial',
+              }),
               new TextRun({ text: '\t\t\t', size: 20 }),
               new TextRun({ text: 'Promovido/a ☐', size: 20, font: 'Arial' }),
               new TextRun({ text: '\t\t', size: 20 }),
@@ -636,7 +777,7 @@ export async function guardarBoletin(
   filepath: string,
   config: BoletinConfig = {},
   datosEstudiante?: DatosEstudiante,
-  calificaciones?: Calificacion[]
+  calificaciones?: Calificacion[],
 ): Promise<void> {
   const fs = await import('fs');
   const buffer = await generarBoletin(config, datosEstudiante, calificaciones);

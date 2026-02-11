@@ -125,9 +125,7 @@ export const getAsistenciaStatsHandler = async (req: Request, res: Response) => 
     const stats = await getAsistenciaStats(claseId, cicloLectivoId, estudianteId);
 
     // Merge student info with stats
-    const estudiantesMap = new Map(
-      clase.inscripciones.map((i) => [i.estudianteId, i.estudiante])
-    );
+    const estudiantesMap = new Map(clase.inscripciones.map((i) => [i.estudianteId, i.estudiante]));
 
     const estadisticasConNombres = stats.estadisticas.map((e) => ({
       ...e,

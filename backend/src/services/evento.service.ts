@@ -19,7 +19,7 @@ interface CrearEventoInput {
 export const crearEvento = async (
   input: CrearEventoInput,
   creadorId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Si hay claseId, verificar que pertenece a la institución
   if (input.claseId) {
@@ -59,7 +59,7 @@ export const actualizarEvento = async (
   input: Partial<CrearEventoInput>,
   usuarioId: string,
   role: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const evento = await prisma.evento.findFirst({
     where: { id: eventoId, institucionId },
@@ -110,7 +110,7 @@ export const eliminarEvento = async (
   eventoId: string,
   usuarioId: string,
   role: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const evento = await prisma.evento.findFirst({
     where: { id: eventoId, institucionId },
@@ -135,7 +135,7 @@ export const getEventos = async (
   institucionId: string,
   fechaInicio?: Date,
   fechaFin?: Date,
-  claseId?: string
+  claseId?: string,
 ) => {
   const where: any = { institucionId };
 
@@ -149,10 +149,7 @@ export const getEventos = async (
         fechaFin: { gte: fechaInicio, lte: fechaFin },
       },
       {
-        AND: [
-          { fechaInicio: { lte: fechaInicio } },
-          { fechaFin: { gte: fechaFin } },
-        ],
+        AND: [{ fechaInicio: { lte: fechaInicio } }, { fechaFin: { gte: fechaFin } }],
       },
     ];
   }
@@ -187,10 +184,7 @@ export const getEventos = async (
           { fechaInicio: { gte: fechaInicio, lte: fechaFin } },
           { fechaFin: { gte: fechaInicio, lte: fechaFin } },
           {
-            AND: [
-              { fechaInicio: { lte: fechaInicio } },
-              { fechaFin: { gte: fechaFin } },
-            ],
+            AND: [{ fechaInicio: { lte: fechaInicio } }, { fechaFin: { gte: fechaFin } }],
           },
         ],
       });
@@ -232,7 +226,7 @@ export const getEventoById = async (
   eventoId: string,
   usuarioId: string,
   role: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const evento = await prisma.evento.findFirst({
     where: { id: eventoId, institucionId },
@@ -282,11 +276,7 @@ export const getTiposEvento = () => {
 };
 
 // Obtener feriados para un rango de fechas
-export const getFeriados = async (
-  institucionId: string,
-  fechaInicio: Date,
-  fechaFin: Date
-) => {
+export const getFeriados = async (institucionId: string, fechaInicio: Date, fechaFin: Date) => {
   return prisma.evento.findMany({
     where: {
       institucionId,
@@ -299,10 +289,7 @@ export const getFeriados = async (
           fechaFin: { gte: fechaInicio, lte: fechaFin },
         },
         {
-          AND: [
-            { fechaInicio: { lte: fechaInicio } },
-            { fechaFin: { gte: fechaFin } },
-          ],
+          AND: [{ fechaInicio: { lte: fechaInicio } }, { fechaFin: { gte: fechaFin } }],
         },
       ],
     },

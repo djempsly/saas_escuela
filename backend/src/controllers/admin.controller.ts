@@ -32,7 +32,13 @@ const reassignDirectorSchema = z.object({
 // GET /api/v1/admin/usuarios - Lista todos los usuarios (global)
 export const getAllUsersGlobalHandler = async (req: Request, res: Response) => {
   try {
-    const { institucionId, role, activo, page = '1', limit = '20' } = req.query as {
+    const {
+      institucionId,
+      role,
+      activo,
+      page = '1',
+      limit = '20',
+    } = req.query as {
       institucionId?: string;
       role?: string;
       activo?: string;
@@ -112,10 +118,13 @@ export const getUserStatsHandler = async (req: Request, res: Response) => {
     ]);
 
     // Convertir a objeto más legible
-    const roleStats = usuariosPorRol.reduce((acc, item) => {
-      acc[item.role] = item._count.role;
-      return acc;
-    }, {} as Record<string, number>);
+    const roleStats = usuariosPorRol.reduce(
+      (acc, item) => {
+        acc[item.role] = item._count.role;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return res.status(200).json({
       totalUsuarios,

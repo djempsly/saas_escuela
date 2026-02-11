@@ -11,7 +11,7 @@ router.use(
   authMiddleware,
   roleMiddleware([ROLES.DIRECTOR]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 router.get('/', getAuditLogsHandler);

@@ -23,7 +23,7 @@ router.get(
   roleMiddleware([ROLES.ESTUDIANTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getMisCalificacionesHandler
+  getMisCalificacionesHandler,
 );
 
 router.get(
@@ -32,7 +32,7 @@ router.get(
   roleMiddleware([ROLES.ESTUDIANTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getMiBoletinHandler
+  getMiBoletinHandler,
 );
 
 // ============================================
@@ -44,7 +44,7 @@ router.post(
   roleMiddleware([ROLES.DOCENTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  guardarCalificacionHandler
+  guardarCalificacionHandler,
 );
 
 router.post(
@@ -53,7 +53,7 @@ router.post(
   roleMiddleware([ROLES.DOCENTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  guardarCalificacionTecnicaHandler
+  guardarCalificacionTecnicaHandler,
 );
 
 router.post(
@@ -62,7 +62,7 @@ router.post(
   roleMiddleware([ROLES.DOCENTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  guardarCalificacionesMasivasHandler
+  guardarCalificacionesMasivasHandler,
 );
 
 // ============================================
@@ -71,28 +71,46 @@ router.post(
 router.get(
   '/clase/:claseId',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+  ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getCalificacionesClaseHandler
+  getCalificacionesClaseHandler,
 );
 
 router.get(
   '/estudiante/:estudianteId',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+  ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getCalificacionesEstudianteHandler
+  getCalificacionesEstudianteHandler,
 );
 
 router.get(
   '/boletin/:estudianteId/:cicloLectivoId',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+  ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getBoletinHandler
+  getBoletinHandler,
 );
 
 export default router;

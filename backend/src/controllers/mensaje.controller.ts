@@ -32,7 +32,7 @@ export const crearConversacionHandler = async (req: Request, res: Response) => {
     const conversacion = await crearConversacion(
       req.body,
       getUserId(req),
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
 
     return res.status(201).json(conversacion);
@@ -51,10 +51,7 @@ export const getConversacionesHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const conversaciones = await getConversaciones(
-      getUserId(req),
-      req.resolvedInstitucionId
-    );
+    const conversaciones = await getConversaciones(getUserId(req), req.resolvedInstitucionId);
 
     return res.status(200).json(conversaciones);
   } catch (error: unknown) {
@@ -76,7 +73,7 @@ export const getMensajesHandler = async (req: Request, res: Response) => {
       getUserId(req),
       req.resolvedInstitucionId,
       limit ? parseInt(limit, 10) : 50,
-      cursor
+      cursor,
     );
 
     return res.status(200).json(result);
@@ -106,7 +103,7 @@ export const getMensajesNuevosHandler = async (req: Request, res: Response) => {
       id,
       getUserId(req),
       req.resolvedInstitucionId,
-      new Date(desde)
+      new Date(desde),
     );
 
     return res.status(200).json(mensajes);
@@ -126,12 +123,7 @@ export const enviarMensajeHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const mensaje = await enviarMensaje(
-      id,
-      req.body,
-      getUserId(req),
-      req.resolvedInstitucionId
-    );
+    const mensaje = await enviarMensaje(id, req.body, getUserId(req), req.resolvedInstitucionId);
 
     return res.status(201).json(mensaje);
   } catch (error: unknown) {
@@ -168,10 +160,7 @@ export const getNoLeidosHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const result = await getNoLeidos(
-      getUserId(req),
-      req.resolvedInstitucionId
-    );
+    const result = await getNoLeidos(getUserId(req), req.resolvedInstitucionId);
 
     return res.status(200).json(result);
   } catch (error: unknown) {
@@ -188,7 +177,7 @@ export const getUsuariosDisponiblesHandler = async (req: Request, res: Response)
     const usuarios = await getUsuariosDisponibles(
       getUserId(req),
       getUserRole(req),
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
 
     return res.status(200).json(usuarios);

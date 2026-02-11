@@ -31,8 +31,8 @@ export const createInstitucionHandler = async (req: Request, res: Response) => {
       status: 'success',
       data: {
         institucion: result.institucion,
-        tempPassword: result.tempPassword
-      }
+        tempPassword: result.tempPassword,
+      },
     });
   } catch (error: any) {
     req.log.error({ err: error }, 'Error creating institucion');
@@ -112,13 +112,17 @@ export const deleteInstitucionHandler = async (req: Request, res: Response) => {
   } catch (error: any) {
     req.log.error({ err: error }, 'Error deleting institucion');
     // Errores de validación/negocio son seguros para mostrar
-    if (error.message?.includes('No se puede eliminar') || error.message?.includes('no encontrada')) {
+    if (
+      error.message?.includes('No se puede eliminar') ||
+      error.message?.includes('no encontrada')
+    ) {
       return res.status(400).json({ message: error.message });
     }
     // Errores de Prisma por foreign key
     if (error.code === 'P2003' || error.code === 'P2014') {
       return res.status(400).json({
-        message: 'No se puede eliminar la institución porque tiene registros asociados. Desactívela en lugar de eliminarla.',
+        message:
+          'No se puede eliminar la institución porque tiene registros asociados. Desactívela en lugar de eliminarla.',
       });
     }
     return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
@@ -146,8 +150,14 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
 
     // Schema de validación para config (todos opcionales para multipart)
     const configSchema = z.object({
-      colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-      colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+      colorPrimario: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
+      colorSecundario: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
       lema: z.string().max(200).optional().nullable(),
       direccion: z.string().max(300).optional(),
       codigoCentro: z.string().max(50).optional(),
@@ -219,7 +229,7 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
     // Return actual error message for debugging
     return res.status(500).json({
       message: error.message || 'Error interno del servidor',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 };
@@ -230,8 +240,14 @@ export const updateDirectorConfigHandler = async (req: Request, res: Response) =
     const { id } = req.params as { id: string };
 
     const schema = z.object({
-      colorPrimario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-      colorSecundario: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+      colorPrimario: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
+      colorSecundario: z
+        .string()
+        .regex(/^#[0-9A-Fa-f]{6}$/)
+        .optional(),
       sabanaColores: z.string().optional(),
     });
 
@@ -366,7 +382,9 @@ export const updateSistemasEducativosHandler = async (req: Request, res: Respons
     const { id } = req.params as { id: string };
 
     const sistemasSchema = z.object({
-      sistemasEducativos: z.array(z.nativeEnum(SistemaEducativo)).min(1, 'Debe seleccionar al menos un sistema educativo'),
+      sistemasEducativos: z
+        .array(z.nativeEnum(SistemaEducativo))
+        .min(1, 'Debe seleccionar al menos un sistema educativo'),
     });
 
     const validated = sistemasSchema.parse(req.body);

@@ -32,18 +32,35 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
 };
 
 export const createInstitucion = async (input: any) => {
-  const { director, directorId, colores, sistemaEducativo, sistemasEducativos, idiomaPrincipal, slug: inputSlug, dominioPersonalizado, autogestionActividades, ...rest } = input;
-
-  logger.debug({
-    idiomaPrincipal,
+  const {
+    director,
+    directorId,
+    colores,
     sistemaEducativo,
     sistemasEducativos,
-    pais: rest.pais,
-    nombre: rest.nombre,
-  }, 'Creating institution');
+    idiomaPrincipal,
+    slug: inputSlug,
+    dominioPersonalizado,
+    autogestionActividades,
+    ...rest
+  } = input;
+
+  logger.debug(
+    {
+      idiomaPrincipal,
+      sistemaEducativo,
+      sistemasEducativos,
+      pais: rest.pais,
+      nombre: rest.nombre,
+    },
+    'Creating institution',
+  );
 
   // Validate SistemaEducativo
-  if (!sistemaEducativo || !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)) {
+  if (
+    !sistemaEducativo ||
+    !Object.values(SistemaEducativo).includes(sistemaEducativo as SistemaEducativo)
+  ) {
     throw new Error(`Sistema educativo inválido o no proporcionado: ${sistemaEducativo}`);
   }
 
@@ -146,13 +163,15 @@ export const createInstitucion = async (input: any) => {
 
   // Caso 2: Crear nuevo director
   if (!director) {
-    throw new Error('Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)');
+    throw new Error(
+      'Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)',
+    );
   }
 
   // Verificar si el email del director ya existe (solo si se proporcionó)
   if (director.email) {
     const existingUser = await prisma.user.findUnique({
-      where: { email: director.email }
+      where: { email: director.email },
     });
     if (existingUser) {
       throw new Error('El correo electrónico del director ya está en uso');
@@ -231,14 +250,14 @@ export const findInstituciones = async () => {
           id: true,
           nombre: true,
           apellido: true,
-          email: true
-        }
+          email: true,
+        },
       },
       sistemasEducativos: {
         select: {
           sistema: true,
-          activo: true
-        }
+          activo: true,
+        },
       },
       dominios: {
         select: {
@@ -247,14 +266,14 @@ export const findInstituciones = async () => {
           verificado: true,
           verificadoAt: true,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       },
       _count: {
         select: {
-          usuarios: true
-        }
-      }
-    }
+          usuarios: true,
+        },
+      },
+    },
   });
 };
 
@@ -267,16 +286,16 @@ export const findInstitucionById = async (id: string) => {
           id: true,
           nombre: true,
           apellido: true,
-          email: true
-        }
+          email: true,
+        },
       },
       sistemasEducativos: {
         select: {
           sistema: true,
-          activo: true
-        }
-      }
-    }
+          activo: true,
+        },
+      },
+    },
   });
 };
 
@@ -310,13 +329,17 @@ export const deleteInstitucion = async (id: string) => {
   }
 
   // Verificar si tiene registros relacionados críticos
-  if (institucion.usuarios.length > 0 || institucion.niveles.length > 0 || institucion.clases.length > 0) {
+  if (
+    institucion.usuarios.length > 0 ||
+    institucion.niveles.length > 0 ||
+    institucion.clases.length > 0
+  ) {
     throw new Error(
       `No se puede eliminar la institución porque tiene registros asociados: ` +
-      `${institucion.usuarios.length} usuarios, ` +
-      `${institucion.niveles.length} niveles, ` +
-      `${institucion.clases.length} clases. ` +
-      `Desactive la institución en lugar de eliminarla.`
+        `${institucion.usuarios.length} usuarios, ` +
+        `${institucion.niveles.length} niveles, ` +
+        `${institucion.clases.length} clases. ` +
+        `Desactive la institución en lugar de eliminarla.`,
     );
   }
 
@@ -398,7 +421,7 @@ export const updateInstitucionConfig = async (
     distritoEducativo?: string;
     regionalEducacion?: string;
     sabanaColores?: string;
-  }
+  },
 ) => {
   const institucion = await prisma.institucion.findUnique({
     where: { id },
@@ -628,7 +651,7 @@ export const updateSensitiveConfig = async (
     loginBgType?: string;
     loginBgColor?: string;
     loginBgGradient?: string | null;
-  }
+  },
 ) => {
   const institucion = await prisma.institucion.findUnique({
     where: { id },
@@ -649,7 +672,10 @@ export const updateSensitiveConfig = async (
   }
 
   // Verificar unicidad del dominio si se está cambiando
-  if (input.dominioPersonalizado && input.dominioPersonalizado !== institucion.dominioPersonalizado) {
+  if (
+    input.dominioPersonalizado &&
+    input.dominioPersonalizado !== institucion.dominioPersonalizado
+  ) {
     const existingDominio = await prisma.institucion.findUnique({
       where: { dominioPersonalizado: input.dominioPersonalizado },
     });
@@ -664,7 +690,9 @@ export const updateSensitiveConfig = async (
       ...(input.nombre && { nombre: input.nombre }),
       ...(input.nombreMostrar !== undefined && { nombreMostrar: input.nombreMostrar }),
       ...(input.slug && { slug: generateSlug(input.slug) }),
-      ...(input.dominioPersonalizado !== undefined && { dominioPersonalizado: input.dominioPersonalizado }),
+      ...(input.dominioPersonalizado !== undefined && {
+        dominioPersonalizado: input.dominioPersonalizado,
+      }),
       ...(input.idiomaPrincipal && { idiomaPrincipal: input.idiomaPrincipal }),
       ...(input.logoPosicion && { logoPosicion: input.logoPosicion }),
       ...(input.logoWidth !== undefined && { logoWidth: input.logoWidth }),
@@ -678,7 +706,9 @@ export const updateSensitiveConfig = async (
       ...(input.loginBgType && { loginBgType: input.loginBgType }),
       ...(input.loginBgColor && { loginBgColor: input.loginBgColor }),
       ...(input.loginBgGradient !== undefined && { loginBgGradient: input.loginBgGradient }),
-      ...(input.autogestionActividades !== undefined && { autogestionActividades: input.autogestionActividades }),
+      ...(input.autogestionActividades !== undefined && {
+        autogestionActividades: input.autogestionActividades,
+      }),
     },
   });
 };
@@ -708,7 +738,7 @@ export const checkDominioAvailability = async (dominio: string, excludeId?: stri
 // Actualizar sistemas educativos de una institución
 export const updateSistemasEducativos = async (
   id: string,
-  sistemasEducativos: SistemaEducativo[]
+  sistemasEducativos: SistemaEducativo[],
 ) => {
   const institucion = await prisma.institucion.findUnique({
     where: { id },
@@ -731,8 +761,8 @@ export const updateSistemasEducativos = async (
   }
 
   // Identificar sistemas nuevos para sembrar materias oficiales
-  const sistemasActuales = institucion.sistemasEducativos.map(s => s.sistema);
-  const sistemasNuevos = sistemasEducativos.filter(s => !sistemasActuales.includes(s));
+  const sistemasActuales = institucion.sistemasEducativos.map((s) => s.sistema);
+  const sistemasNuevos = sistemasEducativos.filter((s) => !sistemasActuales.includes(s));
 
   // Actualizar en transacción
   return prisma.$transaction(async (tx) => {
@@ -807,7 +837,7 @@ export const updateSistemasEducativos = async (
 // Sembrar materias oficiales para una institución
 export const seedMateriasOficiales = async (
   institucionId: string,
-  sistemas?: SistemaEducativo[]
+  sistemas?: SistemaEducativo[],
 ) => {
   const institucion = await prisma.institucion.findUnique({
     where: { id: institucionId },
@@ -819,7 +849,7 @@ export const seedMateriasOficiales = async (
   }
 
   // Usar los sistemas proporcionados o los de la institución
-  const sistemasToSeed = sistemas || institucion.sistemasEducativos.map(s => s.sistema);
+  const sistemasToSeed = sistemas || institucion.sistemasEducativos.map((s) => s.sistema);
 
   const materiasCreadas: string[] = [];
 

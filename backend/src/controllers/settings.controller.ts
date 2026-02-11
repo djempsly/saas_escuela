@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
-import { getSystemSettings, updateSystemSettings, SystemSettingsInput } from '../services/settings.service';
+import {
+  getSystemSettings,
+  updateSystemSettings,
+  SystemSettingsInput,
+} from '../services/settings.service';
 import { sanitizeErrorMessage } from '../utils/security';
 import { z } from 'zod';
 

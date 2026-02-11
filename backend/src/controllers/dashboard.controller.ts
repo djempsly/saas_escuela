@@ -31,7 +31,7 @@ export const getDashboardStatsHandler = async (req: Request, res: Response) => {
             totalDocentes: 0,
             totalClases: 0,
             inscripcionesActivas: 0,
-            message: 'Admin global - seleccione una institución para ver estadísticas'
+            message: 'Admin global - seleccione una institución para ver estadísticas',
           };
         } else {
           stats = await getDashboardStats(institucionId);

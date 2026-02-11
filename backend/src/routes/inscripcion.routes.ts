@@ -20,7 +20,7 @@ router.post(
   '/por-codigo',
   authMiddleware,
   roleMiddleware([ROLES.ESTUDIANTE]),
-  inscribirPorCodigoHandler
+  inscribirPorCodigoHandler,
 );
 
 // Ruta para que estudiantes vean sus inscripciones
@@ -30,15 +30,22 @@ router.get(
   roleMiddleware([ROLES.ESTUDIANTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getMisInscripcionesHandler
+  getMisInscripcionesHandler,
 );
 
 // Rutas protegidas para administración y docentes
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+    ROLES.SECRETARIA,
+  ]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 // Inscribir estudiante (admin/director/coordinador/secretaria)

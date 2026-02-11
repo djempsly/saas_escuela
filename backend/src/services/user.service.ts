@@ -56,7 +56,7 @@ export const createUser = async (input: CrearUsuarioInput, institucionId: string
 
 export const resetUserPasswordManual = async (
   targetUserId: string,
-  requester: { id: string; institucionId: string | null; role: string }
+  requester: { id: string; institucionId: string | null; role: string },
 ) => {
   const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
 
@@ -97,7 +97,7 @@ export const resetUserPasswordManual = async (
       Role.ADMIN,
       Role.DIRECTOR,
       Role.COORDINADOR,
-      Role.COORDINADOR_ACADEMICO
+      Role.COORDINADOR_ACADEMICO,
     ];
     if (privilegedRoles.includes(targetUser.role)) {
       throw new Error('No tienes permisos para resetear la contraseña de personal directivo');
@@ -145,7 +145,7 @@ export const findUsersByInstitucion = async (
   institucionId: string,
   role?: string,
   _includePasswordTemporal: boolean = false,
-  nivelId?: string
+  nivelId?: string,
 ) => {
   // SEGURIDAD: passwordTemporal ya no existe en el schema
   return prisma.user.findMany({
@@ -153,15 +153,16 @@ export const findUsersByInstitucion = async (
       institucionId,
       ...(role && { role: role as Role }),
       // Filtrar por nivel si se proporciona y es rol ESTUDIANTE
-      ...(nivelId && (role === Role.ESTUDIANTE || !role) && {
-        inscripciones: {
-          some: {
-            clase: {
-              nivelId: nivelId
-            }
-          }
-        }
-      })
+      ...(nivelId &&
+        (role === Role.ESTUDIANTE || !role) && {
+          inscripciones: {
+            some: {
+              clase: {
+                nivelId: nivelId,
+              },
+            },
+          },
+        }),
     },
     select: {
       id: true,
@@ -186,14 +187,14 @@ export const findUsersByInstitucion = async (
                 nivel: {
                   select: {
                     id: true,
-                    nombre: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      })
+                    nombre: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -244,7 +245,10 @@ export const findStudentsByDocente = async (docenteId: string, institucionId: st
   });
 };
 
-export const findStaffByInstitucion = async (institucionId: string, _includePasswordTemporal: boolean = false) => {
+export const findStaffByInstitucion = async (
+  institucionId: string,
+  _includePasswordTemporal: boolean = false,
+) => {
   // SEGURIDAD: passwordTemporal ya no existe en el schema
   const staffRoles: Role[] = [
     Role.COORDINADOR,
@@ -272,17 +276,20 @@ export const findStaffByInstitucion = async (institucionId: string, _includePass
       debeCambiarPassword: true,
       createdAt: true,
     },
-    orderBy: [
-      { role: 'asc' },
-      { apellido: 'asc' },
-      { nombre: 'asc' },
-    ],
+    orderBy: [{ role: 'asc' }, { apellido: 'asc' }, { nombre: 'asc' }],
   });
 };
 
 export const updateUserProfile = async (
   userId: string,
-  data: { nombre?: string; segundoNombre?: string; apellido?: string; segundoApellido?: string; email?: string; fotoUrl?: string }
+  data: {
+    nombre?: string;
+    segundoNombre?: string;
+    apellido?: string;
+    segundoApellido?: string;
+    email?: string;
+    fotoUrl?: string;
+  },
 ) => {
   // Verificar si el email ya está en uso por otro usuario
   if (data.email) {
@@ -324,9 +331,16 @@ export const updateUserProfile = async (
 
 export const updateUserById = async (
   userId: string,
-  data: { nombre?: string; segundoNombre?: string; apellido?: string; segundoApellido?: string; email?: string; activo?: boolean },
+  data: {
+    nombre?: string;
+    segundoNombre?: string;
+    apellido?: string;
+    segundoApellido?: string;
+    email?: string;
+    activo?: boolean;
+  },
   requesterInstitucionId: string | null,
-  requesterRole: string
+  requesterRole: string,
 ) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -437,7 +451,7 @@ export const findCoordinadores = async (institucionId: string) => {
 export const assignCiclosToCoordinator = async (
   userId: string,
   cicloIds: string[],
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verify user exists and is a coordinator
   const user = await prisma.user.findFirst({
@@ -486,7 +500,7 @@ export const assignCiclosToCoordinator = async (
 export const assignNivelesToCoordinator = async (
   userId: string,
   nivelIds: string[],
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verify user exists and is a coordinator
   const user = await prisma.user.findFirst({

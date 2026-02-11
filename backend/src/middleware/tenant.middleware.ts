@@ -21,7 +21,8 @@ export const resolveTenantMiddleware = async (req: Request, res: Response, next:
 
     // Para ADMIN: puede especificar institucionId como query param o en el body (para peticiones POST)
     if (rol === Role.ADMIN) {
-      const queryInstitucionId = (req.query.institucionId as string) || (req.body?.institucionId as string);
+      const queryInstitucionId =
+        (req.query.institucionId as string) || (req.body?.institucionId as string);
 
       if (queryInstitucionId) {
         // Verificar que la institución existe
@@ -63,7 +64,7 @@ export const requireTenantMiddleware = (req: Request, res: Response, next: NextF
     if (req.user?.rol === Role.ADMIN) {
       return res.status(400).json({
         message: 'Debe especificar institucionId como query parameter',
-        example: `${req.originalUrl}?institucionId=<id>`
+        example: `${req.originalUrl}?institucionId=<id>`,
       });
     }
     return res.status(403).json({ message: 'No autorizado' });

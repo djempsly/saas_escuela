@@ -20,16 +20,32 @@ router.get('/codigo/:codigo', getClaseByCodigoHandler);
 // Rutas protegidas - todos los roles pueden ver clases (incluyendo estudiantes)
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA, ROLES.ESTUDIANTE]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+    ROLES.SECRETARIA,
+    ROLES.ESTUDIANTE,
+  ]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 // CRUD - Solo ADMIN, DIRECTOR y COORDINADOR pueden crear/editar/eliminar
-router.post('/', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]), createClaseHandler);
+router.post(
+  '/',
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]),
+  createClaseHandler,
+);
 router.get('/', getClasesHandler);
 router.get('/:id', getClaseByIdHandler);
-router.put('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]), updateClaseHandler);
+router.put(
+  '/:id',
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]),
+  updateClaseHandler,
+);
 router.delete('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), deleteClaseHandler);
 
 export default router;

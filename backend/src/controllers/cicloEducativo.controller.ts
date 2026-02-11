@@ -148,7 +148,7 @@ export const assignCoordinadoresHandler = async (req: Request, res: Response) =>
     const ciclo = await assignCoordinadoresACiclo(
       id,
       validated.coordinadorIds,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(ciclo);
   } catch (error: any) {

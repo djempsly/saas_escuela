@@ -28,7 +28,7 @@ export const getDiasLaborables = async (claseId: string, cicloLectivoId: string)
 export const upsertDiasLaborables = async (
   claseId: string,
   cicloLectivoId: string,
-  data: DiasLaborablesInput
+  data: DiasLaborablesInput,
 ) => {
   return prisma.diasLaborables.upsert({
     where: {
@@ -92,7 +92,7 @@ export const getTotalDiasLaborables = async (claseId: string, cicloLectivoId: st
 export const getAsistenciaStats = async (
   claseId: string,
   cicloLectivoId: string,
-  estudianteId?: string
+  estudianteId?: string,
 ) => {
   // Obtener días laborables configurados
   const diasLaborables = await getDiasLaborables(claseId, cicloLectivoId);

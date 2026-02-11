@@ -40,12 +40,12 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
     const seccionMsg = input.seccion ? ` sección ${input.seccion}` : '';
     throw new Error(
       `Ya existe una clase de "${claseExistente.materia.nombre}" en "${claseExistente.nivel.nombre}"${seccionMsg} para este ciclo lectivo. ` +
-      `Si necesita otra sección, especifique una sección diferente (ej: A, B, C).`
+        `Si necesita otra sección, especifique una sección diferente (ej: A, B, C).`,
     );
   }
 
   // Usar codigo proporcionado o generar uno automaticamente
-  let codigo = input.codigo || generateCodigoClase();
+  const codigo = input.codigo || generateCodigoClase();
 
   // Verificar que el codigo+nivel+seccion no exista en la misma institucion
   if (input.codigo) {
@@ -121,7 +121,11 @@ export const findClaseByCodigo = async (codigo: string) => {
   });
 };
 
-export const updateClase = async (id: string, institucionId: string, input: Partial<ClaseInput>) => {
+export const updateClase = async (
+  id: string,
+  institucionId: string,
+  input: Partial<ClaseInput>,
+) => {
   // Si se cambia docente, verificar que pertenece a la institución
   if (input.docenteId) {
     const docente = await prisma.user.findFirst({

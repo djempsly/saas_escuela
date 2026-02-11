@@ -30,11 +30,7 @@ export const crearTareaHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const tarea = await crearTarea(
-      req.body,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const tarea = await crearTarea(req.body, getUserId(req), getInstitucionId(req));
 
     return res.status(201).json(tarea);
   } catch (error: unknown) {
@@ -53,12 +49,7 @@ export const actualizarTareaHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const tarea = await actualizarTarea(
-      id,
-      req.body,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const tarea = await actualizarTarea(id, req.body, getUserId(req), getInstitucionId(req));
 
     return res.status(200).json(tarea);
   } catch (error: unknown) {
@@ -106,7 +97,7 @@ export const getTareasHandler = async (req: Request, res: Response) => {
       getUserId(req),
       getUserRole(req),
       getInstitucionId(req),
-      claseId
+      claseId,
     );
 
     return res.status(200).json(tareas);
@@ -122,12 +113,7 @@ export const getTareaByIdHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const tarea = await getTareaById(
-      id,
-      getUserId(req),
-      getUserRole(req),
-      getInstitucionId(req)
-    );
+    const tarea = await getTareaById(id, getUserId(req), getUserRole(req), getInstitucionId(req));
 
     return res.status(200).json(tarea);
   } catch (error: unknown) {
@@ -149,12 +135,7 @@ export const agregarRecursoHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const recurso = await agregarRecurso(
-      id,
-      req.body,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const recurso = await agregarRecurso(id, req.body, getUserId(req), getInstitucionId(req));
 
     return res.status(201).json(recurso);
   } catch (error: unknown) {
@@ -176,12 +157,7 @@ export const entregarTareaHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const entrega = await entregarTarea(
-      id,
-      req.body,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const entrega = await entregarTarea(id, req.body, getUserId(req), getInstitucionId(req));
 
     return res.status(200).json(entrega);
   } catch (error: unknown) {
@@ -211,7 +187,7 @@ export const calificarEntregaHandler = async (req: Request, res: Response) => {
       entregaId,
       req.body,
       getUserId(req),
-      getInstitucionId(req)
+      getInstitucionId(req),
     );
 
     return res.status(200).json(entrega);
@@ -238,11 +214,7 @@ export const getEntregasTareaHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const entregas = await getEntregasTarea(
-      id,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const entregas = await getEntregasTarea(id, getUserId(req), getInstitucionId(req));
 
     return res.status(200).json(entregas);
   } catch (error: unknown) {

@@ -35,9 +35,11 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrad') ||
-        error.message.includes('ya está inscrito') ||
-        error.message.includes('no está activo')) {
+    if (
+      error.message.includes('no encontrad') ||
+      error.message.includes('ya está inscrito') ||
+      error.message.includes('no está activo')
+    ) {
       return res.status(400).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -63,10 +65,12 @@ export const inscribirPorCodigoHandler = async (req: Request, res: Response) => 
     const inscripcion = await inscribirPorCodigo(codigo, req.user.usuarioId.toString());
     return res.status(201).json(inscripcion);
   } catch (error: any) {
-    if (error.message.includes('no válido') ||
-        error.message.includes('Ya estás inscrito') ||
-        error.message.includes('no está activo') ||
-        error.message.includes('No tienes permiso')) {
+    if (
+      error.message.includes('no válido') ||
+      error.message.includes('Ya estás inscrito') ||
+      error.message.includes('no está activo') ||
+      error.message.includes('No tienes permiso')
+    ) {
       return res.status(400).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -93,7 +97,7 @@ export const getMisInscripcionesHandler = async (req: Request, res: Response) =>
     }
     const inscripciones = await findInscripcionesByEstudiante(
       req.user.usuarioId.toString(),
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(inscripciones);
   } catch (error: any) {
@@ -107,7 +111,10 @@ export const getInscripcionesByEstudianteHandler = async (req: Request, res: Res
       return res.status(403).json({ message: 'No autorizado' });
     }
     const { estudianteId } = req.params as { estudianteId: string };
-    const inscripciones = await findInscripcionesByEstudiante(estudianteId, req.resolvedInstitucionId);
+    const inscripciones = await findInscripcionesByEstudiante(
+      estudianteId,
+      req.resolvedInstitucionId,
+    );
     return res.status(200).json(inscripciones);
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -149,7 +156,7 @@ export const inscribirMasivoHandler = async (req: Request, res: Response) => {
     const resultados = await inscribirMasivo(
       validated.body.claseId,
       validated.body.estudianteIds,
-      req.resolvedInstitucionId
+      req.resolvedInstitucionId,
     );
     return res.status(200).json(resultados);
   } catch (error: any) {

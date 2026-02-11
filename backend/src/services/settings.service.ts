@@ -33,9 +33,15 @@ export const updateSystemSettings = async (data: SystemSettingsInput) => {
     where: { id: 'system' },
     update: {
       ...(data.maintenanceMode !== undefined && { maintenanceMode: data.maintenanceMode }),
-      ...(data.allowPublicRegistration !== undefined && { allowPublicRegistration: data.allowPublicRegistration }),
-      ...(data.maxInstitutionsPerPlan !== undefined && { maxInstitutionsPerPlan: data.maxInstitutionsPerPlan }),
-      ...(data.defaultSessionTimeout !== undefined && { defaultSessionTimeout: data.defaultSessionTimeout }),
+      ...(data.allowPublicRegistration !== undefined && {
+        allowPublicRegistration: data.allowPublicRegistration,
+      }),
+      ...(data.maxInstitutionsPerPlan !== undefined && {
+        maxInstitutionsPerPlan: data.maxInstitutionsPerPlan,
+      }),
+      ...(data.defaultSessionTimeout !== undefined && {
+        defaultSessionTimeout: data.defaultSessionTimeout,
+      }),
     },
     create: {
       id: 'system',

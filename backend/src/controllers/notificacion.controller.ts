@@ -21,7 +21,7 @@ export const getNotificacionesHandler = async (req: Request, res: Response) => {
     const result = await getNotificaciones(
       getUserId(req),
       limit ? parseInt(limit, 10) : 20,
-      offset ? parseInt(offset, 10) : 0
+      offset ? parseInt(offset, 10) : 0,
     );
 
     return res.status(200).json(result);

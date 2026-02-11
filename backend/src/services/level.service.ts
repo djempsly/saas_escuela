@@ -29,7 +29,11 @@ export const findNivelById = async (id: string, institucionId: string) => {
   });
 };
 
-export const updateNivel = async (id: string, institucionId: string, input: Partial<NivelInput & { cicloEducativoId?: string | null }>) => {
+export const updateNivel = async (
+  id: string,
+  institucionId: string,
+  input: Partial<NivelInput & { cicloEducativoId?: string | null }>,
+) => {
   // Extract cicloEducativoId from input
   const { cicloEducativoId, ...restInput } = input;
 
@@ -61,7 +65,7 @@ export const deleteNivel = async (id: string, institucionId: string) => {
 export const assignNivelToCicloEducativo = async (
   nivelId: string,
   cicloEducativoId: string | null,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verify nivel belongs to institution
   const nivel = await prisma.nivel.findFirst({

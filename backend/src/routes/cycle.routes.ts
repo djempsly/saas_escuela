@@ -14,22 +14,32 @@ import { ROLES } from '../utils/zod.schemas';
 const router = Router();
 
 // Middlewares base para todas las rutas
-router.use(
-  authMiddleware,
-  resolveTenantMiddleware,
-  requireTenantMiddleware
-);
+router.use(authMiddleware, resolveTenantMiddleware, requireTenantMiddleware);
 
 // Rutas de lectura - todos los roles de staff pueden ver ciclos
 router.get(
   '/',
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
-  getCiclosHandler
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+    ROLES.SECRETARIA,
+  ]),
+  getCiclosHandler,
 );
 router.get(
   '/:id',
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
-  getCicloByIdHandler
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+    ROLES.SECRETARIA,
+  ]),
+  getCicloByIdHandler,
 );
 
 // Rutas de escritura - solo ADMIN y DIRECTOR

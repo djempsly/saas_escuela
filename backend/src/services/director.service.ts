@@ -61,7 +61,7 @@ export const createDirector = async (input: CreateDirectorInput, institucionId?:
 export const reassignDirector = async (
   directorId: string,
   newInstitucionId: string,
-  motivo?: string
+  motivo?: string,
 ) => {
   // Verificar que el director existe y es DIRECTOR
   const director = await prisma.user.findUnique({
@@ -193,10 +193,7 @@ export const findAllDirectores = async () => {
 };
 
 // Asignar director a institución (para nuevas instituciones)
-export const assignDirectorToInstitucion = async (
-  directorId: string,
-  institucionId: string
-) => {
+export const assignDirectorToInstitucion = async (directorId: string, institucionId: string) => {
   const result = await prisma.$transaction(async (tx) => {
     // Actualizar institución
     await tx.institucion.update({

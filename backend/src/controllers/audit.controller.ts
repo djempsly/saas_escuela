@@ -9,15 +9,7 @@ export const getAuditLogsHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const {
-      page,
-      limit,
-      fechaDesde,
-      fechaHasta,
-      usuarioId,
-      entidad,
-      accion,
-    } = req.query as {
+    const { page, limit, fechaDesde, fechaHasta, usuarioId, entidad, accion } = req.query as {
       page?: string;
       limit?: string;
       fechaDesde?: string;

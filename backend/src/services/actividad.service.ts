@@ -15,7 +15,7 @@ interface ActividadInput {
 export const createActividad = async (
   input: ActividadInput,
   autorId: string,
-  institucionId?: string | null
+  institucionId?: string | null,
 ) => {
   // Determinar tipoMedia basado en lo que se proporcione
   let tipoMedia = 'mixed';
@@ -109,7 +109,7 @@ export const findAllActividadesAdmin = async (
     institucionId?: string;
     publicado?: boolean;
   },
-  limit?: number
+  limit?: number,
 ) => {
   const where: any = {};
   if (filters?.institucionId !== undefined) {
@@ -153,8 +153,8 @@ export const updateActividad = async (id: string, input: Partial<ActividadInput>
   // Determinar tipoMedia basado en lo que se proporcione
   let tipoMedia = existing.tipoMedia;
   if (input.fotos !== undefined || input.videos !== undefined) {
-    const hasFotos = input.fotos?.length || (existing.fotos as string[] || []).length > 0;
-    const hasVideos = input.videos?.length || (existing.videos as string[] || []).length > 0;
+    const hasFotos = input.fotos?.length || ((existing.fotos as string[]) || []).length > 0;
+    const hasVideos = input.videos?.length || ((existing.videos as string[]) || []).length > 0;
 
     if (hasFotos && !hasVideos) {
       tipoMedia = 'foto';
@@ -218,7 +218,11 @@ export const deleteActividad = async (id: string) => {
 };
 
 // Buscar actividades por título (solo publicadas y globales por defecto)
-export const searchActividades = async (query: string, limit?: number, institucionId?: string | null) => {
+export const searchActividades = async (
+  query: string,
+  limit?: number,
+  institucionId?: string | null,
+) => {
   const where: any = {
     publicado: true,
     OR: [

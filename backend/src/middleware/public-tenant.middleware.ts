@@ -17,11 +17,7 @@ import { logger } from '../config/logger';
  * - req.tenantInstitucion: objeto completo de la institución
  * - req.resolvedInstitucionId: ID de la institución
  */
-export const publicTenantResolver = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const publicTenantResolver = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const host = req.hostname;
     const baseDomain = process.env.BASE_DOMAIN;
@@ -95,11 +91,7 @@ export const publicTenantResolver = async (
  * Middleware que REQUIERE que se haya resuelto una institución pública.
  * Usar después de publicTenantResolver cuando la ruta NECESITA una institución.
  */
-export const requirePublicTenant = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const requirePublicTenant = (req: Request, res: Response, next: NextFunction) => {
   if (!req.tenantInstitucion || !req.resolvedInstitucionId) {
     return res.status(404).json({
       error: 'Institución no encontrada para este dominio',

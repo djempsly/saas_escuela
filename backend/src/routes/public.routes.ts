@@ -71,8 +71,10 @@ router.get(
         actividades: actividades.map((a) => ({
           id: a.id,
           titulo: a.titulo,
-          contenido: a.contenido?.substring(0, 200) + (a.contenido && a.contenido.length > 200 ? '...' : ''),
-          imagenUrl: a.urlArchivo || (Array.isArray(a.fotos) && a.fotos.length > 0 ? a.fotos[0] : null),
+          contenido:
+            a.contenido?.substring(0, 200) + (a.contenido && a.contenido.length > 200 ? '...' : ''),
+          imagenUrl:
+            a.urlArchivo || (Array.isArray(a.fotos) && a.fotos.length > 0 ? a.fotos[0] : null),
           tipoMedia: a.tipoMedia,
           fechaPublicacion: a.createdAt,
         })),
@@ -81,7 +83,7 @@ router.get(
       req.log.error({ err: error }, 'Error en /landing');
       res.status(500).json({ error: 'Error interno del servidor' });
     }
-  }
+  },
 );
 
 /**
@@ -130,7 +132,7 @@ router.get(
       req.log.error({ err: error }, 'Error en /actividades/:id');
       res.status(500).json({ error: 'Error interno del servidor' });
     }
-  }
+  },
 );
 
 /**
@@ -155,7 +157,7 @@ router.get(
       colorSecundario: inst.colorSecundario || '#7c3aed',
       accentColor: inst.accentColor || '#059669',
     });
-  }
+  },
 );
 
 /**

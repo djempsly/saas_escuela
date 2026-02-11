@@ -26,15 +26,22 @@ router.get(
   roleMiddleware([ROLES.ESTUDIANTE]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getMiAsistenciaHandler
+  getMiAsistenciaHandler,
 );
 
 // Rutas protegidas para docentes y administrativos
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.SECRETARIA]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.DOCENTE,
+    ROLES.SECRETARIA,
+  ]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 // Tomar asistencia

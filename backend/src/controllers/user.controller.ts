@@ -125,8 +125,8 @@ export const createUserHandler = async (req: Request, res: Response) => {
           username: result.user.username,
           role: result.user.role,
         },
-        tempPassword: result.tempPassword
-      }
+        tempPassword: result.tempPassword,
+      },
     });
   } catch (error: any) {
     if (error.issues) {
@@ -152,19 +152,21 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
       id: req.user.usuarioId.toString(),
       // Usar resolvedInstitucionId para filtrar por tenant
       institucionId: req.resolvedInstitucionId || null,
-      role: req.user.rol
+      role: req.user.rol,
     };
 
     const result = await resetUserPasswordManual(id, requester);
     return res.status(200).json({
       message: 'Contrasena reseteada exitosamente',
-      tempPassword: result.tempPassword
+      tempPassword: result.tempPassword,
     });
   } catch (error: any) {
     // Errores de permisos son seguros para mostrar
-    if (error.message.includes('No tienes permisos') ||
-        error.message.includes('Usuario no encontrado') ||
-        error.message.includes('desactivado')) {
+    if (
+      error.message.includes('No tienes permisos') ||
+      error.message.includes('Usuario no encontrado') ||
+      error.message.includes('desactivado')
+    ) {
       return res.status(403).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -189,13 +191,21 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
       if (role && role !== ROLES.ESTUDIANTE) {
         return res.status(403).json({ message: 'Solo puedes ver listados de estudiantes' });
       }
-      const students = await findStudentsByDocente(req.user.usuarioId.toString(), req.resolvedInstitucionId);
+      const students = await findStudentsByDocente(
+        req.user.usuarioId.toString(),
+        req.resolvedInstitucionId,
+      );
       return res.status(200).json({ data: students });
     }
 
     // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
-    const users = await findUsersByInstitucion(req.resolvedInstitucionId, role, canSeePasswords, nivelId);
+    const users = await findUsersByInstitucion(
+      req.resolvedInstitucionId,
+      role,
+      canSeePasswords,
+      nivelId,
+    );
 
     return res.status(200).json({ data: users });
   } catch (error: any) {
@@ -297,7 +307,7 @@ export const updateUserHandler = async (req: Request, res: Response) => {
       id,
       { nombre, segundoNombre, apellido, segundoApellido, email, activo },
       req.resolvedInstitucionId || null,
-      req.user.rol
+      req.user.rol,
     );
 
     return res.status(200).json({

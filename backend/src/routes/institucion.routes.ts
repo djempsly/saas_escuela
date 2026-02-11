@@ -20,7 +20,12 @@ import {
 } from '../controllers/institucion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
-import { uploadInstitucionMedia, uploadFavicon, uploadHero, uploadLoginLogo } from '../middleware/upload.middleware';
+import {
+  uploadInstitucionMedia,
+  uploadFavicon,
+  uploadHero,
+  uploadLoginLogo,
+} from '../middleware/upload.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -43,7 +48,12 @@ router.get('/check-slug/:slug', checkSlugHandler);
 router.get('/check-dominio/:dominio', checkDominioHandler);
 
 // ===== RUTA PROTEGIDA - DIRECTOR (config visual limitada) =====
-router.patch('/:id/config-director', authMiddleware, roleMiddleware([ROLES.DIRECTOR]), updateDirectorConfigHandler);
+router.patch(
+  '/:id/config-director',
+  authMiddleware,
+  roleMiddleware([ROLES.DIRECTOR]),
+  updateDirectorConfigHandler,
+);
 
 // ===== RUTAS PROTEGIDAS - Solo ADMIN =====
 router.use(authMiddleware, roleMiddleware([ROLES.ADMIN]));

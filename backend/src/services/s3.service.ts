@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadBucketCommand,
+} from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 import path from 'path';
 import { logger } from '../config/logger';
@@ -47,7 +52,7 @@ type S3Folder =
 export async function uploadToS3(
   file: Express.Multer.File,
   folder: S3Folder,
-  institucionId?: string | null
+  institucionId?: string | null,
 ): Promise<string> {
   const { region, bucket, cloudfrontUrl } = getConfig();
   const uniqueSuffix = crypto.randomBytes(8).toString('hex');

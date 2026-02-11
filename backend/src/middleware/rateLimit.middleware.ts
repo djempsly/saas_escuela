@@ -23,7 +23,8 @@ export const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 3, // máximo 3 solicitudes
   message: {
-    message: 'Demasiadas solicitudes de recuperación de contraseña. Por favor, intente de nuevo más tarde.',
+    message:
+      'Demasiadas solicitudes de recuperación de contraseña. Por favor, intente de nuevo más tarde.',
   },
   standardHeaders: true,
   legacyHeaders: false,

@@ -20,28 +20,20 @@ import { ROLES } from '../utils/zod.schemas';
 const router = Router();
 
 // Middleware común para todas las rutas
-router.use(
-  authMiddleware,
-  resolveTenantMiddleware,
-  requireTenantMiddleware
-);
+router.use(authMiddleware, resolveTenantMiddleware, requireTenantMiddleware);
 
 // Rutas públicas (para obtener enums)
 router.get('/conceptos', getConceptosCobroHandler);
 router.get('/metodos-pago', getMetodosPagoHandler);
 
 // Rutas para estudiantes (ver sus propios cobros)
-router.get(
-  '/mis-cobros',
-  roleMiddleware([ROLES.ESTUDIANTE]),
-  async (req, res) => {
-    if (!req.user) {
-      return res.status(401).json({ message: 'No autenticado' });
-    }
-    req.params.id = req.user.usuarioId.toString();
-    return getCobrosByEstudianteHandler(req, res);
+router.get('/mis-cobros', roleMiddleware([ROLES.ESTUDIANTE]), async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'No autenticado' });
   }
-);
+  req.params.id = req.user.usuarioId.toString();
+  return getCobrosByEstudianteHandler(req, res);
+});
 
 // Rutas administrativas (DIRECTOR, SECRETARIA, COORDINADOR_ACADEMICO)
 router.use(roleMiddleware([ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO]));
@@ -53,18 +45,10 @@ router.get('/', getCobrosHandler);
 router.get('/pendientes', getCobrosPendientesHandler);
 
 // Obtener reporte de pagos (solo DIRECTOR)
-router.get(
-  '/reporte',
-  roleMiddleware([ROLES.DIRECTOR]),
-  getReportePagosHandler
-);
+router.get('/reporte', roleMiddleware([ROLES.DIRECTOR]), getReportePagosHandler);
 
 // Obtener estadísticas (solo DIRECTOR)
-router.get(
-  '/estadisticas',
-  roleMiddleware([ROLES.DIRECTOR]),
-  getEstadisticasHandler
-);
+router.get('/estadisticas', roleMiddleware([ROLES.DIRECTOR]), getEstadisticasHandler);
 
 // Obtener cobros de un estudiante específico
 router.get('/estudiante/:id', getCobrosByEstudianteHandler);

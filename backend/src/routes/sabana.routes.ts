@@ -24,14 +24,14 @@ router.use(authMiddleware);
 router.get(
   '/niveles',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  getNivelesHandler
+  getNivelesHandler,
 );
 
 // GET /sabana/ciclos-lectivos - Obtener ciclos lectivos activos
 router.get(
   '/ciclos-lectivos',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  getCiclosLectivosHandler
+  getCiclosLectivosHandler,
 );
 
 // PATCH /sabana/publicar - Publicar calificaciones de una clase
@@ -39,7 +39,7 @@ router.get(
 router.patch(
   '/publicar',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  publicarCalificacionesHandler
+  publicarCalificacionesHandler,
 );
 
 // GET /sabana/:nivelId/:cicloLectivoId - Obtener sábana de notas
@@ -49,7 +49,7 @@ router.patch(
 router.get(
   '/:nivelId/:cicloLectivoId',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  getSabanaHandler
+  getSabanaHandler,
 );
 
 // PATCH /sabana/calificacion - Actualizar calificación
@@ -58,7 +58,7 @@ router.get(
 router.patch(
   '/calificacion',
   roleMiddleware([ROLES.DIRECTOR, ROLES.DOCENTE]),
-  updateCalificacionHandler
+  updateCalificacionHandler,
 );
 
 export default router;

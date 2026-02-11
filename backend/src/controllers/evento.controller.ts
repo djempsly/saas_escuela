@@ -28,11 +28,7 @@ export const crearEventoHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const evento = await crearEvento(
-      req.body,
-      getUserId(req),
-      getInstitucionId(req)
-    );
+    const evento = await crearEvento(req.body, getUserId(req), getInstitucionId(req));
 
     return res.status(201).json(evento);
   } catch (error: unknown) {
@@ -56,7 +52,7 @@ export const actualizarEventoHandler = async (req: Request, res: Response) => {
       req.body,
       getUserId(req),
       getUserRole(req),
-      getInstitucionId(req)
+      getInstitucionId(req),
     );
 
     return res.status(200).json(evento);
@@ -79,12 +75,7 @@ export const eliminarEventoHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    await eliminarEvento(
-      id,
-      getUserId(req),
-      getUserRole(req),
-      getInstitucionId(req)
-    );
+    await eliminarEvento(id, getUserId(req), getUserRole(req), getInstitucionId(req));
 
     return res.status(200).json({ message: 'Evento eliminado exitosamente' });
   } catch (error: unknown) {
@@ -117,7 +108,7 @@ export const getEventosHandler = async (req: Request, res: Response) => {
       getInstitucionId(req),
       fechaInicio ? new Date(fechaInicio) : undefined,
       fechaFin ? new Date(fechaFin) : undefined,
-      claseId
+      claseId,
     );
 
     return res.status(200).json(eventos);
@@ -133,12 +124,7 @@ export const getEventoByIdHandler = async (req: Request, res: Response) => {
     }
 
     const id = String(req.params.id);
-    const evento = await getEventoById(
-      id,
-      getUserId(req),
-      getUserRole(req),
-      getInstitucionId(req)
-    );
+    const evento = await getEventoById(id, getUserId(req), getUserRole(req), getInstitucionId(req));
 
     return res.status(200).json(evento);
   } catch (error: unknown) {
@@ -180,7 +166,7 @@ export const getFeriadosHandler = async (req: Request, res: Response) => {
     const feriados = await getFeriados(
       getInstitucionId(req),
       new Date(fechaInicio),
-      new Date(fechaFin)
+      new Date(fechaFin),
     );
 
     return res.status(200).json(feriados);

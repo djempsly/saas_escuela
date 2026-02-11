@@ -79,7 +79,10 @@ export const createActividadHandler = async (req: Request, res: Response) => {
       } catch {
         // Si no es JSON válido, intentar como string separado por comas
         if (typeof req.body.fotosUrls === 'string') {
-          const urls = req.body.fotosUrls.split(',').map((u: string) => u.trim()).filter(Boolean);
+          const urls = req.body.fotosUrls
+            .split(',')
+            .map((u: string) => u.trim())
+            .filter(Boolean);
           fotos.push(...urls);
         }
       }
@@ -104,7 +107,7 @@ export const createActividadHandler = async (req: Request, res: Response) => {
         publicado,
       },
       req.user.usuarioId.toString(),
-      institucionId
+      institucionId,
     );
 
     return res.status(201).json(actividad);
@@ -202,7 +205,10 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
         }
       } catch {
         if (typeof req.body.fotosUrls === 'string') {
-          const urls = req.body.fotosUrls.split(',').map((u: string) => u.trim()).filter(Boolean);
+          const urls = req.body.fotosUrls
+            .split(',')
+            .map((u: string) => u.trim())
+            .filter(Boolean);
           fotos.push(...urls);
         }
       }
@@ -220,7 +226,9 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
         if (Array.isArray(existentes)) {
           fotos.unshift(...existentes);
         }
-      } catch { /* ignorar */ }
+      } catch {
+        /* ignorar */
+      }
     }
 
     if (req.body.videosExistentes) {
@@ -229,7 +237,9 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
         if (Array.isArray(existentes)) {
           videos.unshift(...existentes);
         }
-      } catch { /* ignorar */ }
+      } catch {
+        /* ignorar */
+      }
     }
 
     const actividad = await updateActividad(id, {
@@ -265,14 +275,18 @@ export const deleteActividadHandler = async (req: Request, res: Response) => {
 
 export const searchActividadesHandler = async (req: Request, res: Response) => {
   try {
-    const { q, limit, institucionId } = req.query as { q?: string; limit?: string; institucionId?: string };
+    const { q, limit, institucionId } = req.query as {
+      q?: string;
+      limit?: string;
+      institucionId?: string;
+    };
     if (!q) {
       return res.status(400).json({ message: 'Parámetro de búsqueda (q) requerido' });
     }
     const actividades = await searchActividades(
       q,
       limit ? parseInt(limit) : undefined,
-      institucionId || null
+      institucionId || null,
     );
     return res.status(200).json(actividades);
   } catch (error: any) {

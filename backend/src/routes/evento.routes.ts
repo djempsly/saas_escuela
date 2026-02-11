@@ -16,11 +16,7 @@ import { ROLES } from '../utils/zod.schemas';
 const router = Router();
 
 // Middleware común para todas las rutas
-router.use(
-  authMiddleware,
-  resolveTenantMiddleware,
-  requireTenantMiddleware
-);
+router.use(authMiddleware, resolveTenantMiddleware, requireTenantMiddleware);
 
 // Obtener tipos de evento
 router.get('/tipos', getTiposEventoHandler);
@@ -38,21 +34,21 @@ router.get('/:id', getEventoByIdHandler);
 router.post(
   '/',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  crearEventoHandler
+  crearEventoHandler,
 );
 
 // Actualizar evento (creador o Director)
 router.put(
   '/:id',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  actualizarEventoHandler
+  actualizarEventoHandler,
 );
 
 // Eliminar evento (creador o Director)
 router.delete(
   '/:id',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
-  eliminarEventoHandler
+  eliminarEventoHandler,
 );
 
 export default router;

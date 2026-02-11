@@ -71,7 +71,12 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Debe proporcionar nivelId y cicloLectivoId' });
     }
 
-    const sabana = await getSabanaByNivel(nivelId, cicloLectivoId, user.institucionId, user.usuarioId);
+    const sabana = await getSabanaByNivel(
+      nivelId,
+      cicloLectivoId,
+      user.institucionId,
+      user.usuarioId,
+    );
     return res.json(sabana);
   } catch (error: any) {
     req.log.error({ err: error }, 'Error obteniendo sábana de notas');
@@ -120,14 +125,17 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       user.rol,
       user.institucionId,
       competenciaId,
-      valorTexto
+      valorTexto,
     );
 
     registrarAuditLog({
       accion: 'ACTUALIZAR',
       entidad: 'Calificacion',
       entidadId: claseId,
-      descripcion: periodo === 'observaciones' ? `Observaciones actualizadas` : `Calificación actualizada: periodo ${periodo}, valor ${valor}`,
+      descripcion:
+        periodo === 'observaciones'
+          ? `Observaciones actualizadas`
+          : `Calificación actualizada: periodo ${periodo}, valor ${valor}`,
       datos: { claseId, estudianteId, periodo, valor, competenciaId, valorTexto },
       usuarioId: user.usuarioId,
       institucionId: user.institucionId,
@@ -173,7 +181,7 @@ export const publicarCalificacionesHandler = async (req: Request, res: Response)
       cicloLectivoId,
       user.usuarioId,
       user.rol,
-      user.institucionId
+      user.institucionId,
     );
 
     registrarAuditLog({

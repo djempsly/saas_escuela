@@ -26,7 +26,7 @@ export const errorHandler = (
   req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _next: NextFunction
+  _next: NextFunction,
 ) => {
   // Log del error para debugging
   const log = req.log || logger;
@@ -130,7 +130,7 @@ export const errorHandler = (
       Sentry.captureException(err);
     }
     return res.status(err.statusCode).json({
-      error: err.isOperational ? err.message : (isProd ? 'Error interno del servidor' : err.message),
+      error: err.isOperational ? err.message : isProd ? 'Error interno del servidor' : err.message,
     });
   }
 
@@ -164,7 +164,7 @@ export const errorHandler = (
   ];
 
   const isKnownError = knownErrors.some((msg) =>
-    err.message.toLowerCase().includes(msg.toLowerCase())
+    err.message.toLowerCase().includes(msg.toLowerCase()),
   );
 
   if (isKnownError) {

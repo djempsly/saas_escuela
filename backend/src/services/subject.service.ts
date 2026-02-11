@@ -22,7 +22,11 @@ export const findMateriaById = async (id: string, institucionId: string) => {
   });
 };
 
-export const updateMateria = async (id: string, institucionId: string, input: Partial<MateriaInput>) => {
+export const updateMateria = async (
+  id: string,
+  institucionId: string,
+  input: Partial<MateriaInput>,
+) => {
   return prisma.materia.updateMany({
     where: { id, institucionId },
     data: input,

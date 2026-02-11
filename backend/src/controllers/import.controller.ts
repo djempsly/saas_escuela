@@ -28,7 +28,7 @@ export const importEstudiantesHandler = async (req: Request, res: Response) => {
       rows,
       req.resolvedInstitucionId,
       nivelId,
-      autoEnroll === 'true' || autoEnroll === true
+      autoEnroll === 'true' || autoEnroll === true,
     );
 
     if (req.user && req.resolvedInstitucionId) {
@@ -55,7 +55,7 @@ export const downloadPlantillaHandler = async (req: Request, res: Response) => {
 
     res.setHeader(
       'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.setHeader('Content-Disposition', 'attachment; filename=plantilla_estudiantes.xlsx');
     res.setHeader('Content-Length', buffer.length);

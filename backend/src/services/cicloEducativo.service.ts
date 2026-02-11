@@ -56,7 +56,7 @@ export const findCicloEducativoById = async (id: string, institucionId: string) 
 export const updateCicloEducativo = async (
   id: string,
   institucionId: string,
-  input: Partial<CicloEducativoInput>
+  input: Partial<CicloEducativoInput>,
 ) => {
   // First verify it belongs to the institution
   const existing = await prisma.cicloEducativo.findFirst({
@@ -107,7 +107,7 @@ export const deleteCicloEducativo = async (id: string, institucionId: string) =>
 export const assignNivelesACiclo = async (
   cicloId: string,
   nivelIds: string[],
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verify the ciclo exists and belongs to the institution
   const ciclo = await prisma.cicloEducativo.findFirst({
@@ -140,7 +140,7 @@ export const assignNivelesACiclo = async (
 export const assignCoordinadoresACiclo = async (
   cicloId: string,
   coordinadorIds: string[],
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verify the ciclo exists and belongs to the institution
   const ciclo = await prisma.cicloEducativo.findFirst({

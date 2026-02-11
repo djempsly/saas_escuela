@@ -31,7 +31,10 @@ export const generateUsername = (nombre: string, apellido: string): string => {
  * @param defaultMessage Mensaje por defecto para errores no controlados
  * @returns Mensaje seguro para el cliente
  */
-export const sanitizeErrorMessage = (error: unknown, defaultMessage: string = 'Error interno del servidor'): string => {
+export const sanitizeErrorMessage = (
+  error: unknown,
+  defaultMessage: string = 'Error interno del servidor',
+): string => {
   if (error instanceof Error) {
     // Lista de errores que son seguros para mostrar al usuario
     const safeErrors = [

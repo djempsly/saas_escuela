@@ -11,24 +11,23 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url('DATABASE_URL debe ser una URL válida'),
 
   // Seguridad (requerido)
-  JWT_SECRET: z
-    .string()
-    .min(32, 'JWT_SECRET debe tener al menos 32 caracteres para ser seguro'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres para ser seguro'),
 
   // URLs
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
   // Entorno
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   // Servidor
   PORT: z.coerce.number().default(4000),
 
   // Multi-tenant (opcional pero recomendado en producción)
   BASE_DOMAIN: z.string().min(3).optional(),
-  SERVER_IP: z.string().regex(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, 'SERVER_IP debe ser una IP válida').optional(),
+  SERVER_IP: z
+    .string()
+    .regex(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/, 'SERVER_IP debe ser una IP válida')
+    .optional(),
 
   // CORS
   ALLOWED_ORIGINS: z.string().optional(),
@@ -76,12 +75,14 @@ function validateEnv(): Env {
     console.warn('ADVERTENCIA: Usando valores por defecto en desarrollo');
   }
 
-  return result.success ? result.data : (envSchema.parse({
-    ...process.env,
-    // Valores por defecto para desarrollo
-    DATABASE_URL: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
-    JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-cambiar-en-produccion-min-32-chars',
-  }) as Env);
+  return result.success
+    ? result.data
+    : (envSchema.parse({
+        ...process.env,
+        // Valores por defecto para desarrollo
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://localhost:5432/test',
+        JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-cambiar-en-produccion-min-32-chars',
+      }) as Env);
 }
 
 // Exportar las variables validadas

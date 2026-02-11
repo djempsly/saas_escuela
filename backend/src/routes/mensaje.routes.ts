@@ -15,11 +15,7 @@ import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/
 const router = Router();
 
 // Middleware común para todas las rutas
-router.use(
-  authMiddleware,
-  resolveTenantMiddleware,
-  requireTenantMiddleware
-);
+router.use(authMiddleware, resolveTenantMiddleware, requireTenantMiddleware);
 
 // Obtener usuarios disponibles para chat
 router.get('/usuarios', getUsuariosDisponiblesHandler);

@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { importEstudiantesHandler, downloadPlantillaHandler } from '../controllers/import.controller';
+import {
+  importEstudiantesHandler,
+  downloadPlantillaHandler,
+} from '../controllers/import.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
@@ -32,7 +35,7 @@ router.use(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO]),
   resolveTenantMiddleware,
-  requireTenantMiddleware
+  requireTenantMiddleware,
 );
 
 // Import students from Excel

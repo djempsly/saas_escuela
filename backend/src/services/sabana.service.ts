@@ -22,7 +22,7 @@ export interface SabanaCalificacion {
   rp3: number | null;
   rp4: number | null;
   promedio: number | null;
-  
+
   // Recuperación (Secundaria)
   cpc30: number | null;
   cpcNota: number | null;
@@ -46,7 +46,7 @@ export interface SabanaCalificacion {
       rp2: number | null;
       rp3: number | null;
       rp4: number | null;
-    }
+    };
   };
 
   // Notas Técnicas (RA) - Map dinámico: "RA1": 85, "RA2": 90
@@ -109,28 +109,28 @@ export interface SabanaData {
  */
 const detectarSistemaEducativo = (
   nivel: any,
-  institucionSistemaDefault: SistemaEducativo
+  institucionSistemaDefault: SistemaEducativo,
 ): SistemaEducativo => {
   const nivelNombre = nivel.nombre.toUpperCase();
   const cicloNombre = nivel.cicloEducativo?.nombre.toUpperCase() || '';
 
   // Detección Primaria / Fundamental
   if (
-    nivelNombre.includes('PRIMARIA') || 
-    cicloNombre.includes('PRIMARIA') || 
+    nivelNombre.includes('PRIMARIA') ||
+    cicloNombre.includes('PRIMARIA') ||
     cicloNombre.includes('PRIMER CICLO') ||
     nivelNombre.includes('FONDAMENTAL') || // HT
-    cicloNombre.includes('FONDAMENTAL')    // HT
+    cicloNombre.includes('FONDAMENTAL') // HT
   ) {
     return institucionSistemaDefault.includes('HT') ? 'PRIMARIA_HT' : 'PRIMARIA_DO';
   }
 
   // Detección Secundaria
   if (
-    nivelNombre.includes('SECUNDARIA') || 
+    nivelNombre.includes('SECUNDARIA') ||
     cicloNombre.includes('SECUNDARIA') ||
     nivelNombre.includes('SECONDAIRE') || // HT (Nouveau Secondaire)
-    cicloNombre.includes('SECONDAIRE')    // HT
+    cicloNombre.includes('SECONDAIRE') // HT
   ) {
     return institucionSistemaDefault.includes('HT') ? 'SECUNDARIA_HT' : institucionSistemaDefault;
   }
@@ -145,7 +145,7 @@ export const getSabanaByNivel = async (
   nivelId: string,
   cicloLectivoId: string,
   institucionId: string,
-  userId?: string
+  userId?: string,
 ): Promise<SabanaData> => {
   // 1. Obtener el nivel y ciclo
   const nivel = await prisma.nivel.findUnique({
@@ -159,11 +159,12 @@ export const getSabanaByNivel = async (
   if (!nivel || nivel.institucionId !== institucionId) throw new Error('Nivel no encontrado');
 
   const cicloLectivo = await prisma.cicloLectivo.findUnique({ where: { id: cicloLectivoId } });
-  if (!cicloLectivo || cicloLectivo.institucionId !== institucionId) throw new Error('Ciclo lectivo no encontrado');
+  if (!cicloLectivo || cicloLectivo.institucionId !== institucionId)
+    throw new Error('Ciclo lectivo no encontrado');
 
   // 2. Determinar Sistema y Periodos
   const sistemaEducativo = detectarSistemaEducativo(nivel, nivel.institucion.sistema);
-  // Estándar general es 4 periodos (4 Parciales DO / 4 Contrôles HT). 
+  // Estándar general es 4 periodos (4 Parciales DO / 4 Contrôles HT).
   // Si se requiere trimestral (3), se debería configurar a nivel de institución, pero por defecto usaremos 4 para compatibilidad visual.
   const numeroPeriodos = 4;
 
@@ -173,7 +174,7 @@ export const getSabanaByNivel = async (
     orderBy: { orden: 'asc' },
   });
 
-  const materias: SabanaMateria[] = materiasDb.map(m => ({
+  const materias: SabanaMateria[] = materiasDb.map((m) => ({
     id: m.id,
     nombre: m.nombre,
     codigo: m.codigo,
@@ -190,25 +191,37 @@ export const getSabanaByNivel = async (
       docente: { select: { id: true, nombre: true, apellido: true } },
       inscripciones: {
         include: {
-          estudiante: { select: { id: true, nombre: true, segundoNombre: true, apellido: true, segundoApellido: true, fotoUrl: true } }
-        }
-      }
-    }
+          estudiante: {
+            select: {
+              id: true,
+              nombre: true,
+              segundoNombre: true,
+              apellido: true,
+              segundoApellido: true,
+              fotoUrl: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   // Mapa de Clases por ID
-  const claseById = new Map(clases.map(c => [c.id, c]));
+  const claseById = new Map(clases.map((c) => [c.id, c]));
 
   // Mapa de Estudiantes Únicos
-  const estudiantesMap = new Map<string, {
-    id: string;
-    nombre: string;
-    segundoNombre: string | null;
-    apellido: string;
-    segundoApellido: string | null;
-    fotoUrl: string | null;
-    clases: Set<string>; // IDs de clases donde está inscrito
-  }>();
+  const estudiantesMap = new Map<
+    string,
+    {
+      id: string;
+      nombre: string;
+      segundoNombre: string | null;
+      apellido: string;
+      segundoApellido: string | null;
+      fotoUrl: string | null;
+      clases: Set<string>; // IDs de clases donde está inscrito
+    }
+  >();
 
   for (const clase of clases) {
     for (const insc of clase.inscripciones) {
@@ -220,7 +233,7 @@ export const getSabanaByNivel = async (
           apellido: insc.estudiante.apellido,
           segundoApellido: insc.estudiante.segundoApellido,
           fotoUrl: insc.estudiante.fotoUrl,
-          clases: new Set([clase.id])
+          clases: new Set([clase.id]),
         });
       } else {
         estudiantesMap.get(insc.estudianteId)!.clases.add(clase.id);
@@ -229,7 +242,7 @@ export const getSabanaByNivel = async (
   }
 
   // 5. Obtener Calificaciones (Generales, Técnicas y Competencias)
-  const claseIds = clases.map(c => c.id);
+  const claseIds = clases.map((c) => c.id);
 
   // A. Calificaciones Generales
   const calificacionesGenerales = await prisma.calificacion.findMany({
@@ -238,17 +251,20 @@ export const getSabanaByNivel = async (
 
   // B. Calificaciones Técnicas (RA)
   const calificacionesTecnicas = await prisma.calificacionTecnica.findMany({
-    where: { claseId: { in: claseIds } }
+    where: { claseId: { in: claseIds } },
   });
 
   // C. Calificaciones por Competencia (NUEVO)
   const calificacionesCompetencia = await prisma.calificacionCompetencia.findMany({
-    where: { claseId: { in: claseIds }, cicloLectivoId }
+    where: { claseId: { in: claseIds }, cicloLectivoId },
   });
 
   // Organizar Calificaciones
   // Map<EstudianteId, Map<MateriaId, { general: Calificacion?, tecnicas: any[], competencias: any[] }>>
-  const notasMap = new Map<string, Map<string, { general?: any, tecnicas: any[], competencias: any[] }>>();
+  const notasMap = new Map<
+    string,
+    Map<string, { general?: any; tecnicas: any[]; competencias: any[] }>
+  >();
 
   // Helper para inicializar mapa
   const getNotaEntry = (estId: string, matId: string) => {
@@ -286,12 +302,12 @@ export const getSabanaByNivel = async (
   // 6. Construir Respuesta Final
   const estudiantes: SabanaEstudiante[] = Array.from(estudiantesMap.values())
     .sort((a, b) => a.apellido.localeCompare(b.apellido))
-    .map(est => {
+    .map((est) => {
       const califsEst: SabanaEstudiante['calificaciones'] = {};
 
       for (const materia of materias) {
         // ... (lógica de detección de clase igual)
-        const claseNivelMateria = clases.find(c => c.materia.id === materia.id);
+        const claseNivelMateria = clases.find((c) => c.materia.id === materia.id);
         let claseEstudiante = null;
         for (const cid of est.clases) {
           const c = claseById.get(cid);
@@ -325,11 +341,11 @@ export const getSabanaByNivel = async (
         // Esto asegura que p1, p2, p3, p4 de la materia sean el promedio de sus competencias
         const periodos = ['p1', 'p2', 'p3', 'p4', 'rp1', 'rp2', 'rp3', 'rp4'];
         const mPromedios: any = {};
-        
-        periodos.forEach(p => {
+
+        periodos.forEach((p) => {
           let suma = 0;
           let count = 0;
-          Object.values(competenciasMap).forEach(comp => {
+          Object.values(competenciasMap).forEach((comp) => {
             const val = comp[p as keyof typeof comp];
             if (val !== null && val > 0) {
               suma += val;
@@ -341,10 +357,14 @@ export const getSabanaByNivel = async (
 
         // Calcular promedio general de la materia (promedio de los promedios de periodos)
         let promedioMateria = null;
-        let sumaP = 0, countP = 0;
-        ['p1', 'p2', 'p3', 'p4'].forEach(p => {
+        let sumaP = 0,
+          countP = 0;
+        ['p1', 'p2', 'p3', 'p4'].forEach((p) => {
           const valP = Math.max(mPromedios[p] || 0, mPromedios[`r${p}`] || 0);
-          if (valP > 0) { sumaP += valP; countP++; }
+          if (valP > 0) {
+            sumaP += valP;
+            countP++;
+          }
         });
         if (countP > 0) promedioMateria = Math.round((sumaP / countP) * 10) / 10;
 
@@ -353,7 +373,8 @@ export const getSabanaByNivel = async (
           rasMap[t.ra_codigo] = t.valor;
         });
 
-        const claseFinal = claseEstudiante || claseNivelMateria || (general ? claseById.get(general.claseId) : null);
+        const claseFinal =
+          claseEstudiante || claseNivelMateria || (general ? claseById.get(general.claseId) : null);
 
         califsEst[materia.id] = {
           p1: mPromedios.p1,
@@ -379,7 +400,9 @@ export const getSabanaByNivel = async (
           ras: rasMap,
           claseId: claseFinal?.id || null,
           docenteId: claseFinal?.docente?.id || null,
-          docenteNombre: claseFinal?.docente ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}` : null,
+          docenteNombre: claseFinal?.docente
+            ? `${claseFinal.docente.nombre} ${claseFinal.docente.apellido}`
+            : null,
           publicado: general?.publicado ?? false,
           observaciones: general?.observaciones ?? null,
         };
@@ -392,7 +415,7 @@ export const getSabanaByNivel = async (
         apellido: est.apellido,
         segundoApellido: est.segundoApellido,
         fotoUrl: est.fotoUrl,
-        calificaciones: califsEst
+        calificaciones: califsEst,
       };
     });
 
@@ -408,14 +431,18 @@ export const getSabanaByNivel = async (
       totalMaterias: materias.length,
       fechaGeneracion: new Date().toISOString(),
       pais: nivel.institucion.pais,
-    }
+    },
   };
 };
 
 /**
  * Obtiene la lista de niveles disponibles para la sábana de notas
  */
-export const getNivelesParaSabana = async (institucionId: string, userId?: string, userRole?: string) => {
+export const getNivelesParaSabana = async (
+  institucionId: string,
+  userId?: string,
+  userRole?: string,
+) => {
   const where: any = { institucionId };
   if (userRole === 'DOCENTE' && userId) {
     where.clases = { some: { docenteId: userId } };
@@ -458,20 +485,20 @@ export const updateCalificacionSabana = async (
   userRole: string,
   userInstitucionId: string,
   competenciaId?: string,
-  valorTexto?: string
+  valorTexto?: string,
 ) => {
   const clase = await prisma.clase.findUnique({
     where: { id: claseId },
     include: {
       materia: true,
       cicloLectivo: true,
-      nivel: { include: { institucion: true } }
-    }
+      nivel: { include: { institucion: true } },
+    },
   });
 
   if (!clase) throw new Error('Clase no encontrada');
   if (clase.nivel.institucionId !== userInstitucionId) throw new Error('Sin permiso');
-  
+
   // Bloquear edición si el ciclo no está activo
   if (!clase.cicloLectivo.activo) {
     throw new Error('No se pueden editar calificaciones de un ciclo lectivo inactivo');
@@ -517,7 +544,7 @@ export const updateCalificacionSabana = async (
     // Actualizar CalificacionTecnica
     // periodo viene como "RA1", "RA2". Usaremos eso como ra_codigo.
     const raCodigo = periodo.toUpperCase();
-    
+
     if (valor === null) {
       // Eliminar si es null? O poner 0? Generalmente se borra o se pone 0.
       // Prisma delete si existe.
@@ -525,8 +552,8 @@ export const updateCalificacionSabana = async (
         where: {
           estudianteId,
           claseId,
-          ra_codigo: raCodigo
-        }
+          ra_codigo: raCodigo,
+        },
       });
       return { status: 'deleted' };
     }
@@ -537,19 +564,21 @@ export const updateCalificacionSabana = async (
         estudianteId_claseId_ra_codigo: {
           estudianteId,
           claseId,
-          ra_codigo: raCodigo
-        }
+          ra_codigo: raCodigo,
+        },
       },
       update: { valor },
       create: {
         estudianteId,
         claseId,
         ra_codigo: raCodigo,
-        valor
-      }
+        valor,
+      },
     });
-
-  } else if (competenciaId && !['cpc_nota', 'cpex_nota', 'cpc_30', 'cpex_70'].includes(periodo.toLowerCase())) {
+  } else if (
+    competenciaId &&
+    !['cpc_nota', 'cpex_nota', 'cpc_30', 'cpex_70'].includes(periodo.toLowerCase())
+  ) {
     // NUEVO: Actualizar Calificación por Competencia
     const calificacionExistente = await prisma.calificacionCompetencia.findUnique({
       where: {
@@ -557,7 +586,7 @@ export const updateCalificacionSabana = async (
           estudianteId,
           claseId,
           cicloLectivoId: clase.cicloLectivoId,
-          competencia: competenciaId
+          competencia: competenciaId,
         },
       },
     });
@@ -616,7 +645,7 @@ export const publicarCalificaciones = async (
   cicloLectivoId: string,
   userId: string,
   userRole: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   // Verificar la clase
   const clase = await prisma.clase.findUnique({
@@ -687,7 +716,7 @@ export const publicarCalificaciones = async (
       await crearNotificacionesMasivas(
         estudianteUserIds.map((u) => u.id),
         'Calificaciones Publicadas',
-        `Se han publicado nuevas calificaciones en ${materiaNombre}. Revisa tu boletín.`
+        `Se han publicado nuevas calificaciones en ${materiaNombre}. Revisa tu boletín.`,
       );
     } catch (err) {
       // No falla la publicación si las notificaciones fallan

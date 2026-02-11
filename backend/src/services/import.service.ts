@@ -41,11 +41,27 @@ export const parseExcelFile = (buffer: Buffer): StudentRow[] => {
 
   return data.map((row) => ({
     nombre: String(row.nombre || row.Nombre || row.NOMBRE || '').trim(),
-    segundoNombre: String(row.segundoNombre || row['segundo nombre'] || row['Segundo Nombre'] || row.SEGUNDO_NOMBRE || '').trim() || undefined,
+    segundoNombre:
+      String(
+        row.segundoNombre ||
+          row['segundo nombre'] ||
+          row['Segundo Nombre'] ||
+          row.SEGUNDO_NOMBRE ||
+          '',
+      ).trim() || undefined,
     apellido: String(row.apellido || row.Apellido || row.APELLIDO || '').trim(),
-    segundoApellido: String(row.segundoApellido || row['segundo apellido'] || row['Segundo Apellido'] || row.SEGUNDO_APELLIDO || '').trim() || undefined,
+    segundoApellido:
+      String(
+        row.segundoApellido ||
+          row['segundo apellido'] ||
+          row['Segundo Apellido'] ||
+          row.SEGUNDO_APELLIDO ||
+          '',
+      ).trim() || undefined,
     email: row.email || row.Email || row.EMAIL || row.correo || row.Correo || undefined,
-    nivel: String(row.nivel || row.Nivel || row.NIVEL || row.grado || row.Grado || '').trim() || undefined,
+    nivel:
+      String(row.nivel || row.Nivel || row.NIVEL || row.grado || row.Grado || '').trim() ||
+      undefined,
   }));
 };
 
@@ -53,7 +69,7 @@ export const importStudents = async (
   rows: StudentRow[],
   institucionId: string,
   defaultNivelId?: string,
-  autoEnroll?: boolean
+  autoEnroll?: boolean,
 ): Promise<ImportResult> => {
   const result: ImportResult = {
     exitosos: 0,

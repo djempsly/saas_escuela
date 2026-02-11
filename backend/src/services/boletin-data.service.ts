@@ -147,7 +147,7 @@ export interface EvaluacionesExtendidas {
 export async function getBoletinData(
   estudianteId: string,
   cicloId: string,
-  institucionId: string
+  institucionId: string,
 ): Promise<BoletinDataResponse> {
   // Obtener estudiante con su institución
   const estudiante = await prisma.user.findFirst({
@@ -306,9 +306,9 @@ export async function getBoletinData(
     });
 
     // Procesar módulos técnicos (agrupar por materia técnica)
-    const materiasTecnicas = [...new Set(
-      calificacionesTecnicasDB.map((ct) => ct.clase.materia?.nombre).filter(Boolean)
-    )];
+    const materiasTecnicas = [
+      ...new Set(calificacionesTecnicasDB.map((ct) => ct.clase.materia?.nombre).filter(Boolean)),
+    ];
 
     modulosTecnicos = materiasTecnicas.map((materiaNombre, idx) => {
       const ras = calificacionesTecnicasDB
@@ -408,7 +408,7 @@ export async function getBoletinData(
 export async function getBoletinesClase(
   claseId: string,
   cicloId: string,
-  institucionId: string
+  institucionId: string,
 ): Promise<BoletinDataResponse[]> {
   // Obtener inscripciones de la clase
   const inscripciones = await prisma.inscripcion.findMany({
@@ -428,14 +428,13 @@ export async function getBoletinesClase(
   const boletines: BoletinDataResponse[] = [];
   for (const inscripcion of inscripciones) {
     try {
-      const boletin = await getBoletinData(
-        inscripcion.estudianteId,
-        cicloId,
-        institucionId
-      );
+      const boletin = await getBoletinData(inscripcion.estudianteId, cicloId, institucionId);
       boletines.push(boletin);
     } catch (error) {
-      logger.error({ err: error, estudianteId: inscripcion.estudianteId }, 'Error generando boletín para estudiante');
+      logger.error(
+        { err: error, estudianteId: inscripcion.estudianteId },
+        'Error generando boletín para estudiante',
+      );
     }
   }
 

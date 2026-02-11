@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { Role, Pais, SistemaEducativo, TipoMateria, EstadoAsistencia, Idioma } from '@prisma/client';
+import {
+  Role,
+  Pais,
+  SistemaEducativo,
+  TipoMateria,
+  EstadoAsistencia,
+  Idioma,
+} from '@prisma/client';
 
 // Re-export Enums as objects to ensure they are available as values and types
 export const ROLES = {
@@ -9,12 +16,12 @@ export const ROLES = {
   ESTUDIANTE: Role.ESTUDIANTE,
   SECRETARIA: Role.SECRETARIA,
   COORDINADOR: Role.COORDINADOR,
-  COORDINADOR_ACADEMICO: Role.COORDINADOR_ACADEMICO
+  COORDINADOR_ACADEMICO: Role.COORDINADOR_ACADEMICO,
 } as const;
 
 export const PAISES = {
   DO: Pais.DO,
-  HT: Pais.HT
+  HT: Pais.HT,
 } as const;
 
 // --- AUTH & SETUP ---
@@ -57,35 +64,42 @@ export const registerSuperAdminSchema = z.object({
 });
 
 export const institucionSchema = z.object({
-  body: z.object({
-    nombre: z.string().min(3, 'Nombre requerido'),
-    pais: z.nativeEnum(Pais),
-    // Sistema principal (requerido para compatibilidad)
-    sistemaEducativo: z.nativeEnum(SistemaEducativo),
-    // Sistemas adicionales que ofrece la institución (opcional)
-    // Permite seleccionar múltiples: inicial, primaria, secundaria, etc.
-    sistemasEducativos: z.array(z.nativeEnum(SistemaEducativo)).optional(),
-    idiomaPrincipal: z.nativeEnum(Idioma).optional(),
-    logo: z.string().optional().nullable(),
-    slug: z.string().min(3).optional().nullable(),
-    dominioPersonalizado: z.string().optional().nullable(),
-    autogestionActividades: z.boolean().optional(),
-    colores: z.object({
-        primario: z.string(),
-        secundario: z.string()
-    }).optional(),
-    // Opción 1: Usar director existente
-    directorId: z.string().optional().nullable(),
-    // Opción 2: Crear nuevo director (email ahora es opcional)
-    director: z.object({
-      nombre: z.string().min(1),
-      apellido: z.string().min(1),
-      email: z.string().email().optional().nullable().or(z.literal(''))
-    }).optional().nullable()
-  }).refine(
-    (data) => data.directorId || data.director,
-    { message: 'Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)' }
-  ),
+  body: z
+    .object({
+      nombre: z.string().min(3, 'Nombre requerido'),
+      pais: z.nativeEnum(Pais),
+      // Sistema principal (requerido para compatibilidad)
+      sistemaEducativo: z.nativeEnum(SistemaEducativo),
+      // Sistemas adicionales que ofrece la institución (opcional)
+      // Permite seleccionar múltiples: inicial, primaria, secundaria, etc.
+      sistemasEducativos: z.array(z.nativeEnum(SistemaEducativo)).optional(),
+      idiomaPrincipal: z.nativeEnum(Idioma).optional(),
+      logo: z.string().optional().nullable(),
+      slug: z.string().min(3).optional().nullable(),
+      dominioPersonalizado: z.string().optional().nullable(),
+      autogestionActividades: z.boolean().optional(),
+      colores: z
+        .object({
+          primario: z.string(),
+          secundario: z.string(),
+        })
+        .optional(),
+      // Opción 1: Usar director existente
+      directorId: z.string().optional().nullable(),
+      // Opción 2: Crear nuevo director (email ahora es opcional)
+      director: z
+        .object({
+          nombre: z.string().min(1),
+          apellido: z.string().min(1),
+          email: z.string().email().optional().nullable().or(z.literal('')),
+        })
+        .optional()
+        .nullable(),
+    })
+    .refine((data) => data.directorId || data.director, {
+      message:
+        'Debe proporcionar un director existente (directorId) o datos para crear uno nuevo (director)',
+    }),
 });
 
 // --- USER MANAGEMENT ---
@@ -98,29 +112,31 @@ export const crearUsuarioSchema = z.object({
     segundoApellido: z.string().optional().or(z.literal('')),
     email: z.string().email().optional().or(z.literal('')),
     rol: z.nativeEnum(Role),
-    institucionId: z.string().optional()
+    institucionId: z.string().optional(),
   }),
 });
 
 // --- ACADEMIC ---
 
 export const cicloLectivoSchema = z.object({
-  body: z.object({
-    nombre: z.string().min(1),
-    fechaInicio: z.coerce.date(),
-    fechaFin: z.coerce.date(),
-    activo: z.boolean().optional()
-  }).refine(data => data.fechaFin > data.fechaInicio, {
-    message: "Fecha fin debe ser mayor a inicio",
-    path: ["fechaFin"]
-  })
+  body: z
+    .object({
+      nombre: z.string().min(1),
+      fechaInicio: z.coerce.date(),
+      fechaFin: z.coerce.date(),
+      activo: z.boolean().optional(),
+    })
+    .refine((data) => data.fechaFin > data.fechaInicio, {
+      message: 'Fecha fin debe ser mayor a inicio',
+      path: ['fechaFin'],
+    }),
 });
 
 export const nivelSchema = z.object({
   body: z.object({
     nombre: z.string().min(1),
     gradoNumero: z.number().int().min(1).max(12).optional(), // Grado numérico (1-12)
-    coordinadorId: z.string().optional()
+    coordinadorId: z.string().optional(),
   }),
 });
 
@@ -128,7 +144,7 @@ export const materiaSchema = z.object({
   body: z.object({
     nombre: z.string().min(1),
     descripcion: z.string().optional(),
-    tipo: z.nativeEnum(TipoMateria).default('GENERAL')
+    tipo: z.nativeEnum(TipoMateria).default('GENERAL'),
   }),
 });
 
@@ -168,10 +184,14 @@ export const tomarAsistenciaSchema = z.object({
   body: z.object({
     claseId: z.string().min(1, 'Clase requerida'),
     fecha: z.coerce.date(),
-    asistencias: z.array(z.object({
-      estudianteId: z.string().min(1),
-      estado: z.nativeEnum(EstadoAsistencia),
-    })).min(1, 'Al menos una asistencia requerida'),
+    asistencias: z
+      .array(
+        z.object({
+          estudianteId: z.string().min(1),
+          estado: z.nativeEnum(EstadoAsistencia),
+        }),
+      )
+      .min(1, 'Al menos una asistencia requerida'),
   }),
 });
 
@@ -217,10 +237,14 @@ export const calificacionMasivaSchema = z.object({
   body: z.object({
     claseId: z.string().min(1, 'Clase requerida'),
     periodo: z.enum(['p1', 'p2', 'p3', 'p4']),
-    calificaciones: z.array(z.object({
-      estudianteId: z.string().min(1),
-      nota: z.number().min(0).max(100),
-    })).min(1),
+    calificaciones: z
+      .array(
+        z.object({
+          estudianteId: z.string().min(1),
+          nota: z.number().min(0).max(100),
+        }),
+      )
+      .min(1),
   }),
 });
 

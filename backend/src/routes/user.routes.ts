@@ -24,20 +24,10 @@ const router = Router();
 // ============ RUTAS QUE NO REQUIEREN TENANT ============
 
 // Update own profile - any authenticated user (MUST come before /:id)
-router.put(
-  '/profile',
-  authMiddleware,
-  uploadMiddleware.single('foto'),
-  updateProfileHandler
-);
+router.put('/profile', authMiddleware, uploadMiddleware.single('foto'), updateProfileHandler);
 
 // Upload profile photo - any authenticated user (MUST come before /:id)
-router.post(
-  '/upload-photo',
-  authMiddleware,
-  uploadMiddleware.single('foto'),
-  uploadPhotoHandler
-);
+router.post('/upload-photo', authMiddleware, uploadMiddleware.single('foto'), uploadPhotoHandler);
 
 // ============ RUTAS QUE REQUIEREN TENANT ============
 
@@ -45,10 +35,17 @@ router.post(
 router.get(
   '/',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.SECRETARIA, ROLES.DOCENTE]),
+  roleMiddleware([
+    ROLES.ADMIN,
+    ROLES.DIRECTOR,
+    ROLES.COORDINADOR,
+    ROLES.COORDINADOR_ACADEMICO,
+    ROLES.SECRETARIA,
+    ROLES.DOCENTE,
+  ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getAllUsersHandler
+  getAllUsersHandler,
 );
 
 // Get staff (personal) - Director can see their registered staff (MUST come before /:id)
@@ -58,7 +55,7 @@ router.get(
   roleMiddleware([ROLES.DIRECTOR]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getStaffHandler
+  getStaffHandler,
 );
 
 // Get coordinadores - Director can see coordinators (MUST come before /:id)
@@ -68,7 +65,7 @@ router.get(
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  getCoordinadoresHandler
+  getCoordinadoresHandler,
 );
 
 // Get coordinacion info for a user (MUST come before /:id)
@@ -77,7 +74,7 @@ router.get(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
-  getCoordinacionInfoHandler
+  getCoordinacionInfoHandler,
 );
 
 // Assign ciclos educativos to coordinator
@@ -87,7 +84,7 @@ router.post(
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  assignCiclosHandler
+  assignCiclosHandler,
 );
 
 // Assign niveles to coordinator
@@ -97,16 +94,11 @@ router.post(
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
-  assignNivelesHandler
+  assignNivelesHandler,
 );
 
 // Get user by ID
-router.get(
-  '/:id',
-  authMiddleware,
-  resolveTenantMiddleware,
-  getUserByIdHandler
-);
+router.get('/:id', authMiddleware, resolveTenantMiddleware, getUserByIdHandler);
 
 // ADMIN, DIRECTOR, or COORDINADOR_ACADEMICO can create users
 router.post(
@@ -114,7 +106,7 @@ router.post(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR_ACADEMICO]),
   resolveTenantMiddleware,
-  createUserHandler
+  createUserHandler,
 );
 
 // Update user by ID (Director, Admin)
@@ -123,7 +115,7 @@ router.put(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
-  updateUserHandler
+  updateUserHandler,
 );
 
 // Manual Password Reset (Admin, Director, Secretaria)
@@ -132,7 +124,7 @@ router.post(
   authMiddleware,
   roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SECRETARIA]),
   resolveTenantMiddleware,
-  resetUserPasswordManualHandler
+  resetUserPasswordManualHandler,
 );
 
 export default router;

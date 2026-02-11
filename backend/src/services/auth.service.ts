@@ -21,7 +21,9 @@ export const registerSuperAdmin = async (input: RegisterSuperAdminInput) => {
   });
 
   if (existingAdmin) {
-    throw new Error('Ya existe un administrador en el sistema. Contacte al administrador existente.');
+    throw new Error(
+      'Ya existe un administrador en el sistema. Contacte al administrador existente.',
+    );
   }
 
   if (email) {
@@ -56,16 +58,13 @@ export const login = async (input: LoginInput) => {
   // OPTIMIZACIÓN: Una sola query con include de institución
   const user = await prisma.user.findFirst({
     where: {
-      OR: [
-        { email: identificador },
-        { username: identificador }
-      ]
+      OR: [{ email: identificador }, { username: identificador }],
     },
     include: {
       institucion: {
-        select: { id: true, slug: true, nombre: true, activo: true }
-      }
-    }
+        select: { id: true, slug: true, nombre: true, activo: true },
+      },
+    },
   });
 
   if (!user) {
@@ -96,7 +95,9 @@ export const login = async (input: LoginInput) => {
   } else {
     // Login global (sin slug): Solo permitido para ADMIN
     if (user.role !== Role.ADMIN) {
-      throw new Error('Acceso denegado. Estudiantes y personal deben iniciar sesión desde el portal de su institución.');
+      throw new Error(
+        'Acceso denegado. Estudiantes y personal deben iniciar sesión desde el portal de su institución.',
+      );
     }
   }
 
@@ -111,7 +112,7 @@ export const login = async (input: LoginInput) => {
       rol: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: '1d' }
+    { expiresIn: '1d' },
   );
 
   // Retornar usuario completo y token
@@ -131,20 +132,19 @@ export const login = async (input: LoginInput) => {
   };
 };
 
-export const forgotPassword = async (identificador: string): Promise<{ needsManualReset: boolean }> => {
+export const forgotPassword = async (
+  identificador: string,
+): Promise<{ needsManualReset: boolean }> => {
   // Función helper para simular delay y prevenir timing attacks
   const simulateDelay = async () => {
-    await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 300) + 200));
+    await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 300) + 200));
   };
 
   // Buscar por email O username
   const user = await prisma.user.findFirst({
     where: {
-      OR: [
-        { email: identificador },
-        { username: identificador }
-      ]
-    }
+      OR: [{ email: identificador }, { username: identificador }],
+    },
   });
 
   // SEGURIDAD: Todos los caminos que no envían email deben verse iguales desde afuera
@@ -175,11 +175,9 @@ export const forgotPassword = async (identificador: string): Promise<{ needsManu
   }
 
   // Generate Reset Token (8 hours)
-  const resetToken = jwt.sign(
-    { id: user.id, type: 'reset' },
-    process.env.JWT_SECRET,
-    { expiresIn: '8h' }
-  );
+  const resetToken = jwt.sign({ id: user.id, type: 'reset' }, process.env.JWT_SECRET, {
+    expiresIn: '8h',
+  });
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const link = `${frontendUrl}/reset-password?token=${resetToken}`;

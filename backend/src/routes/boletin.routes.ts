@@ -25,24 +25,36 @@ router.get('/plantilla/:grado', getBoletinPlantillaHandler);
 // Boletín de estudiante específico (docentes, coordinadores, directores, admin)
 router.get(
   '/estudiante/:estudianteId',
-  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  roleMiddleware([
+    Role.DOCENTE,
+    Role.COORDINADOR,
+    Role.COORDINADOR_ACADEMICO,
+    Role.DIRECTOR,
+    Role.ADMIN,
+  ]),
   resolveTenantMiddleware,
-  getBoletinEstudianteHandler
+  getBoletinEstudianteHandler,
 );
 
 // Boletines de toda una clase (docentes, coordinadores, directores, admin)
 router.get(
   '/clase/:claseId',
-  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  roleMiddleware([
+    Role.DOCENTE,
+    Role.COORDINADOR,
+    Role.COORDINADOR_ACADEMICO,
+    Role.DIRECTOR,
+    Role.ADMIN,
+  ]),
   resolveTenantMiddleware,
-  getBoletinesClaseHandler
+  getBoletinesClaseHandler,
 );
 
 // Generar boletín con datos personalizados (admin y directores)
 router.post(
   '/generar',
   roleMiddleware([Role.DIRECTOR, Role.ADMIN]),
-  generarBoletinPersonalizadoHandler
+  generarBoletinPersonalizadoHandler,
 );
 
 // ============================================
@@ -52,17 +64,29 @@ router.post(
 // Datos estructurados de un estudiante para generar PDF en frontend
 router.get(
   '/data/:estudianteId/:cicloId',
-  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  roleMiddleware([
+    Role.DOCENTE,
+    Role.COORDINADOR,
+    Role.COORDINADOR_ACADEMICO,
+    Role.DIRECTOR,
+    Role.ADMIN,
+  ]),
   resolveTenantMiddleware,
-  getBoletinDataHandler
+  getBoletinDataHandler,
 );
 
 // Datos de boletines de toda una clase
 router.get(
   '/data/clase/:claseId/:cicloId',
-  roleMiddleware([Role.DOCENTE, Role.COORDINADOR, Role.COORDINADOR_ACADEMICO, Role.DIRECTOR, Role.ADMIN]),
+  roleMiddleware([
+    Role.DOCENTE,
+    Role.COORDINADOR,
+    Role.COORDINADOR_ACADEMICO,
+    Role.DIRECTOR,
+    Role.ADMIN,
+  ]),
   resolveTenantMiddleware,
-  getBoletinesClaseDataHandler
+  getBoletinesClaseDataHandler,
 );
 
 export default router;

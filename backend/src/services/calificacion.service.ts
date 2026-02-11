@@ -47,7 +47,7 @@ const validarAccesoClase = async (claseId: string, institucionId: string) => {
 // Calcular promedio final según sistema educativo
 const calcularPromedioFinal = (
   sistema: SistemaEducativo,
-  calificacion: CalificacionGeneralInput
+  calificacion: CalificacionGeneralInput,
 ): { promedioFinal: number; situacion: string } => {
   const { p1 = 0, p2 = 0, p3 = 0, p4 = 0, cpc_30 = 0, cpex_70 = 0 } = calificacion;
 
@@ -67,7 +67,7 @@ const calcularPromedioFinal = (
 
   switch (sistema) {
     case SistemaEducativo.PRIMARIA_HT:
-    case SistemaEducativo.SECUNDARIA_HT:
+    case SistemaEducativo.SECUNDARIA_HT: {
       // Haití: Promedio simple de 4 periodos (o 3 si P4 es 0)
       const periodosHT = [notaP1, notaP2, notaP3, notaP4].filter((n) => n > 0);
       if (periodosHT.length > 0) {
@@ -76,9 +76,10 @@ const calcularPromedioFinal = (
       // En Haití, generalmente se aprueba con 50/100 o 5/10
       situacion = promedioFinal >= 50 ? 'APROBADO' : promedioFinal > 0 ? 'REPROBADO' : 'PENDIENTE';
       break;
+    }
 
     case SistemaEducativo.PRIMARIA_DO:
-    case SistemaEducativo.SECUNDARIA_GENERAL_DO:
+    case SistemaEducativo.SECUNDARIA_GENERAL_DO: {
       // RD General: CPC (30%) + Promedio Periodos (70%)
       const periodosDO = [notaP1, notaP2, notaP3, notaP4].filter((n) => n > 0);
       const promedioPeridos =
@@ -98,8 +99,9 @@ const calcularPromedioFinal = (
         situacion = 'REPROBADO';
       }
       break;
+    }
 
-    case SistemaEducativo.POLITECNICO_DO:
+    case SistemaEducativo.POLITECNICO_DO: {
       // Politécnico RD: Similar a general pero materias técnicas usan RA
       const periodosPoli = [notaP1, notaP2, notaP3, notaP4].filter((n) => n > 0);
       const promedioPoli =
@@ -117,6 +119,7 @@ const calcularPromedioFinal = (
         situacion = 'REPROBADO';
       }
       break;
+    }
   }
 
   return {
@@ -128,7 +131,7 @@ const calcularPromedioFinal = (
 // Guardar/Actualizar calificación general
 export const guardarCalificacion = async (
   input: CalificacionGeneralInput,
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await validarAccesoClase(input.claseId, institucionId);
 
@@ -138,7 +141,7 @@ export const guardarCalificacion = async (
   // Si es Politécnico y materia técnica, no permitir aquí
   if (sistema === SistemaEducativo.POLITECNICO_DO && clase.materia.tipo === TipoMateria.TECNICA) {
     throw new Error(
-      'Para materias técnicas en Politécnico, use el endpoint de calificación técnica (RA)'
+      'Para materias técnicas en Politécnico, use el endpoint de calificación técnica (RA)',
     );
   }
 
@@ -157,7 +160,7 @@ export const guardarCalificacion = async (
   }
 
   // Preparar datos según sistema
-  let dataToSave: any = {
+  const dataToSave: any = {
     p1: input.p1,
     p2: input.p2,
     p3: input.p3,
@@ -222,7 +225,7 @@ export const guardarCalificacion = async (
 // Guardar calificación técnica (RA) - Solo Politécnico
 export const guardarCalificacionTecnica = async (
   input: CalificacionTecnicaInput,
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await validarAccesoClase(input.claseId, institucionId);
 
@@ -297,9 +300,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
   });
 
   // Crear mapa de calificaciones por estudianteId
-  const calificacionesMap = new Map(
-    calificacionesExistentes.map((c) => [c.estudianteId, c])
-  );
+  const calificacionesMap = new Map(calificacionesExistentes.map((c) => [c.estudianteId, c]));
 
   // Combinar: todos los estudiantes inscritos con sus calificaciones (o vacías)
   const calificaciones = inscripciones.map((insc) => {
@@ -348,8 +349,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
     },
     calificaciones,
     totalEstudiantes: inscripciones.length,
-    calificacionesTecnicas:
-      calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
+    calificacionesTecnicas: calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
   };
 };
 
@@ -357,7 +357,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
 export const getCalificacionesByEstudiante = async (
   estudianteId: string,
   institucionId: string,
-  cicloLectivoId?: string
+  cicloLectivoId?: string,
 ) => {
   // Verificar estudiante
   const estudiante = await prisma.user.findFirst({
@@ -425,8 +425,7 @@ export const getCalificacionesByEstudiante = async (
   return {
     estudiante,
     calificaciones,
-    calificacionesTecnicas:
-      calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
+    calificacionesTecnicas: calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
     calificacionesCompetencia:
       calificacionesCompetencia.length > 0 ? calificacionesCompetencia : undefined,
   };
@@ -436,7 +435,7 @@ export const getCalificacionesByEstudiante = async (
 export const getBoletinEstudiante = async (
   estudianteId: string,
   cicloLectivoId: string,
-  institucionId: string
+  institucionId: string,
 ) => {
   const estudiante = await prisma.user.findFirst({
     where: { id: estudianteId, institucionId },
@@ -498,17 +497,20 @@ export const getBoletinEstudiante = async (
   });
 
   // Agrupar competencias por claseId
-  const competenciasPorClase: Record<string, Array<{
-    competencia: string;
-    p1: number | null;
-    p2: number | null;
-    p3: number | null;
-    p4: number | null;
-    rp1: number | null;
-    rp2: number | null;
-    rp3: number | null;
-    rp4: number | null;
-  }>> = {};
+  const competenciasPorClase: Record<
+    string,
+    Array<{
+      competencia: string;
+      p1: number | null;
+      p2: number | null;
+      p3: number | null;
+      p4: number | null;
+      rp1: number | null;
+      rp2: number | null;
+      rp3: number | null;
+      rp4: number | null;
+    }>
+  > = {};
 
   for (const comp of competencias) {
     if (!competenciasPorClase[comp.claseId]) {
@@ -554,7 +556,7 @@ export const guardarCalificacionesMasivas = async (
   claseId: string,
   periodo: 'p1' | 'p2' | 'p3' | 'p4',
   calificaciones: { estudianteId: string; nota: number }[],
-  institucionId: string
+  institucionId: string,
 ) => {
   const clase = await validarAccesoClase(claseId, institucionId);
 
@@ -571,7 +573,7 @@ export const guardarCalificacionesMasivas = async (
           claseId,
           [periodo]: cal.nota,
         },
-        institucionId
+        institucionId,
       );
       resultados.exitosos++;
     } catch (error: any) {

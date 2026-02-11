@@ -52,9 +52,27 @@ export const MATERIAS_POLITECNICO_BASE_DO: MateriaOficial[] = [
 
 // Ejemplo de módulos técnicos para Politécnico (varían según especialidad)
 export const MATERIAS_POLITECNICO_TECNICAS_DO: MateriaOficial[] = [
-  { nombre: 'Introducción a la Especialidad', codigo: 'IE', tipo: 'TECNICA', orden: 10, descripcion: 'Módulo técnico introductorio' },
-  { nombre: 'Tecnología Aplicada', codigo: 'TA', tipo: 'TECNICA', orden: 11, descripcion: 'Módulo técnico' },
-  { nombre: 'Práctica Profesional', codigo: 'PP', tipo: 'TECNICA', orden: 12, descripcion: 'Módulo técnico práctico' },
+  {
+    nombre: 'Introducción a la Especialidad',
+    codigo: 'IE',
+    tipo: 'TECNICA',
+    orden: 10,
+    descripcion: 'Módulo técnico introductorio',
+  },
+  {
+    nombre: 'Tecnología Aplicada',
+    codigo: 'TA',
+    tipo: 'TECNICA',
+    orden: 11,
+    descripcion: 'Módulo técnico',
+  },
+  {
+    nombre: 'Práctica Profesional',
+    codigo: 'PP',
+    tipo: 'TECNICA',
+    orden: 12,
+    descripcion: 'Módulo técnico práctico',
+  },
 ];
 
 // Inicial DO (Preescolar)
@@ -125,7 +143,7 @@ export function getMateriasOficiales(sistema: SistemaEducativo): {
       return {
         materias: [...MATERIAS_POLITECNICO_BASE_DO, ...MATERIAS_POLITECNICO_TECNICAS_DO],
         pais: 'DO',
-        provisional: false
+        provisional: false,
       };
 
     // Haití (todas marcadas como provisionales hasta confirmar con MENFP)
