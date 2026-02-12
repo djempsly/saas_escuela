@@ -18,16 +18,17 @@ import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
 import { ROLES } from '../utils/zod.schemas';
 import { upload as uploadMiddleware } from '../middleware/upload.middleware';
+import { validateFileType } from '../middleware/file-validation.middleware';
 
 const router = Router();
 
 // ============ RUTAS QUE NO REQUIEREN TENANT ============
 
 // Update own profile - any authenticated user (MUST come before /:id)
-router.put('/profile', authMiddleware, uploadMiddleware.single('foto'), updateProfileHandler);
+router.put('/profile', authMiddleware, uploadMiddleware.single('foto'), validateFileType, updateProfileHandler);
 
 // Upload profile photo - any authenticated user (MUST come before /:id)
-router.post('/upload-photo', authMiddleware, uploadMiddleware.single('foto'), uploadPhotoHandler);
+router.post('/upload-photo', authMiddleware, uploadMiddleware.single('foto'), validateFileType, uploadPhotoHandler);
 
 // ============ RUTAS QUE REQUIEREN TENANT ============
 

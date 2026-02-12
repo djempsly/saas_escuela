@@ -101,6 +101,15 @@ export const errorHandler = (
   }
 
   // =========================
+  // Errores de CSRF
+  // =========================
+  if ('code' in err && (err as { code?: string }).code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({
+      error: 'Token CSRF invalido o faltante. Recarga la pagina e intenta de nuevo.',
+    });
+  }
+
+  // =========================
   // Errores de Zod (validación)
   // =========================
   if (err instanceof ZodError) {

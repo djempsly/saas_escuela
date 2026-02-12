@@ -29,29 +29,85 @@ export const getMediaUrl = (url: string | undefined | null): string => {
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para agregar token
-api.interceptors.request.use((config) => {
+// ============ CSRF Token Management ============
+let csrfToken: string | null = null;
+
+const MUTATING_METHODS = ['post', 'put', 'delete', 'patch'];
+
+/**
+ * Obtiene un token CSRF del backend.
+ * El backend setea la cookie HMAC automaticamente; almacenamos el token
+ * completo para enviarlo en el header X-CSRF-Token.
+ */
+export async function fetchCsrfToken(): Promise<string> {
+  const response = await axios.get(`${API_BASE_URL}/auth/csrf-token`, {
+    withCredentials: true,
+  });
+  const token: string = response.data.csrfToken;
+  csrfToken = token;
+  return token;
+}
+
+// Interceptor para agregar token de auth + CSRF
+api.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
+    // Auth token
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // CSRF token para requests mutantes
+    if (MUTATING_METHODS.includes(config.method?.toLowerCase() || '')) {
+      if (!csrfToken) {
+        try {
+          await fetchCsrfToken();
+        } catch {
+          // No bloquear el request si falla el fetch del CSRF token
+        }
+      }
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
     }
   }
   return config;
 });
 
-// Interceptor para manejar errores de autenticación
+// Interceptor para manejar errores de autenticación y CSRF
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // CSRF token expirado/invalido — refrescar y reintentar una vez
+    if (
+      error.response?.status === 403 &&
+      typeof error.response?.data?.error === 'string' &&
+      error.response.data.error.includes('CSRF') &&
+      !originalRequest._csrfRetried
+    ) {
+      originalRequest._csrfRetried = true;
+      try {
+        await fetchCsrfToken();
+        if (csrfToken) {
+          originalRequest.headers['X-CSRF-Token'] = csrfToken;
+        }
+        return api(originalRequest);
+      } catch {
+        return Promise.reject(error);
+      }
+    }
+
+    // Error de autenticación — logout
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        // Leer slug de la institución antes de limpiar el storage
         let slug: string | undefined;
         try {
           const stored = localStorage.getItem('institution-storage');
@@ -63,6 +119,7 @@ api.interceptors.response.use(
 
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        csrfToken = null;
         window.location.href = slug ? `/${slug}` : '/';
       }
     }
@@ -74,6 +131,7 @@ api.interceptors.response.use(
 const publicApiBaseUrl = API_BASE_URL.replace('/api/v1', '/api/public');
 export const publicApi = axios.create({
   baseURL: publicApiBaseUrl,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

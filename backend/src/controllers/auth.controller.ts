@@ -8,6 +8,7 @@ import {
   manualResetPassword,
   refreshAccessToken,
   logout,
+  revokeAllSessions,
 } from '../services/auth.service';
 import {
   loginSchema,
@@ -195,12 +196,28 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
 export const logoutHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = refreshTokenSchema.parse({ body: req.body });
-    await logout(validatedData.body.refreshToken);
+    const accessToken = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : undefined;
+    await logout(validatedData.body.refreshToken, accessToken);
     return res.status(200).json({ message: 'Sesión cerrada correctamente' });
   } catch (error: unknown) {
     if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const revokeAllHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.usuarioId;
+    const accessToken = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : undefined;
+    await revokeAllSessions(userId, accessToken);
+    return res.status(200).json({ message: 'Todas las sesiones han sido revocadas' });
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

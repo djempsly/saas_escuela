@@ -7,6 +7,7 @@ import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError, Valida
 import { LoginInput, ChangePasswordInput } from '../utils/zod.schemas';
 import { generateSecurePassword, generateUsername } from '../utils/security';
 import { sendPasswordResetEmail } from './email.service';
+import { blacklistToken } from './token-blacklist.service';
 
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
@@ -127,6 +128,7 @@ export const login = async (input: LoginInput) => {
       usuarioId: user.id,
       institucionId: user.institucionId,
       rol: user.role,
+      jti: crypto.randomUUID(),
     },
     process.env.JWT_SECRET,
     { expiresIn: ACCESS_TOKEN_EXPIRY },
@@ -337,6 +339,7 @@ export const refreshAccessToken = async (token: string) => {
         usuarioId: existing.user.id,
         institucionId: existing.user.institucionId,
         rol: existing.user.role,
+        jti: crypto.randomUUID(),
       },
       process.env.JWT_SECRET!,
       { expiresIn: ACCESS_TOKEN_EXPIRY },
@@ -346,18 +349,40 @@ export const refreshAccessToken = async (token: string) => {
   });
 };
 
-export const logout = async (token: string) => {
-  const existing = await prisma.refreshToken.findUnique({ where: { token } });
+export const logout = async (refreshTokenValue: string, accessToken?: string) => {
+  // 1. Revocar refresh token en DB
+  const existing = await prisma.refreshToken.findUnique({ where: { token: refreshTokenValue } });
 
-  if (!existing || existing.revoked) {
-    // Idempotente: no lanzar error si ya no existe o fue revocado
-    return;
+  if (existing && !existing.revoked) {
+    await prisma.refreshToken.update({
+      where: { id: existing.id },
+      data: { revoked: true },
+    });
   }
 
-  await prisma.refreshToken.update({
-    where: { id: existing.id },
+  // 2. Blacklist del access token en Redis
+  if (accessToken) {
+    const decoded = jwt.decode(accessToken) as { jti?: string; exp?: number } | null;
+    if (decoded?.jti && decoded?.exp) {
+      await blacklistToken(decoded.jti, decoded.exp);
+    }
+  }
+};
+
+export const revokeAllSessions = async (userId: string, currentAccessToken?: string) => {
+  // 1. Revocar TODOS los refresh tokens del usuario
+  await prisma.refreshToken.updateMany({
+    where: { userId, revoked: false },
     data: { revoked: true },
   });
+
+  // 2. Blacklist del access token actual
+  if (currentAccessToken) {
+    const decoded = jwt.decode(currentAccessToken) as { jti?: string; exp?: number } | null;
+    if (decoded?.jti && decoded?.exp) {
+      await blacklistToken(decoded.jti, decoded.exp);
+    }
+  }
 };
 
 export const manualResetPassword = async (adminUserId: string, targetUserId: string) => {

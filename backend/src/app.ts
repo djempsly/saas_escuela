@@ -3,6 +3,7 @@ import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import * as Sentry from '@sentry/node';
 import routes from './routes';
@@ -11,6 +12,7 @@ import internalRoutes from './routes/internal.routes';
 import adminDominiosRoutes from './routes/admin-dominios.routes';
 import { errorHandler } from './middleware/error-handler.middleware';
 import { requestLogger } from './middleware/request-logger.middleware';
+import { generateCsrfToken, doubleCsrfProtection } from './middleware/csrf.middleware';
 import prisma from './config/db';
 import { checkS3Connection } from './services/s3.service';
 import { ValidationError } from './errors';
@@ -93,13 +95,14 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   }),
 );
 
 // ============ Middlewares de Parsing ============
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // ============ Request Logger (requestId + pino) ============
 app.use(requestLogger);
@@ -115,6 +118,20 @@ app.use('/api/v1', apiLimiter);
 
 // ============ Archivos Estaticos ============
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// ============ Proteccion CSRF (double-submit cookie) ============
+// Desactivado en tests para no romper los 77 tests existentes que usan supertest sin CSRF
+if (process.env.NODE_ENV !== 'test') {
+  // Endpoint para obtener token CSRF (debe estar ANTES del middleware de validacion)
+  app.get('/api/v1/auth/csrf-token', (req, res) => {
+    const token = generateCsrfToken(req, res);
+    res.json({ csrfToken: token });
+  });
+
+  // Middleware global: valida CSRF en POST/PUT/DELETE/PATCH
+  // GET/HEAD/OPTIONS se excluyen automaticamente via ignoredMethods
+  app.use(doubleCsrfProtection);
+}
 
 // ============ Rutas Públicas (sin autenticación) ============
 // Estas rutas se usan para landing pages y resolución de tenant por hostname

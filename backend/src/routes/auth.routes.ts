@@ -8,6 +8,7 @@ import {
   manualResetPasswordHandler,
   refreshTokenHandler,
   logoutHandler,
+  revokeAllHandler,
 } from '../controllers/auth.controller';
 import {
   loginLimiter,
@@ -48,7 +49,10 @@ router.post(
 // Refresh token - rota el refresh token y emite nuevo access token
 router.post('/refresh', loginLimiter, refreshTokenHandler);
 
-// Logout - invalida el refresh token
+// Logout - invalida el refresh token + blacklist del access token
 router.post('/logout', authMiddleware, logoutHandler);
+
+// Revocar todas las sesiones - invalida todos los refresh tokens + blacklist access token actual
+router.post('/revoke-all', authMiddleware, revokeAllHandler);
 
 export default router;

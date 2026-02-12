@@ -26,6 +26,7 @@ import {
   uploadHero,
   uploadLoginLogo,
 } from '../middleware/upload.middleware';
+import { validateFileType } from '../middleware/file-validation.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -65,7 +66,7 @@ router.put('/:id', updateInstitucionHandler);
 router.delete('/:id', deleteInstitucionHandler);
 
 // Actualizar configuración de branding (con upload de logo y fondo de login opcional)
-router.patch('/:id/config', uploadInstitucionMedia, updateConfigHandler);
+router.patch('/:id/config', uploadInstitucionMedia, validateFileType, updateConfigHandler);
 
 // Actualizar configuración sensible (nombre, slug, dominio, activo, autogestion)
 router.patch('/:id/sensitive', updateSensitiveConfigHandler);
@@ -74,12 +75,12 @@ router.patch('/:id/sensitive', updateSensitiveConfigHandler);
 router.patch('/:id/sistemas-educativos', updateSistemasEducativosHandler);
 
 // Subir favicon de institución
-router.post('/:id/favicon', uploadFavicon, uploadFaviconHandler);
+router.post('/:id/favicon', uploadFavicon, validateFileType, uploadFaviconHandler);
 
 // Subir imagen hero de institución
-router.post('/:id/hero', uploadHero, uploadHeroHandler);
+router.post('/:id/hero', uploadHero, validateFileType, uploadHeroHandler);
 
 // Subir logo de login de institución
-router.post('/:id/login-logo', uploadLoginLogo, uploadLoginLogoHandler);
+router.post('/:id/login-logo', uploadLoginLogo, validateFileType, uploadLoginLogoHandler);
 
 export default router;

@@ -2,13 +2,14 @@ import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { resolveTenantMiddleware } from '../middleware/tenant.middleware';
 import { upload } from '../middleware/upload.middleware';
+import { validateFileType } from '../middleware/file-validation.middleware';
 import { uploadToS3 } from '../services/s3.service';
 
 const router = Router();
 
 router.use(authMiddleware, resolveTenantMiddleware);
 
-router.post('/file', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/file', upload.single('file'), validateFileType, async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ message: 'No se envió ningún archivo' });

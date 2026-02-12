@@ -18,6 +18,7 @@ const mockPrisma = vi.hoisted(() => {
       create: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
@@ -42,6 +43,12 @@ vi.mock('../services/s3.service', () => ({
 // ── Mock: Email (auth.service imports it) ──
 vi.mock('../services/email.service', () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+// ── Mock: Token Blacklist (auth.middleware imports it) ──
+vi.mock('../services/token-blacklist.service', () => ({
+  blacklistToken: vi.fn().mockResolvedValue(undefined),
+  isTokenBlacklisted: vi.fn().mockResolvedValue(false),
 }));
 
 // ── Mock: Logger (silence pino output in tests) ──

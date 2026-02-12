@@ -7,6 +7,7 @@ import {
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
+import { validateFileType } from '../middleware/file-validation.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -39,7 +40,7 @@ router.use(
 );
 
 // Import students from Excel
-router.post('/estudiantes', upload.single('file'), importEstudiantesHandler);
+router.post('/estudiantes', upload.single('file'), validateFileType, importEstudiantesHandler);
 
 // Download Excel template
 router.get('/estudiantes/plantilla', downloadPlantillaHandler);
