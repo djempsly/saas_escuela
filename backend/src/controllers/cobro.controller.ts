@@ -11,7 +11,7 @@ import {
   getEstadisticasCobros,
   getConceptosCobro,
   getMetodosPago,
-} from '../services/cobro.service';
+} from '../services/cobro';
 import { sanitizeErrorMessage } from '../utils/security';
 import { registrarAuditLog } from '../services/audit.service';
 

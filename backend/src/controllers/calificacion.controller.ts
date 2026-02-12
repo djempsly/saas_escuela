@@ -6,7 +6,7 @@ import {
   getCalificacionesByEstudiante,
   getBoletinEstudiante,
   guardarCalificacionesMasivas,
-} from '../services/calificacion.service';
+} from '../services/calificacion';
 import {
   calificacionSchema,
   calificacionTecnicaSchema,

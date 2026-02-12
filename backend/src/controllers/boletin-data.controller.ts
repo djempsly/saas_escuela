@@ -4,7 +4,7 @@
  */
 
 import { Request, Response } from 'express';
-import { getBoletinData, getBoletinesClase } from '../services/boletin-data.service';
+import { getBoletinData, getBoletinesClase } from '../services/boletin-data';
 import { sanitizeErrorMessage } from '../utils/security';
 
 /**

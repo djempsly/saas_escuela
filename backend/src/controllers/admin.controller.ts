@@ -7,7 +7,7 @@ import {
   getDirectorHistory,
   findAllDirectores,
 } from '../services/director.service';
-import { resetUserPasswordManual } from '../services/user.service';
+import { resetUserPasswordManual } from '../services/user';
 import { sanitizeErrorMessage } from '../utils/security';
 import { z } from 'zod';
 

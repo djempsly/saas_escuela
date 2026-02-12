@@ -6,7 +6,7 @@ import {
   findInscripcionesByEstudiante,
   eliminarInscripcion,
   inscribirMasivo,
-} from '../services/inscripcion.service';
+} from '../services/inscripcion';
 import { inscripcionSchema, inscripcionMasivaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { Role } from '@prisma/client';

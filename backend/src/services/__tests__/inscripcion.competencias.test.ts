@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FormatoSabana } from '@prisma/client';
-import { COMPETENCIAS_POR_FORMATO } from '../inscripcion.service';
+import { COMPETENCIAS_POR_FORMATO } from '../inscripcion';
 
 describe('COMPETENCIAS_POR_FORMATO', () => {
   it('cubre todos los valores del enum FormatoSabana', () => {

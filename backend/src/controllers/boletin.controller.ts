@@ -5,7 +5,7 @@ import {
   DatosEstudiante,
   Calificacion,
   Grado,
-} from '../services/boletin.service';
+} from '../services/boletin';
 import prisma from '../config/db';
 import { sanitizeErrorMessage } from '../utils/security';
 

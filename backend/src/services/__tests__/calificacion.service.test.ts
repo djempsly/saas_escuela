@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SistemaEducativo } from '@prisma/client';
-import { calcularPromedioFinal } from '../calificacion.service';
+import { calcularPromedioFinal } from '../calificacion';
 
 const base = { estudianteId: 'e1', claseId: 'c1' };
 

@@ -9,7 +9,7 @@ import {
   getCiclosLectivosParaSabana,
   updateCalificacionSabana,
   publicarCalificaciones,
-} from '../services/sabana.service';
+} from '../services/sabana';
 import { z } from 'zod';
 import { registrarAuditLog } from '../services/audit.service';
 

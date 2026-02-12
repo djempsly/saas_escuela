@@ -17,7 +17,7 @@ import {
   uploadFaviconHandler,
   uploadHeroHandler,
   uploadLoginLogoHandler,
-} from '../controllers/institucion.controller';
+} from '../controllers/institucion';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import {

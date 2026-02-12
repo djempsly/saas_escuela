@@ -12,7 +12,7 @@ import {
   getCoordinacionInfoHandler,
   assignCiclosHandler,
   assignNivelesHandler,
-} from '../controllers/user.controller';
+} from '../controllers/user';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';

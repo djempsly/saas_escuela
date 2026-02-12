@@ -1,12 +1,7 @@
 import { Request, Response } from 'express';
 import { Idioma, SistemaEducativo } from '@prisma/client';
-import prisma from '../config/db';
+import prisma from '../../config/db';
 import {
-  createInstitucion,
-  findInstituciones,
-  findInstitucionById,
-  updateInstitucion,
-  deleteInstitucion,
   getInstitucionBranding,
   updateInstitucionConfig,
   getInstitucionBrandingBySlug,
@@ -15,119 +10,10 @@ import {
   checkSlugAvailability,
   checkDominioAvailability,
   updateSistemasEducativos,
-} from '../services/institucion.service';
-import { uploadToS3, deleteFromS3, isS3Url } from '../services/s3.service';
-import { institucionSchema } from '../utils/zod.schemas';
-import { sanitizeErrorMessage } from '../utils/security';
+} from '../../services/institucion';
+import { uploadToS3, deleteFromS3, isS3Url } from '../../services/s3.service';
+import { sanitizeErrorMessage } from '../../utils/security';
 import { z } from 'zod';
-
-export const createInstitucionHandler = async (req: Request, res: Response) => {
-  try {
-    req.log.debug({ body: req.body }, 'Request body');
-    const validatedData = institucionSchema.parse({ body: req.body });
-    req.log.debug({ data: validatedData.body }, 'Validated data');
-    const result = await createInstitucion(validatedData.body);
-    return res.status(201).json({
-      status: 'success',
-      data: {
-        institucion: result.institucion,
-        tempPassword: result.tempPassword,
-      },
-    });
-  } catch (error: any) {
-    req.log.error({ err: error }, 'Error creating institucion');
-    if (error.issues) {
-      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
-    }
-    // Errores de duplicado son seguros para mostrar
-    if (error.message?.includes('ya está en uso') || error.message?.includes('Sistema educativo')) {
-      return res.status(409).json({ message: error.message });
-    }
-    // Errores de Prisma
-    if (error.code === 'P2002') {
-      return res.status(409).json({ message: 'Ya existe un registro con estos datos únicos' });
-    }
-    // Mostrar el error real para debugging
-    return res.status(500).json({
-      message: error.message || sanitizeErrorMessage(error),
-      code: error.code,
-    });
-  }
-};
-
-export const findInstitucionesHandler = async (req: Request, res: Response) => {
-  try {
-    const instituciones = await findInstituciones();
-    return res.status(200).json(instituciones);
-  } catch (error: any) {
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-export const findInstitucionByIdHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-    const institucion = await findInstitucionById(id);
-    if (!institucion) {
-      return res.status(404).json({ message: 'Institución no encontrada' });
-    }
-    return res.status(200).json(institucion);
-  } catch (error: any) {
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-export const updateInstitucionHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-
-    // Validar que la institución existe
-    const existing = await findInstitucionById(id);
-    if (!existing) {
-      return res.status(404).json({ message: 'Institución no encontrada' });
-    }
-
-    const validatedData = z
-      .object({
-        body: institucionSchema.shape.body.partial(),
-      })
-      .parse({ body: req.body });
-
-    const institucion = await updateInstitucion(id, validatedData.body);
-    return res.status(200).json(institucion);
-  } catch (error: any) {
-    if (error.issues) {
-      return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
-    }
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-export const deleteInstitucionHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-
-    await deleteInstitucion(id);
-    return res.status(204).send();
-  } catch (error: any) {
-    req.log.error({ err: error }, 'Error deleting institucion');
-    // Errores de validación/negocio son seguros para mostrar
-    if (
-      error.message?.includes('No se puede eliminar') ||
-      error.message?.includes('no encontrada')
-    ) {
-      return res.status(400).json({ message: error.message });
-    }
-    // Errores de Prisma por foreign key
-    if (error.code === 'P2003' || error.code === 'P2014') {
-      return res.status(400).json({
-        message:
-          'No se puede eliminar la institución porque tiene registros asociados. Desactívela en lugar de eliminarla.',
-      });
-    }
-    return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
-  }
-};
 
 // Obtener branding de una institución (público)
 export const getBrandingHandler = async (req: Request, res: Response) => {
@@ -398,105 +284,6 @@ export const updateSistemasEducativosHandler = async (req: Request, res: Respons
     if (error.message.includes('no encontrada') || error.message.includes('inválido')) {
       return res.status(400).json({ message: error.message });
     }
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-// POST /api/v1/instituciones/:id/favicon - Subir favicon
-export const uploadFaviconHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-
-    if (!req.file) {
-      return res.status(400).json({ message: 'No se proporcionó archivo de favicon' });
-    }
-
-    // Borrar favicon anterior de S3 si existe
-    const existingFavicon = await prisma.institucion.findUnique({
-      where: { id },
-      select: { faviconUrl: true },
-    });
-    if (existingFavicon?.faviconUrl && isS3Url(existingFavicon.faviconUrl)) {
-      await deleteFromS3(existingFavicon.faviconUrl);
-    }
-
-    const faviconUrl = await uploadToS3(req.file, 'favicons', id);
-
-    const result = await prisma.institucion.update({
-      where: { id },
-      data: { faviconUrl },
-      select: { id: true, faviconUrl: true },
-    });
-
-    return res.status(200).json(result);
-  } catch (error: any) {
-    req.log.error({ err: error }, 'Error uploading favicon');
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-// POST /api/v1/instituciones/:id/hero - Subir imagen hero
-export const uploadHeroHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-
-    if (!req.file) {
-      return res.status(400).json({ message: 'No se proporcionó imagen hero' });
-    }
-
-    // Borrar hero anterior de S3 si existe
-    const existingHero = await prisma.institucion.findUnique({
-      where: { id },
-      select: { heroImageUrl: true },
-    });
-    if (existingHero?.heroImageUrl && isS3Url(existingHero.heroImageUrl)) {
-      await deleteFromS3(existingHero.heroImageUrl);
-    }
-
-    const heroImageUrl = await uploadToS3(req.file, 'heroes', id);
-
-    const result = await prisma.institucion.update({
-      where: { id },
-      data: { heroImageUrl },
-      select: { id: true, heroImageUrl: true },
-    });
-
-    return res.status(200).json(result);
-  } catch (error: any) {
-    req.log.error({ err: error }, 'Error uploading hero image');
-    return res.status(500).json({ message: sanitizeErrorMessage(error) });
-  }
-};
-
-// POST /api/v1/instituciones/:id/login-logo - Subir logo de login
-export const uploadLoginLogoHandler = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params as { id: string };
-
-    if (!req.file) {
-      return res.status(400).json({ message: 'No se proporcionó logo de login' });
-    }
-
-    // Borrar login logo anterior de S3 si existe
-    const existingLoginLogo = await prisma.institucion.findUnique({
-      where: { id },
-      select: { loginLogoUrl: true },
-    });
-    if (existingLoginLogo?.loginLogoUrl && isS3Url(existingLoginLogo.loginLogoUrl)) {
-      await deleteFromS3(existingLoginLogo.loginLogoUrl);
-    }
-
-    const loginLogoUrl = await uploadToS3(req.file, 'login-logos', id);
-
-    const result = await prisma.institucion.update({
-      where: { id },
-      data: { loginLogoUrl },
-      select: { id: true, loginLogoUrl: true },
-    });
-
-    return res.status(200).json(result);
-  } catch (error: any) {
-    req.log.error({ err: error }, 'Error uploading login logo');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

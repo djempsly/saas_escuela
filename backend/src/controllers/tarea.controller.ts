@@ -9,7 +9,7 @@ import {
   entregarTarea,
   calificarEntrega,
   getEntregasTarea,
-} from '../services/tarea.service';
+} from '../services/tarea';
 import { sanitizeErrorMessage } from '../utils/security';
 
 const getUserId = (req: Request): string => {
