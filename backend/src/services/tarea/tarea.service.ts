@@ -22,7 +22,7 @@ interface RecursoInput {
 }
 
 // Validar acceso a clase
-export const validarAccesoClase = async (claseId: string, institucionId: string) => {
+const validarAccesoClase = async (claseId: string, institucionId: string) => {
   const clase = await prisma.clase.findFirst({
     where: { id: claseId, institucionId },
     include: {

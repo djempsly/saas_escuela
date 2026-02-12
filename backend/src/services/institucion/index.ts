@@ -10,8 +10,6 @@ export {
   getInstitucionBranding,
   getInstitucionBrandingBySlug,
   getInstitucionBrandingByDominio,
-  findInstitucionBySlug,
-  findInstitucionByDominio,
 } from './branding.service';
 export {
   updateInstitucionConfig,

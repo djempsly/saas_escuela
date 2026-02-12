@@ -37,42 +37,6 @@ export const getInstitucionBranding = async (id: string) => {
   });
 };
 
-// ===== NUEVOS MÉTODOS PARA SUPER ADMIN =====
-
-// Buscar institución por slug
-export const findInstitucionBySlug = async (slug: string) => {
-  return prisma.institucion.findUnique({
-    where: { slug },
-    include: {
-      director: {
-        select: {
-          id: true,
-          nombre: true,
-          apellido: true,
-          email: true,
-        },
-      },
-    },
-  });
-};
-
-// Buscar institución por dominio personalizado
-export const findInstitucionByDominio = async (dominio: string) => {
-  return prisma.institucion.findUnique({
-    where: { dominioPersonalizado: dominio },
-    include: {
-      director: {
-        select: {
-          id: true,
-          nombre: true,
-          apellido: true,
-          email: true,
-        },
-      },
-    },
-  });
-};
-
 // Obtener branding por slug (público)
 export const getInstitucionBrandingBySlug = async (slug: string) => {
   return prisma.institucion.findUnique({

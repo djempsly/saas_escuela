@@ -3,7 +3,7 @@ import prisma from '../config/db';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 import { NotFoundError, ValidationError } from '../errors';
 
-export interface CicloEducativoInput {
+interface CicloEducativoInput {
   nombre: string;
   descripcion?: string;
   orden?: number;

@@ -60,17 +60,11 @@ export const uploadActividad = upload.fields([
   { name: 'video', maxCount: 1 },
 ]);
 
-// Middleware para subir logo de institución
-export const uploadLogo = upload.single('logo');
-
 // Middleware para subir logo y fondo de login de institución
 export const uploadInstitucionMedia = upload.fields([
   { name: 'logo', maxCount: 1 },
   { name: 'fondoLogin', maxCount: 1 },
 ]);
-
-// Middleware para subir foto de perfil
-export const uploadFoto = upload.single('foto');
 
 // Middleware para subir favicon de institución
 export const uploadFavicon = upload.single('favicon');

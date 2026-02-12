@@ -13,7 +13,7 @@ import { getCoordinadorNivelIds } from '../../utils/coordinador.utils';
 
 // Cache
 const SABANA_CACHE_TTL = 3600; // 1 hora
-export const sabanaKey = (nivelId: string, cicloLectivoId: string) =>
+const sabanaKey = (nivelId: string, cicloLectivoId: string) =>
   `sabana:${nivelId}:${cicloLectivoId}`;
 
 export const invalidarCacheSabana = async (

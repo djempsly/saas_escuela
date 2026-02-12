@@ -20,14 +20,14 @@ export const ROLES = {
   COORDINADOR_ACADEMICO: Role.COORDINADOR_ACADEMICO,
 } as const;
 
-export const PAISES = {
+const PAISES = {
   DO: Pais.DO,
   HT: Pais.HT,
 } as const;
 
 // --- PASSWORD VALIDATION ---
 
-export const passwordSchema = z
+const passwordSchema = z
   .string()
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
   .regex(/[A-Z]/, 'La contraseña debe contener al menos una letra mayúscula')
@@ -279,17 +279,12 @@ export const actividadSchema = z.object({
 // --- INFERRED TYPES ---
 
 export type LoginInput = z.infer<typeof loginSchema>['body'];
-export type InstitucionInput = z.infer<typeof institucionSchema>['body'];
+type InstitucionInput = z.infer<typeof institucionSchema>['body'];
 export type CrearUsuarioInput = z.infer<typeof crearUsuarioSchema>['body'];
 export type CicloLectivoInput = z.infer<typeof cicloLectivoSchema>['body'];
 export type NivelInput = z.infer<typeof nivelSchema>['body'];
 export type MateriaInput = z.infer<typeof materiaSchema>['body'];
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>['body'];
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>['body'];
 export type ClaseInput = z.infer<typeof claseSchema>['body'];
 export type InscripcionInput = z.infer<typeof inscripcionSchema>['body'];
-export type TomarAsistenciaInput = z.infer<typeof tomarAsistenciaSchema>['body'];
-export type CalificacionInput = z.infer<typeof calificacionSchema>['body'];
 export type CalificacionTecnicaInput = z.infer<typeof calificacionTecnicaSchema>['body'];
-export type ActividadInput = z.infer<typeof actividadSchema>['body'];
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>['body'];

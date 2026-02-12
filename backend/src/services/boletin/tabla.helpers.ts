@@ -30,7 +30,7 @@ export const COLORES = {
   BLANCO: 'FFFFFF',
 };
 
-export const AREAS_CURRICULARES = [
+const AREAS_CURRICULARES = [
   'Lengua Española',
   'Lenguas Extranjeras (inglés)',
   'Lenguas Extranjeras (Francés)',
@@ -46,13 +46,13 @@ export const AREAS_CURRICULARES = [
 // HELPERS
 // ============================================================================
 
-export const crearBorde = (color = '000000', size = 4) => ({
+const crearBorde = (color = '000000', size = 4) => ({
   style: BorderStyle.SINGLE,
   size,
   color,
 });
 
-export const crearBordes = (color = '000000', size = 4) => {
+const crearBordes = (color = '000000', size = 4) => {
   const border = crearBorde(color, size);
   return {
     top: border,
@@ -74,7 +74,7 @@ interface CeldaOptions {
   textDirection?: (typeof TextDirection)[keyof typeof TextDirection];
 }
 
-export const crearCelda = (texto: string, opciones: CeldaOptions = {}): TableCell => {
+const crearCelda = (texto: string, opciones: CeldaOptions = {}): TableCell => {
   const {
     width = 300,
     fill = COLORES.BLANCO,

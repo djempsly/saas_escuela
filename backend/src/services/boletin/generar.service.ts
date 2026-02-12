@@ -291,18 +291,3 @@ export async function generarBoletin(
 
   return await Packer.toBuffer(doc);
 }
-
-// ============================================================================
-// FUNCIÓN HELPER PARA GUARDAR ARCHIVO (opcional, para testing)
-// ============================================================================
-
-export async function guardarBoletin(
-  filepath: string,
-  config: BoletinConfig = {},
-  datosEstudiante?: DatosEstudiante,
-  calificaciones?: Calificacion[],
-): Promise<void> {
-  const fs = await import('fs');
-  const buffer = await generarBoletin(config, datosEstudiante, calificaciones);
-  fs.writeFileSync(filepath, buffer);
-}

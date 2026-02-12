@@ -13,7 +13,7 @@ export const COMPETENCIAS_POR_FORMATO: Record<FormatoSabana, string[]> = {
   ADULTOS: ['CF1', 'CF2', 'CF3', 'CF4', 'CF5'],
 };
 
-export const RA_CODIGOS_POLITECNICO = [
+const RA_CODIGOS_POLITECNICO = [
   'RA1', 'RA2', 'RA3', 'RA4', 'RA5',
   'RA6', 'RA7', 'RA8', 'RA9', 'RA10',
 ];

@@ -1,6 +1,6 @@
 import prisma from '../config/db';
 
-export interface DiasLaborablesInput {
+interface DiasLaborablesInput {
   agosto?: number;
   septiembre?: number;
   octubre?: number;
@@ -66,26 +66,6 @@ export const upsertDiasLaborables = async (
       junio: data.junio ?? 0,
     },
   });
-};
-
-// Obtener el total de días laborables configurados
-export const getTotalDiasLaborables = async (claseId: string, cicloLectivoId: string) => {
-  const dias = await getDiasLaborables(claseId, cicloLectivoId);
-  if (!dias) return 0;
-
-  return (
-    (dias.agosto || 0) +
-    (dias.septiembre || 0) +
-    (dias.octubre || 0) +
-    (dias.noviembre || 0) +
-    (dias.diciembre || 0) +
-    (dias.enero || 0) +
-    (dias.febrero || 0) +
-    (dias.marzo || 0) +
-    (dias.abril || 0) +
-    (dias.mayo || 0) +
-    (dias.junio || 0)
-  );
 };
 
 // Obtener estadísticas de asistencia con porcentaje

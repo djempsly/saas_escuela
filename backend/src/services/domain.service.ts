@@ -15,7 +15,7 @@ interface VerificacionResult {
  * Verifica si un dominio apunta correctamente al servidor.
  * Intenta verificar por CNAME primero, luego por registro A.
  */
-export async function verificarDominio(dominio: string): Promise<VerificacionResult> {
+async function verificarDominio(dominio: string): Promise<VerificacionResult> {
   try {
     // 1. Intentar verificar por CNAME
     try {

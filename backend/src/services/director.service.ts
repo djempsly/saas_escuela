@@ -192,33 +192,3 @@ export const findAllDirectores = async () => {
     orderBy: { createdAt: 'desc' },
   });
 };
-
-// Asignar director a institución (para nuevas instituciones)
-export const assignDirectorToInstitucion = async (directorId: string, institucionId: string) => {
-  const result = await prisma.$transaction(async (tx) => {
-    // Actualizar institución
-    await tx.institucion.update({
-      where: { id: institucionId },
-      data: { directorId },
-    });
-
-    // Actualizar usuario
-    await tx.user.update({
-      where: { id: directorId },
-      data: { institucionId },
-    });
-
-    // Crear historial
-    await tx.historialDirector.create({
-      data: {
-        institucionId,
-        directorId,
-        fechaInicio: new Date(),
-      },
-    });
-
-    return { success: true };
-  });
-
-  return result;
-};

@@ -13,7 +13,6 @@ import {
   calificacionMasivaSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
-import { Role } from '@prisma/client';
 
 export const guardarCalificacionHandler = async (req: Request, res: Response) => {
   try {

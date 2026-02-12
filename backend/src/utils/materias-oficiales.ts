@@ -5,7 +5,7 @@
 
 import { SistemaEducativo, TipoMateria } from '@prisma/client';
 
-export interface MateriaOficial {
+interface MateriaOficial {
   nombre: string;
   codigo: string;
   descripcion?: string;
@@ -16,7 +16,7 @@ export interface MateriaOficial {
 // ========== MINERD - República Dominicana ==========
 
 // Primaria DO (1ro a 6to grado)
-export const MATERIAS_PRIMARIA_DO: MateriaOficial[] = [
+const MATERIAS_PRIMARIA_DO: MateriaOficial[] = [
   { nombre: 'Lengua Española', codigo: 'LE', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Matemática', codigo: 'MA', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Ciencias Sociales', codigo: 'CS', tipo: 'GENERAL', orden: 3 },
@@ -27,7 +27,7 @@ export const MATERIAS_PRIMARIA_DO: MateriaOficial[] = [
 ];
 
 // Secundaria General DO (1ro a 4to de secundaria)
-export const MATERIAS_SECUNDARIA_DO: MateriaOficial[] = [
+const MATERIAS_SECUNDARIA_DO: MateriaOficial[] = [
   { nombre: 'Lengua Española', codigo: 'LE', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Matemática', codigo: 'MA', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Ciencias Sociales', codigo: 'CS', tipo: 'GENERAL', orden: 3 },
@@ -40,7 +40,7 @@ export const MATERIAS_SECUNDARIA_DO: MateriaOficial[] = [
 ];
 
 // Politécnico DO - Materias académicas base
-export const MATERIAS_POLITECNICO_BASE_DO: MateriaOficial[] = [
+const MATERIAS_POLITECNICO_BASE_DO: MateriaOficial[] = [
   { nombre: 'Lengua Española', codigo: 'LE', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Matemática', codigo: 'MA', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Ciencias Sociales', codigo: 'CS', tipo: 'GENERAL', orden: 3 },
@@ -51,7 +51,7 @@ export const MATERIAS_POLITECNICO_BASE_DO: MateriaOficial[] = [
 ];
 
 // Ejemplo de módulos técnicos para Politécnico (varían según especialidad)
-export const MATERIAS_POLITECNICO_TECNICAS_DO: MateriaOficial[] = [
+const MATERIAS_POLITECNICO_TECNICAS_DO: MateriaOficial[] = [
   {
     nombre: 'Introducción a la Especialidad',
     codigo: 'IE',
@@ -76,7 +76,7 @@ export const MATERIAS_POLITECNICO_TECNICAS_DO: MateriaOficial[] = [
 ];
 
 // Inicial DO (Preescolar)
-export const MATERIAS_INICIAL_DO: MateriaOficial[] = [
+const MATERIAS_INICIAL_DO: MateriaOficial[] = [
   { nombre: 'Desarrollo Personal y Social', codigo: 'DPS', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Comunicación y Expresión', codigo: 'CE', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Pensamiento Lógico', codigo: 'PL', tipo: 'GENERAL', orden: 3 },
@@ -88,7 +88,7 @@ export const MATERIAS_INICIAL_DO: MateriaOficial[] = [
 // ========== MENFP - Haití (Provisional) ==========
 
 // Primaria HT (1ère à 6ème année)
-export const MATERIAS_PRIMARIA_HT: MateriaOficial[] = [
+const MATERIAS_PRIMARIA_HT: MateriaOficial[] = [
   { nombre: 'Français', codigo: 'FR', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Créole', codigo: 'CR', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Mathématiques', codigo: 'MA', tipo: 'GENERAL', orden: 3 },
@@ -99,7 +99,7 @@ export const MATERIAS_PRIMARIA_HT: MateriaOficial[] = [
 ];
 
 // Secundaria HT (7ème à 13ème année)
-export const MATERIAS_SECUNDARIA_HT: MateriaOficial[] = [
+const MATERIAS_SECUNDARIA_HT: MateriaOficial[] = [
   { nombre: 'Français', codigo: 'FR', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Créole', codigo: 'CR', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Mathématiques', codigo: 'MA', tipo: 'GENERAL', orden: 3 },
@@ -115,7 +115,7 @@ export const MATERIAS_SECUNDARIA_HT: MateriaOficial[] = [
 ];
 
 // Inicial HT (Préscolaire)
-export const MATERIAS_INICIAL_HT: MateriaOficial[] = [
+const MATERIAS_INICIAL_HT: MateriaOficial[] = [
   { nombre: 'Communication et Langage', codigo: 'CL', tipo: 'GENERAL', orden: 1 },
   { nombre: 'Éveil Mathématique', codigo: 'EM', tipo: 'GENERAL', orden: 2 },
   { nombre: 'Découverte du Monde', codigo: 'DM', tipo: 'GENERAL', orden: 3 },
@@ -162,7 +162,7 @@ export function getMateriasOficiales(sistema: SistemaEducativo): {
 /**
  * Obtiene el nombre del sistema educativo para mostrar
  */
-export function getNombreSistema(sistema: SistemaEducativo): string {
+function getNombreSistema(sistema: SistemaEducativo): string {
   const nombres: Record<SistemaEducativo, string> = {
     INICIAL_DO: 'Nivel Inicial (DO)',
     PRIMARIA_DO: 'Primaria (DO)',

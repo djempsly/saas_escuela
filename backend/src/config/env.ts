@@ -48,7 +48,7 @@ const envSchema = z.object({
 });
 
 // Tipo inferido del schema
-export type Env = z.infer<typeof envSchema>;
+type Env = z.infer<typeof envSchema>;
 
 // Función para validar y obtener las variables de entorno
 function validateEnv(): Env {
@@ -92,6 +92,4 @@ function validateEnv(): Env {
 export const env = validateEnv();
 
 // Helpers para verificar el entorno
-export const isDev = env.NODE_ENV === 'development';
 export const isProd = env.NODE_ENV === 'production';
-export const isTest = env.NODE_ENV === 'test';

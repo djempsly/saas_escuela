@@ -89,21 +89,6 @@ export const findActividadesBySlug = async (slug: string, limit?: number) => {
   return findActividadesByInstitucion(institucion.id, limit);
 };
 
-// Obtener actividades globales (sin institución)
-export const findActividadesGlobales = async (limit?: number) => {
-  return prisma.actividad.findMany({
-    where: {
-      institucionId: null,
-      publicado: true,
-    },
-    include: {
-      autor: { select: { nombre: true, apellido: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit || 50,
-  });
-};
-
 // Obtener todas las actividades para admin (incluye no publicadas)
 export const findAllActividadesAdmin = async (
   filters?: {

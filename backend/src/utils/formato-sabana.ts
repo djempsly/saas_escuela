@@ -6,7 +6,7 @@ type TipoCiclo = 'INICIAL' | 'PRIMARIA' | 'SECUNDARIA' | 'POLITECNICO' | 'ADULTO
  * Detecta el tipo de ciclo educativo a partir de su nombre (fallback).
  * Normaliza acentos y busca palabras clave.
  */
-export function detectarTipoCicloPorNombre(nombre: string): TipoCiclo | null {
+function detectarTipoCicloPorNombre(nombre: string): TipoCiclo | null {
   const n = nombre
     .toLowerCase()
     .normalize('NFD')

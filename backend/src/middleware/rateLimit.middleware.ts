@@ -116,20 +116,6 @@ export const registerLimiter = rateLimit({
 });
 
 /**
- * Rate limiter general para API
- * Limita a 100 requests por minuto por IP
- */
-export const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 100, // máximo 100 requests
-  message: {
-    message: 'Demasiadas solicitudes. Por favor, intente de nuevo en un momento.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-/**
  * Rate limiter para cambio de contraseña
  * Limita a 5 intentos por hora por IP
  */

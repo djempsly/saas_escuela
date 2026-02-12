@@ -1,4 +1,3 @@
-import { FormatoSabana } from '@prisma/client';
 import prisma from '../../config/db';
 import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from '../../errors';
 import { InscripcionInput } from '../../utils/zod.schemas';

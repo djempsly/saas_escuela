@@ -125,8 +125,6 @@ app.use('/api/public', publicRoutes);
 app.use('/api/internal', internalRoutes);
 
 // ============ Rutas de Administración de Dominios ============
-// Also mount at /api/v1 for consistency with frontend api calls
-app.use('/api/admin/dominios', adminDominiosRoutes);
 app.use('/api/v1/admin/dominios', adminDominiosRoutes);
 
 // ============ Rutas de API v1 ============
