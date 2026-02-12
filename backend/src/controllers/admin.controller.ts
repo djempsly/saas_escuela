@@ -9,6 +9,7 @@ import {
 } from '../services/director.service';
 import { resetUserPasswordManual } from '../services/user';
 import { sanitizeErrorMessage } from '../utils/security';
+import { toUserDTO, toUserDTOList } from '../dtos';
 import { z } from 'zod';
 
 // Schema de validación para crear director
@@ -84,7 +85,7 @@ export const getAllUsersGlobalHandler = async (req: Request, res: Response) => {
     ]);
 
     return res.status(200).json({
-      data: users,
+      data: toUserDTOList(users),
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -149,13 +150,7 @@ export const createDirectorHandler = async (req: Request, res: Response) => {
     return res.status(201).json({
       status: 'success',
       data: {
-        director: {
-          id: result.director.id,
-          nombre: result.director.nombre,
-          apellido: result.director.apellido,
-          email: result.director.email,
-          username: result.director.username,
-        },
+        director: toUserDTO(result.director),
         tempPassword: result.tempPassword,
       },
     });

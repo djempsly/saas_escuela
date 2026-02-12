@@ -13,6 +13,7 @@ import {
   calificacionMasivaSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { toCalificacionDTO, toCalificacionDTOList } from '../dtos';
 
 export const guardarCalificacionHandler = async (req: Request, res: Response) => {
   try {
@@ -21,7 +22,7 @@ export const guardarCalificacionHandler = async (req: Request, res: Response) =>
     }
     const validated = calificacionSchema.parse({ body: req.body });
     const calificacion = await guardarCalificacion(validated.body, req.resolvedInstitucionId);
-    return res.status(200).json(calificacion);
+    return res.status(200).json(toCalificacionDTO(calificacion));
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
@@ -47,7 +48,7 @@ export const guardarCalificacionTecnicaHandler = async (req: Request, res: Respo
       validated.body,
       req.resolvedInstitucionId,
     );
-    return res.status(200).json(calificacion);
+    return res.status(200).json(toCalificacionDTO(calificacion));
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
@@ -87,12 +88,19 @@ export const getCalificacionesEstudianteHandler = async (req: Request, res: Resp
     }
     const { estudianteId } = req.params as { estudianteId: string };
     const { cicloLectivoId } = req.query as { cicloLectivoId?: string };
-    const calificaciones = await getCalificacionesByEstudiante(
+    const result = await getCalificacionesByEstudiante(
       estudianteId,
       req.resolvedInstitucionId,
       cicloLectivoId,
     );
-    return res.status(200).json(calificaciones);
+    return res.status(200).json({
+      estudiante: result.estudiante,
+      calificaciones: toCalificacionDTOList(result.calificaciones),
+      ...(result.calificacionesTecnicas && { calificacionesTecnicas: result.calificacionesTecnicas }),
+      ...(result.calificacionesCompetencia && {
+        calificacionesCompetencia: toCalificacionDTOList(result.calificacionesCompetencia),
+      }),
+    });
   } catch (error: any) {
     if (error.message.includes('no encontrado')) {
       return res.status(404).json({ message: error.message });
@@ -107,12 +115,19 @@ export const getMisCalificacionesHandler = async (req: Request, res: Response) =
       return res.status(401).json({ message: 'No autenticado' });
     }
     const { cicloLectivoId } = req.query as { cicloLectivoId?: string };
-    const calificaciones = await getCalificacionesByEstudiante(
+    const result = await getCalificacionesByEstudiante(
       req.user.usuarioId.toString(),
       req.resolvedInstitucionId,
       cicloLectivoId,
     );
-    return res.status(200).json(calificaciones);
+    return res.status(200).json({
+      estudiante: result.estudiante,
+      calificaciones: toCalificacionDTOList(result.calificaciones),
+      ...(result.calificacionesTecnicas && { calificacionesTecnicas: result.calificacionesTecnicas }),
+      ...(result.calificacionesCompetencia && {
+        calificacionesCompetencia: toCalificacionDTOList(result.calificacionesCompetencia),
+      }),
+    });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

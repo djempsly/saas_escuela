@@ -14,6 +14,7 @@ import { ROLES } from '../../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../../utils/security';
 import { uploadToS3 } from '../../services/s3.service';
 import { registrarAuditLog } from '../../services/audit.service';
+import { toUserDTO, toUserDTOList } from '../../dtos';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
@@ -37,16 +38,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
       return res.status(201).json({
         status: 'success',
         data: {
-          user: {
-            id: result.user.id,
-            nombre: result.user.nombre,
-            segundoNombre: result.user.segundoNombre,
-            apellido: result.user.apellido,
-            segundoApellido: result.user.segundoApellido,
-            email: result.user.email,
-            username: result.user.username,
-            role: result.user.role,
-          },
+          user: toUserDTO(result.user),
           tempPassword: result.tempPassword,
         },
       });
@@ -74,16 +66,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
       return res.status(201).json({
         status: 'success',
         data: {
-          user: {
-            id: result.user.id,
-            nombre: result.user.nombre,
-            segundoNombre: result.user.segundoNombre,
-            apellido: result.user.apellido,
-            segundoApellido: result.user.segundoApellido,
-            email: result.user.email,
-            username: result.user.username,
-            role: result.user.role,
-          },
+          user: toUserDTO(result.user),
           tempPassword: result.tempPassword,
         },
       });
@@ -111,16 +94,7 @@ export const createUserHandler = async (req: Request, res: Response) => {
     return res.status(201).json({
       status: 'success',
       data: {
-        user: {
-          id: result.user.id,
-          nombre: result.user.nombre,
-          segundoNombre: result.user.segundoNombre,
-          apellido: result.user.apellido,
-          segundoApellido: result.user.segundoApellido,
-          email: result.user.email,
-          username: result.user.username,
-          role: result.user.role,
-        },
+        user: toUserDTO(result.user),
         tempPassword: result.tempPassword,
       },
     });
@@ -191,7 +165,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
         req.user.usuarioId.toString(),
         req.resolvedInstitucionId,
       );
-      return res.status(200).json({ data: students });
+      return res.status(200).json({ data: toUserDTOList(students) });
     }
 
     // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
@@ -203,7 +177,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
       nivelId,
     );
 
-    return res.status(200).json({ data: users });
+    return res.status(200).json({ data: toUserDTOList(users) });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -224,7 +198,7 @@ export const getStaffHandler = async (req: Request, res: Response) => {
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
     const staff = await findStaffByInstitucion(req.resolvedInstitucionId, canSeePasswords);
 
-    return res.status(200).json({ data: staff });
+    return res.status(200).json({ data: toUserDTOList(staff) });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -249,7 +223,7 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No tienes permisos para ver este usuario' });
     }
 
-    return res.status(200).json({ data: user });
+    return res.status(200).json({ data: toUserDTO(user) });
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -276,10 +250,11 @@ export const updateProfileHandler = async (req: Request, res: Response) => {
       fotoUrl,
     });
 
+    const userDTO = toUserDTO(updatedUser);
     return res.status(200).json({
       message: 'Perfil actualizado correctamente',
-      data: updatedUser,
-      fotoUrl: updatedUser.fotoUrl,
+      data: userDTO,
+      fotoUrl: userDTO.fotoUrl,
     });
   } catch (error: any) {
     if (error.message.includes('correo electronico ya esta en uso')) {
@@ -308,7 +283,7 @@ export const updateUserHandler = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       message: 'Usuario actualizado correctamente',
-      data: updatedUser,
+      data: toUserDTO(updatedUser),
     });
   } catch (error: any) {
     if (error.message.includes('correo electronico ya esta en uso')) {

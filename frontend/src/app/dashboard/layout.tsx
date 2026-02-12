@@ -8,6 +8,7 @@ import { useInstitutionStore } from '@/store/institution.store';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Usar useSyncExternalStore para detectar hidratación sin cascading renders
 const emptySubscribe = () => () => {};
@@ -95,7 +96,9 @@ export default function DashboardLayout({
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         />
         <main className="p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

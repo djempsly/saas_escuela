@@ -18,6 +18,7 @@ import {
   refreshTokenSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { toUserDTO } from '../dtos';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
   try {
@@ -26,14 +27,7 @@ export const registerSuperAdminHandler = async (req: Request, res: Response) => 
     return res.status(201).json({
       status: 'success',
       data: {
-        user: {
-          id: result.user.id,
-          nombre: result.user.nombre,
-          apellido: result.user.apellido,
-          email: result.user.email,
-          username: result.user.username,
-          role: result.user.role,
-        },
+        user: toUserDTO(result.user),
         tempPassword: result.tempPassword,
       },
     });

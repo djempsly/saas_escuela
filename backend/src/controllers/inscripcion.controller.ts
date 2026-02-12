@@ -11,6 +11,7 @@ import { inscripcionSchema, inscripcionMasivaSchema } from '../utils/zod.schemas
 import { sanitizeErrorMessage } from '../utils/security';
 import { Role } from '@prisma/client';
 import { registrarAuditLog } from '../services/audit.service';
+import { toInscripcionDTO, toInscripcionDTOList } from '../dtos';
 
 export const inscribirEstudianteHandler = async (req: Request, res: Response) => {
   try {
@@ -30,7 +31,7 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
         institucionId: req.resolvedInstitucionId,
       });
     }
-    return res.status(201).json(inscripcion);
+    return res.status(201).json(toInscripcionDTO(inscripcion));
   } catch (error: any) {
     if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
@@ -63,7 +64,7 @@ export const inscribirPorCodigoHandler = async (req: Request, res: Response) => 
     }
 
     const inscripcion = await inscribirPorCodigo(codigo, req.user.usuarioId.toString());
-    return res.status(201).json(inscripcion);
+    return res.status(201).json(toInscripcionDTO(inscripcion));
   } catch (error: any) {
     if (
       error.message.includes('no válido') ||
@@ -84,7 +85,7 @@ export const getInscripcionesByClaseHandler = async (req: Request, res: Response
     }
     const { claseId } = req.params as { claseId: string };
     const inscripciones = await findInscripcionesByClase(claseId, req.resolvedInstitucionId);
-    return res.status(200).json(inscripciones);
+    return res.status(200).json(toInscripcionDTOList(inscripciones));
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -99,7 +100,7 @@ export const getMisInscripcionesHandler = async (req: Request, res: Response) =>
       req.user.usuarioId.toString(),
       req.resolvedInstitucionId,
     );
-    return res.status(200).json(inscripciones);
+    return res.status(200).json(toInscripcionDTOList(inscripciones));
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -115,7 +116,7 @@ export const getInscripcionesByEstudianteHandler = async (req: Request, res: Res
       estudianteId,
       req.resolvedInstitucionId,
     );
-    return res.status(200).json(inscripciones);
+    return res.status(200).json(toInscripcionDTOList(inscripciones));
   } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
