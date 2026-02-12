@@ -124,8 +124,9 @@ export default function InstitutionLoginPage() {
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || t.auth.loginError);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setError(axiosErr.response?.data?.message || (err instanceof Error ? err.message : t.auth.loginError));
     } finally {
       setIsLoading(false);
     }

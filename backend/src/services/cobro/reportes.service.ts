@@ -59,7 +59,7 @@ export const getReportePagos = async (institucionId: string, fechaInicio: Date, 
 
 // Obtener estadísticas de cobros
 export const getEstadisticasCobros = async (institucionId: string, cicloLectivoId?: string) => {
-  const where: any = { institucionId };
+  const where: Record<string, unknown> = { institucionId };
   if (cicloLectivoId) {
     where.cicloLectivoId = cicloLectivoId;
   }

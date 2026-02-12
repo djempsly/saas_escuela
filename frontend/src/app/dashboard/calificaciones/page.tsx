@@ -68,6 +68,62 @@ interface CompGrades {
   rp4: number | null;
 }
 
+interface StudentCalificacion {
+  claseId?: string;
+  clase?: { id?: string; materia?: { nombre: string } };
+  p1: number | null;
+  p2: number | null;
+  p3: number | null;
+  p4: number | null;
+  rp1: number | null;
+  rp2: number | null;
+  rp3: number | null;
+  rp4: number | null;
+  promedioFinal?: number | null;
+  promedio?: number | null;
+  [key: string]: unknown;
+}
+
+interface StudentCompetencia {
+  claseId?: string;
+  clase?: { id?: string; materia?: { nombre: string } };
+  competencia: string;
+  p1: number | null;
+  p2: number | null;
+  p3: number | null;
+  p4: number | null;
+  rp1: number | null;
+  rp2: number | null;
+  rp3: number | null;
+  rp4: number | null;
+  [key: string]: unknown;
+}
+
+interface CicloLectivo {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
+interface BoletinCalificacion {
+  materia: string;
+  p1: number | null;
+  p2: number | null;
+  p3: number | null;
+  p4: number | null;
+  promedioFinal: number | null;
+  situacion: string | null;
+  [key: string]: unknown;
+}
+
+interface BoletinData {
+  institucion?: { nombre: string };
+  estudiante?: { nombre: string; apellido: string };
+  cicloLectivo?: { nombre: string };
+  calificaciones?: BoletinCalificacion[];
+  promedioGeneral?: number | null;
+}
+
 interface StudentRow {
   estudianteId: string;
   nombre: string;
@@ -90,11 +146,11 @@ export default function CalificacionesPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Vista estudiante
-  const [studentCalificaciones, setStudentCalificaciones] = useState<any[]>([]);
-  const [studentCompetencias, setStudentCompetencias] = useState<any[]>([]);
-  const [ciclosLectivos, setCiclosLectivos] = useState<any[]>([]);
+  const [studentCalificaciones, setStudentCalificaciones] = useState<StudentCalificacion[]>([]);
+  const [studentCompetencias, setStudentCompetencias] = useState<StudentCompetencia[]>([]);
+  const [ciclosLectivos, setCiclosLectivos] = useState<CicloLectivo[]>([]);
   const [selectedCicloId, setSelectedCicloId] = useState('');
-  const [boletinData, setBoletinData] = useState<any>(null);
+  const [boletinData, setBoletinData] = useState<BoletinData | null>(null);
   const [isLoadingBoletin, setIsLoadingBoletin] = useState(false);
   const [boletinOpen, setBoletinOpen] = useState(false);
 
@@ -120,7 +176,7 @@ export default function CalificacionesPage() {
             const ciclosData = ciclosRes.data?.data || ciclosRes.data || [];
             setCiclosLectivos(Array.isArray(ciclosData) ? ciclosData : []);
             // Seleccionar el ciclo activo por defecto
-            const activo = ciclosData.find((c: any) => c.activo);
+            const activo = ciclosData.find((c: CicloLectivo) => c.activo);
             if (activo) setSelectedCicloId(activo.id);
           } catch {
             // silently fail
@@ -239,8 +295,9 @@ export default function CalificacionesPage() {
       setEditingCell(null);
       setEditValue('');
       toast.success('Calificación guardada');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al guardar');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr.response?.data?.message || (err instanceof Error ? err.message : 'Error al guardar'));
     } finally {
       setIsSaving(false);
     }
@@ -340,7 +397,7 @@ export default function CalificacionesPage() {
   // Vista Estudiante
   if (isEstudiante) {
     // Agrupar competencias por materia
-    const competenciasPorMateria: Record<string, { materia: string; competencias: any[] }> = {};
+    const competenciasPorMateria: Record<string, { materia: string; competencias: StudentCompetencia[] }> = {};
     for (const comp of studentCompetencias) {
       const materiaName = comp.clase?.materia?.nombre || 'Sin materia';
       if (!competenciasPorMateria[materiaName]) {
@@ -392,7 +449,7 @@ export default function CalificacionesPage() {
                     className="px-3 py-1.5 border rounded-md text-sm"
                   >
                     <option value="">-- Seleccionar --</option>
-                    {ciclosLectivos.map((c: any) => (
+                    {ciclosLectivos.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nombre} {c.activo ? '(Activo)' : ''}
                       </option>
@@ -433,7 +490,7 @@ export default function CalificacionesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {boletinData.calificaciones?.map((cal: any, idx: number) => (
+                        {boletinData.calificaciones?.map((cal: BoletinCalificacion, idx: number) => (
                           <tr key={idx} className="border-t">
                             <td className="p-3 font-medium">{cal.materia}</td>
                             {PERIODOS.map(p => {
@@ -506,7 +563,7 @@ export default function CalificacionesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {studentCalificaciones.map((cal: any, idx: number) => {
+                        {studentCalificaciones.map((cal, idx: number) => {
                           const promedio = cal.promedioFinal ?? cal.promedio ?? null;
                           return (
                             <tr key={idx} className="border-t hover:bg-slate-50">
@@ -566,7 +623,7 @@ export default function CalificacionesPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {grupo.competencias.map((comp: any, idx: number) => {
+                            {grupo.competencias.map((comp, idx: number) => {
                               const compInfo = COMPETENCIAS.find(c => c.id === comp.competencia);
                               return (
                                 <tr key={idx} className="border-t hover:bg-slate-50">

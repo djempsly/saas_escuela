@@ -60,7 +60,7 @@ import React from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { ReportCardDocument } from './report-card-document';
 import { PolitecnicoReportDocument, PolitecnicoReportData, PolitecnicoConfig, defaultGradeColors as politecnicoDefaultColors } from './politecnico-report';
-import { ReportCardData, PDFConfig, getPaperSize, GradeColors } from './types';
+import { ReportCardData, PDFConfig, getPaperSize, GradeColors, EducationSystem } from './types';
 import { Locale } from '../i18n';
 import { BoletinData, SistemaEducativo } from './types/boletin.types';
 import { TemplateConfig } from './templates/base-template';
@@ -85,7 +85,7 @@ export const createDefaultConfig = (
 
   return {
     locale,
-    paperSize: getPaperSize(sistemaEducativo as any, nivel),
+    paperSize: getPaperSize(sistemaEducativo as EducationSystem, nivel),
     gradeColors: defaultGradeColors,
     showTechnicalModules: isPolitecnico,
     showAttendance: true,

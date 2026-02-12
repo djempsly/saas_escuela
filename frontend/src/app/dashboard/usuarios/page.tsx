@@ -89,7 +89,7 @@ const getDefaultPasswordByRole = (role: string): string => {
 export default function UsuariosPage() {
   const { user } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [niveles, setNiveles] = useState<any[]>([]);
+  const [niveles, setNiveles] = useState<{ id: string; nombre: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');

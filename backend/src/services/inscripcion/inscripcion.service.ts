@@ -1,6 +1,7 @@
 import prisma from '../../config/db';
 import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from '../../errors';
 import { InscripcionInput } from '../../utils/zod.schemas';
+import { getErrorMessage } from '../../utils/error-helpers';
 
 export const inscribirEstudiante = async (input: InscripcionInput, institucionId: string) => {
   // Verificar que la clase existe y pertenece a la institución
@@ -285,8 +286,8 @@ export const inscribirMasivo = async (
       });
 
       resultados.exitosos.push(estudianteId);
-    } catch (error: any) {
-      resultados.fallidos.push({ estudianteId, error: error.message });
+    } catch (error: unknown) {
+      resultados.fallidos.push({ estudianteId, error: getErrorMessage(error) });
     }
   }
 

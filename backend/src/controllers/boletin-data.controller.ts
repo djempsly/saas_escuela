@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { getBoletinData, getBoletinesClase } from '../services/boletin-data';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage } from '../utils/error-helpers';
 
 /**
  * Obtiene datos estructurados para generar un boletín de un estudiante
@@ -26,7 +27,7 @@ export const getBoletinDataHandler = async (req: Request, res: Response) => {
     const data = await getBoletinData(estudianteId, cicloId, req.resolvedInstitucionId);
 
     return res.status(200).json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error obteniendo datos del boletín');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -52,7 +53,7 @@ export const getBoletinesClaseDataHandler = async (req: Request, res: Response) 
       total: boletines.length,
       boletines,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error obteniendo datos de boletines de clase');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

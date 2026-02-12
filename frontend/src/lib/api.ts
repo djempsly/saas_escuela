@@ -154,13 +154,13 @@ export const institucionesApi = {
     api.post('/instituciones', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  createJson: (data: any) =>
+  createJson: (data: Record<string, unknown>) =>
     api.post('/instituciones', data),
   update: (id: string, data: FormData) =>
     api.put(`/instituciones/${id}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  updateJson: (id: string, data: any) =>
+  updateJson: (id: string, data: Record<string, unknown>) =>
     api.put(`/instituciones/${id}`, data),
   updateConfig: (id: string, data: FormData) =>
     api.patch(`/instituciones/${id}/config`, data, {
@@ -168,7 +168,7 @@ export const institucionesApi = {
     }),
   updateDirectorConfig: (id: string, data: Record<string, unknown>) =>
     api.patch(`/instituciones/${id}/config-director`, data),
-  updateSensitive: (id: string, data: any) =>
+  updateSensitive: (id: string, data: Record<string, unknown>) =>
     api.patch(`/instituciones/${id}/sensitive`, data),
   updateSistemasEducativos: (id: string, sistemasEducativos: string[]) =>
     api.patch(`/instituciones/${id}/sistemas-educativos`, { sistemasEducativos }),
@@ -255,8 +255,8 @@ export const actividadesApi = {
 export const clasesApi = {
   getAll: () => api.get('/clases'),
   getById: (id: string) => api.get(`/clases/${id}`),
-  create: (data: any) => api.post('/clases', data),
-  update: (id: string, data: any) => api.put(`/clases/${id}`, data),
+  create: (data: Record<string, unknown>) => api.post('/clases', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/clases/${id}`, data),
   delete: (id: string) => api.delete(`/clases/${id}`),
 };
 
@@ -274,7 +274,7 @@ export const inscripcionesApi = {
 
 // Asistencia API
 export const asistenciaApi = {
-  tomar: (claseId: string, fecha: string, asistencias: any[]) =>
+  tomar: (claseId: string, fecha: string, asistencias: Record<string, unknown>[]) =>
     api.post('/asistencia/tomar', { claseId, fecha, asistencias }),
   getByClase: (claseId: string, fecha: string) =>
     api.get(`/asistencia/clase/${claseId}`, { params: { fecha } }),
@@ -305,9 +305,9 @@ export const asistenciaApi = {
 
 // Calificaciones API
 export const calificacionesApi = {
-  guardar: (data: any) =>
+  guardar: (data: Record<string, unknown>) =>
     api.post('/calificaciones', data),
-  guardarTecnica: (data: any) =>
+  guardarTecnica: (data: Record<string, unknown>) =>
     api.post('/calificaciones/tecnica', data),
   getByClase: (claseId: string) =>
     api.get(`/calificaciones/clase/${claseId}`),
@@ -336,7 +336,7 @@ export const boletinesApi = {
   getPlantilla: (grado: string) =>
     api.get(`/boletines/plantilla/${grado}`, { responseType: 'blob' }),
   // Generar boletín personalizado (DOCX)
-  generarPersonalizado: (data: { config?: any; datosEstudiante?: any; calificaciones?: any[] }) =>
+  generarPersonalizado: (data: { config?: Record<string, unknown>; datosEstudiante?: Record<string, unknown>; calificaciones?: Record<string, unknown>[] }) =>
     api.post('/boletines/generar', data, { responseType: 'blob' }),
 };
 
@@ -348,9 +348,9 @@ export const usersApi = {
     api.get('/users/staff'),
   getById: (id: string) =>
     api.get(`/users/${id}`),
-  create: (data: any) =>
+  create: (data: Record<string, unknown>) =>
     api.post('/users', data),
-  update: (id: string, data: any) =>
+  update: (id: string, data: Record<string, unknown>) =>
     api.put(`/users/${id}`, data),
   delete: (id: string) =>
     api.delete(`/users/${id}`),
@@ -373,8 +373,8 @@ export const usersApi = {
 export const ciclosApi = {
   getAll: () => api.get('/cycles'),
   getById: (id: string) => api.get(`/cycles/${id}`),
-  create: (data: any) => api.post('/cycles', data),
-  update: (id: string, data: any) => api.put(`/cycles/${id}`, data),
+  create: (data: Record<string, unknown>) => api.post('/cycles', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/cycles/${id}`, data),
   delete: (id: string) => api.delete(`/cycles/${id}`),
   getActivo: () => api.get('/cycles/activo'),
 };
@@ -383,8 +383,8 @@ export const ciclosApi = {
 export const nivelesApi = {
   getAll: () => api.get('/levels'),
   getById: (id: string) => api.get(`/levels/${id}`),
-  create: (data: any) => api.post('/levels', data),
-  update: (id: string, data: any) => api.put(`/levels/${id}`, data),
+  create: (data: Record<string, unknown>) => api.post('/levels', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/levels/${id}`, data),
   delete: (id: string) => api.delete(`/levels/${id}`),
 };
 
@@ -432,8 +432,8 @@ export const coordinadoresApi = {
 export const materiasApi = {
   getAll: () => api.get('/subjects'),
   getById: (id: string) => api.get(`/subjects/${id}`),
-  create: (data: any) => api.post('/subjects', data),
-  update: (id: string, data: any) => api.put(`/subjects/${id}`, data),
+  create: (data: Record<string, unknown>) => api.post('/subjects', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/subjects/${id}`, data),
   delete: (id: string) => api.delete(`/subjects/${id}`),
 };
 

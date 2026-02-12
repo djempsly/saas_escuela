@@ -13,6 +13,7 @@ import {
   calificacionMasivaSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { toCalificacionDTO, toCalificacionDTOList } from '../dtos';
 
 export const guardarCalificacionHandler = async (req: Request, res: Response) => {
@@ -23,16 +24,16 @@ export const guardarCalificacionHandler = async (req: Request, res: Response) =>
     const validated = calificacionSchema.parse({ body: req.body });
     const calificacion = await guardarCalificacion(validated.body, req.resolvedInstitucionId);
     return res.status(200).json(toCalificacionDTO(calificacion));
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message.includes('no encontrad') ||
-      error.message.includes('no inscrito') ||
-      error.message.includes('técnica')
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('no inscrito') ||
+      getErrorMessage(error).includes('técnica')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -49,17 +50,17 @@ export const guardarCalificacionTecnicaHandler = async (req: Request, res: Respo
       req.resolvedInstitucionId,
     );
     return res.status(200).json(toCalificacionDTO(calificacion));
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message.includes('no encontrad') ||
-      error.message.includes('no inscrito') ||
-      error.message.includes('Politécnico') ||
-      error.message.includes('no es de tipo técnica')
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('no inscrito') ||
+      getErrorMessage(error).includes('Politécnico') ||
+      getErrorMessage(error).includes('no es de tipo técnica')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -73,9 +74,9 @@ export const getCalificacionesClaseHandler = async (req: Request, res: Response)
     const { claseId } = req.params as { claseId: string };
     const calificaciones = await getCalificacionesByClase(claseId, req.resolvedInstitucionId);
     return res.status(200).json(calificaciones);
-  } catch (error: any) {
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -101,9 +102,9 @@ export const getCalificacionesEstudianteHandler = async (req: Request, res: Resp
         calificacionesCompetencia: toCalificacionDTOList(result.calificacionesCompetencia),
       }),
     });
-  } catch (error: any) {
-    if (error.message.includes('no encontrado')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrado')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -128,7 +129,7 @@ export const getMisCalificacionesHandler = async (req: Request, res: Response) =
         calificacionesCompetencia: toCalificacionDTOList(result.calificacionesCompetencia),
       }),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -148,9 +149,9 @@ export const getBoletinHandler = async (req: Request, res: Response) => {
       req.resolvedInstitucionId,
     );
     return res.status(200).json(boletin);
-  } catch (error: any) {
-    if (error.message.includes('no encontrado')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrado')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -168,9 +169,9 @@ export const getMiBoletinHandler = async (req: Request, res: Response) => {
       req.resolvedInstitucionId,
     );
     return res.status(200).json(boletin);
-  } catch (error: any) {
-    if (error.message.includes('no encontrado')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrado')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -189,12 +190,12 @@ export const guardarCalificacionesMasivasHandler = async (req: Request, res: Res
       req.resolvedInstitucionId,
     );
     return res.status(200).json(resultado);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

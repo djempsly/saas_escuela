@@ -54,8 +54,9 @@ export default function LoginPage() {
       } else {
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setError(axiosErr.response?.data?.message || (err instanceof Error ? err.message : 'Error al iniciar sesión'));
     } finally {
       setIsLoading(false);
     }

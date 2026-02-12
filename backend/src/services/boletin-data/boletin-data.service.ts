@@ -87,7 +87,7 @@ export async function getBoletinData(
   });
 
   // Obtener calificaciones técnicas (solo para politécnicos)
-  let calificacionesTecnicasDB: any[] = [];
+  let calificacionesTecnicasDB: { valor: number; ra_codigo: string; clase: { materia: { nombre: string } | null } }[] = [];
   if (estudiante.institucion.sistema === 'POLITECNICO_DO') {
     calificacionesTecnicasDB = await prisma.calificacionTecnica.findMany({
       where: {

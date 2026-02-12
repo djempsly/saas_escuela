@@ -22,7 +22,8 @@ export const calcularPromedioPeriodo = (cal: Calificacion | undefined, periodo: 
   }
 
   // Fallback: sistema simple o legacy
-  const nota = Math.max((cal as any)[periodo] || 0, (cal as any)[rp] || 0);
+  const calRecord = cal as unknown as Record<string, number | null>;
+  const nota = Math.max(calRecord[periodo] || 0, calRecord[rp] || 0);
   return nota;
 };
 

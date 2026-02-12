@@ -78,8 +78,9 @@ export function useSabanaData() {
     try {
       const response = await sabanaApi.getSabana(selectedNivel, selectedCiclo);
       setSabanaData(response.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Error al cargar datos');
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: string } } };
+      toast.error(axiosErr.response?.data?.error || (error instanceof Error ? error.message : 'Error al cargar datos'));
       setSabanaData(null);
     } finally {
       setLoading(false);
@@ -103,7 +104,7 @@ export function useSabanaData() {
     claseId: string, estudianteId: string, periodo: string,
     valor: number | null, competenciaId?: string,
   ) => {
-    await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo: periodo as any, valor, competenciaId });
+    await sabanaApi.updateCalificacion({ claseId, estudianteId, periodo, valor, competenciaId });
     toast.success('Calificación guardada');
     loadSabana();
   }, [loadSabana]);

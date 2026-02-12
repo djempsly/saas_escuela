@@ -14,7 +14,6 @@ import {
 } from '../services/actividad.service';
 import { actividadSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
-import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { uploadToS3 } from '../services/s3.service';
 
 export const createActividadHandler = async (req: Request, res: Response) => {
@@ -112,9 +111,9 @@ export const createActividadHandler = async (req: Request, res: Response) => {
     );
 
     return res.status(201).json(actividad);
-  } catch (error: unknown) {
+  } catch (error: any) {
     req.log.error({ err: error }, 'Error creating actividad');
-    if (isZodError(error)) {
+    if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -126,7 +125,7 @@ export const getActividadesHandler = async (req: Request, res: Response) => {
     const { limit } = req.query as { limit?: string };
     const actividades = await findAllActividades(limit ? parseInt(limit) : undefined);
     return res.status(200).json(actividades);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -149,7 +148,7 @@ export const getActividadesAdminHandler = async (req: Request, res: Response) =>
 
     const actividades = await findAllActividadesAdmin(filters, limit ? parseInt(limit) : undefined);
     return res.status(200).json(actividades);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -162,7 +161,7 @@ export const getActividadByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Actividad no encontrada' });
     }
     return res.status(200).json(actividad);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -250,12 +249,12 @@ export const updateActividadHandler = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(actividad);
-  } catch (error: unknown) {
-    if (isZodError(error)) {
+  } catch (error: any) {
+    if (error.issues) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (getErrorMessage(error).includes('no encontrada')) {
-      return res.status(404).json({ message: getErrorMessage(error) });
+    if (error.message.includes('no encontrada')) {
+      return res.status(404).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -266,9 +265,9 @@ export const deleteActividadHandler = async (req: Request, res: Response) => {
     const { id } = req.params as { id: string };
     await deleteActividad(id);
     return res.status(204).send();
-  } catch (error: unknown) {
-    if (getErrorMessage(error).includes('no encontrada')) {
-      return res.status(404).json({ message: getErrorMessage(error) });
+  } catch (error: any) {
+    if (error.message.includes('no encontrada')) {
+      return res.status(404).json({ message: error.message });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -290,7 +289,7 @@ export const searchActividadesHandler = async (req: Request, res: Response) => {
       institucionId || null,
     );
     return res.status(200).json(actividades);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -304,7 +303,7 @@ export const getActividadesBySlugHandler = async (req: Request, res: Response) =
     const actividades = await findActividadesBySlug(slug, limit ? parseInt(limit) : undefined);
 
     return res.status(200).json(actividades);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -318,7 +317,7 @@ export const getActividadesByInstitucionHandler = async (req: Request, res: Resp
     const actividades = await findActividadesByInstitucion(id, limit ? parseInt(limit) : undefined);
 
     return res.status(200).json(actividades);
-  } catch (error: unknown) {
+  } catch (error: any) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

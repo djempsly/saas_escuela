@@ -5,6 +5,7 @@ import {
   getAsistenciaStats,
 } from '../services/diasLaborables.service';
 import { sanitizeErrorMessage } from '../utils/security';
+import { isZodError } from '../utils/error-helpers';
 import { z } from 'zod';
 import prisma from '../config/db';
 
@@ -56,7 +57,7 @@ export const getDiasLaborablesHandler = async (req: Request, res: Response) => {
         junio: 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -84,8 +85,8 @@ export const saveDiasLaborablesHandler = async (req: Request, res: Response) => 
     const dias = await upsertDiasLaborables(claseId, cicloLectivoId, validated);
 
     return res.status(200).json({ data: dias, message: 'Dias laborables guardados' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos invalidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -159,7 +160,7 @@ export const getAsistenciaStatsHandler = async (req: Request, res: Response) => 
         }),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

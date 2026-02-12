@@ -6,6 +6,7 @@ import {
   assignNivelesToCoordinator,
 } from '../../services/user';
 import { sanitizeErrorMessage } from '../../utils/security';
+import { getErrorMessage } from '../../utils/error-helpers';
 
 export const getCoordinadoresHandler = async (req: Request, res: Response) => {
   try {
@@ -20,7 +21,7 @@ export const getCoordinadoresHandler = async (req: Request, res: Response) => {
 
     const coordinadores = await findCoordinadores(req.resolvedInstitucionId);
     return res.status(200).json({ data: coordinadores });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -35,9 +36,9 @@ export const getCoordinacionInfoHandler = async (req: Request, res: Response) =>
 
     const info = await getCoordinacionInfo(id);
     return res.status(200).json({ data: info });
-  } catch (error: any) {
-    if (error.message === 'Usuario no encontrado') {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error) === 'Usuario no encontrado') {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -58,9 +59,10 @@ export const assignCiclosHandler = async (req: Request, res: Response) => {
 
     const result = await assignCiclosToCoordinator(id, cicloIds, req.resolvedInstitucionId);
     return res.status(200).json({ data: result });
-  } catch (error: any) {
-    if (error.message.includes('no encontrado') || error.message.includes('no son validos')) {
-      return res.status(400).json({ message: error.message });
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error);
+    if (msg.includes('no encontrado') || msg.includes('no son validos')) {
+      return res.status(400).json({ message: msg });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -81,9 +83,9 @@ export const assignNivelesHandler = async (req: Request, res: Response) => {
 
     const result = await assignNivelesToCoordinator(id, nivelIds, req.resolvedInstitucionId);
     return res.status(200).json({ data: result });
-  } catch (error: any) {
-    if (error.message.includes('no encontrado')) {
-      return res.status(400).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrado')) {
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

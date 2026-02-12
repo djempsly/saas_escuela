@@ -56,7 +56,7 @@ export const getAuditLogs = async (params: GetAuditLogsParams) => {
     accion,
   } = params;
 
-  const where: any = { institucionId };
+  const where: Prisma.AuditLogWhereInput = { institucionId };
 
   if (fechaDesde || fechaHasta) {
     where.createdAt = {};

@@ -4,14 +4,14 @@
  */
 const SENSITIVE_USER_FIELDS = ['password', 'refreshTokens', 'auditLogs'];
 
-export function toUserDTO(user: any) {
+export function toUserDTO<T extends Record<string, unknown>>(user: T): Omit<T, 'password' | 'refreshTokens' | 'auditLogs'> {
   if (!user) return user;
   const safe = { ...user };
-  for (const field of SENSITIVE_USER_FIELDS) delete safe[field];
-  return safe;
+  for (const field of SENSITIVE_USER_FIELDS) delete (safe as Record<string, unknown>)[field];
+  return safe as Omit<T, 'password' | 'refreshTokens' | 'auditLogs'>;
 }
 
-export function toUserDTOList(users: any[]) {
+export function toUserDTOList<T extends Record<string, unknown>>(users: T[]) {
   return users.map(toUserDTO);
 }
 
@@ -19,7 +19,7 @@ export function toUserDTOList(users: any[]) {
  * Estudiante Response DTO
  * Minimal public data for nested contexts (inscripciones, calificaciones, etc.)
  */
-export function toEstudianteDTO(user: any) {
+export function toEstudianteDTO(user: Record<string, unknown>) {
   if (!user) return user;
   return {
     id: user.id,

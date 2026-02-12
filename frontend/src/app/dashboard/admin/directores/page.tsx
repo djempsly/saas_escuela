@@ -139,9 +139,10 @@ export default function AdminDirectoresPage() {
       // Refresh list
       fetchDirectores();
       fetchInstituciones();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating director:', error);
-      alert(error.response?.data?.message || 'Error al crear director');
+      const axiosErr = error as { response?: { data?: { message?: string } } };
+      alert(axiosErr.response?.data?.message || (error instanceof Error ? error.message : 'Error al crear director'));
       setCreateModal((prev) => ({ ...prev, isSubmitting: false }));
     }
   };
@@ -165,9 +166,10 @@ export default function AdminDirectoresPage() {
       // Refresh
       fetchDirectores();
       fetchInstituciones();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reassigning director:', error);
-      alert(error.response?.data?.message || 'Error al reasignar director');
+      const axiosErr = error as { response?: { data?: { message?: string } } };
+      alert(axiosErr.response?.data?.message || (error instanceof Error ? error.message : 'Error al reasignar director'));
       setReassignModal((prev) => ({ ...prev, isSubmitting: false }));
     }
   };

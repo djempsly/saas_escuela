@@ -8,6 +8,7 @@ import {
 } from '../services/level.service';
 import { nivelSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { isZodError } from '../utils/error-helpers';
 
 export const createNivelHandler = async (req: Request, res: Response) => {
   try {
@@ -17,8 +18,8 @@ export const createNivelHandler = async (req: Request, res: Response) => {
     const validated = nivelSchema.parse({ body: req.body });
     const nivel = await createNivel(validated.body, req.resolvedInstitucionId);
     return res.status(201).json(nivel);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -32,7 +33,7 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
     }
     const niveles = await findNiveles(req.resolvedInstitucionId);
     return res.status(200).json(niveles);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -48,7 +49,7 @@ export const getNivelByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Nivel no encontrado' });
     }
     return res.status(200).json(nivel);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -66,8 +67,8 @@ export const updateNivelHandler = async (req: Request, res: Response) => {
 
     await updateNivel(id, req.resolvedInstitucionId, validated);
     return res.status(200).json({ message: 'Nivel actualizado' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -82,7 +83,7 @@ export const deleteNivelHandler = async (req: Request, res: Response) => {
     }
     await deleteNivel(id, req.resolvedInstitucionId);
     return res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

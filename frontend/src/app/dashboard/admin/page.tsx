@@ -30,7 +30,15 @@ export default function AdminDashboardPage() {
     totalEstudiantes: 0,
     actividadesRecientes: 0,
   });
-  const [instituciones, setInstituciones] = useState<any[]>([]);
+  interface Institucion {
+    id: string;
+    nombre: string;
+    pais: string;
+    sistemaEducativo: string;
+    activo: boolean;
+    _count?: { users?: number; estudiantes?: number };
+  }
+  const [instituciones, setInstituciones] = useState<Institucion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -41,8 +49,8 @@ export default function AdminDashboardPage() {
         setInstituciones(data);
         setStats({
           totalInstituciones: data.length,
-          totalUsuarios: data.reduce((acc: number, inst: any) => acc + (inst._count?.users || 0), 0),
-          totalEstudiantes: data.reduce((acc: number, inst: any) => acc + (inst._count?.estudiantes || 0), 0),
+          totalUsuarios: data.reduce((acc: number, inst: Institucion) => acc + (inst._count?.users || 0), 0),
+          totalEstudiantes: data.reduce((acc: number, inst: Institucion) => acc + (inst._count?.estudiantes || 0), 0),
           actividadesRecientes: 0,
         });
       } catch (error) {

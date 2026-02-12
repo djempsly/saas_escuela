@@ -91,7 +91,7 @@ export const getAsistenciaStats = async (
     : 0;
 
   // Obtener asistencias
-  const whereClause: any = { claseId };
+  const whereClause: Record<string, unknown> = { claseId };
   if (estudianteId) {
     whereClause.estudianteId = estudianteId;
   }

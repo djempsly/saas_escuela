@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { EstadoPago, ConceptoCobro } from '@prisma/client';
 import {
   crearCobro,
   crearCobrosMasivos,
@@ -74,8 +75,8 @@ export const getCobrosHandler = async (req: Request, res: Response) => {
     }
 
     const { estado, concepto, estudianteId, cicloLectivoId } = req.query as {
-      estado?: any;
-      concepto?: any;
+      estado?: EstadoPago;
+      concepto?: ConceptoCobro;
       estudianteId?: string;
       cicloLectivoId?: string;
     };

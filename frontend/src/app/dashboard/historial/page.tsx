@@ -124,7 +124,7 @@ export default function HistorialPage() {
   useEffect(() => {
     usersApi.getAll().then((res) => {
       setUsers(
-        (res.data.data || []).map((u: any) => ({
+        (res.data.data || []).map((u: { id: string; nombre: string; apellido: string; role: string }) => ({
           id: u.id,
           nombre: u.nombre,
           apellido: u.apellido,

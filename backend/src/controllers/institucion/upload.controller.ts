@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../../config/db';
 import { uploadToS3, deleteFromS3, isS3Url } from '../../services/s3.service';
 import { sanitizeErrorMessage } from '../../utils/security';
+import { getErrorMessage } from '../../utils/error-helpers';
 
 // POST /api/v1/instituciones/:id/favicon - Subir favicon
 export const uploadFaviconHandler = async (req: Request, res: Response) => {
@@ -30,7 +31,7 @@ export const uploadFaviconHandler = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error uploading favicon');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -63,7 +64,7 @@ export const uploadHeroHandler = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error uploading hero image');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -96,7 +97,7 @@ export const uploadLoginLogoHandler = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error uploading login logo');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

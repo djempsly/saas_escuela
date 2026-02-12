@@ -155,8 +155,9 @@ export default function StudentCobrosPage() {
       toast.success('Pago registrado correctamente');
       setShowPagoModal(false);
       await fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Error al registrar pago');
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr.response?.data?.message || (error instanceof Error ? error.message : 'Error al registrar pago'));
     } finally {
       setIsSubmitting(false);
     }

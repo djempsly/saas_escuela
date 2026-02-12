@@ -58,7 +58,7 @@ export const getDashboardStatsHandler = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json(stats);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

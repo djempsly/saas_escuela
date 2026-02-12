@@ -8,6 +8,7 @@ import {
 } from '../services/asistencia.service';
 import { tomarAsistenciaSchema, reporteAsistenciaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { registrarAuditLog } from '../services/audit.service';
 
 export const tomarAsistenciaHandler = async (req: Request, res: Response) => {
@@ -29,12 +30,12 @@ export const tomarAsistenciaHandler = async (req: Request, res: Response) => {
       });
     }
     return res.status(200).json(resultado);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada') || error.message.includes('no inscritos')) {
-      return res.status(400).json({ message: error.message });
+    if (getErrorMessage(error).includes('no encontrada') || getErrorMessage(error).includes('no inscritos')) {
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -58,9 +59,9 @@ export const getAsistenciaByFechaHandler = async (req: Request, res: Response) =
       req.resolvedInstitucionId,
     );
     return res.status(200).json(asistencias);
-  } catch (error: any) {
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -82,12 +83,12 @@ export const getReporteClaseHandler = async (req: Request, res: Response) => {
       req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -113,9 +114,9 @@ export const getReporteEstudianteHandler = async (req: Request, res: Response) =
       req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
-  } catch (error: any) {
-    if (error.message.includes('no encontrado')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrado')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -129,9 +130,9 @@ export const getFechasAsistenciaHandler = async (req: Request, res: Response) =>
     const { claseId } = req.params as { claseId: string };
     const fechas = await getFechasAsistencia(claseId, req.resolvedInstitucionId);
     return res.status(200).json(fechas);
-  } catch (error: any) {
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -159,7 +160,7 @@ export const getMiAsistenciaHandler = async (req: Request, res: Response) => {
       req.resolvedInstitucionId,
     );
     return res.status(200).json(reporte);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

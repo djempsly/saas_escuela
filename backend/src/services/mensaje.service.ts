@@ -180,7 +180,7 @@ export const getMensajes = async (
     throw new NotFoundError('Conversación no encontrada');
   }
 
-  const where: any = { conversacionId };
+  const where: Record<string, unknown> = { conversacionId };
   if (cursor) {
     where.createdAt = { lt: new Date(cursor) };
   }

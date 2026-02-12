@@ -16,8 +16,9 @@ export function useSabanaPublish(selectedCiclo: string, loadSabana: () => Promis
       await sabanaApi.publicar(claseId, selectedCiclo);
       toast.success('Calificaciones publicadas exitosamente');
       loadSabana();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Error al publicar calificaciones');
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { error?: string } } };
+      toast.error(axiosErr.response?.data?.error || (error instanceof Error ? error.message : 'Error al publicar calificaciones'));
     } finally {
       setIsPublishing(false);
     }

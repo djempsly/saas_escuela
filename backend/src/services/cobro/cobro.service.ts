@@ -128,7 +128,7 @@ export const getCobros = async (
     cicloLectivoId?: string;
   },
 ) => {
-  const where: any = { institucionId };
+  const where: Record<string, unknown> = { institucionId };
 
   if (filtros?.estado) {
     where.estado = filtros.estado;

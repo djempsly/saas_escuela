@@ -53,11 +53,11 @@ export const useTranslation = () => {
     // Helper para obtener traducción anidada por path
     translate: (path: string): string => {
       const keys = path.split('.');
-      let result: any = t;
+      let result: unknown = t;
       for (const key of keys) {
-        result = result?.[key];
+        result = (result as Record<string, unknown>)?.[key];
       }
-      return result || path;
+      return (typeof result === 'string' ? result : path);
     },
   };
 };

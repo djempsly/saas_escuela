@@ -9,6 +9,7 @@ import {
 } from '../services/inscripcion';
 import { inscripcionSchema, inscripcionMasivaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { Role } from '@prisma/client';
 import { registrarAuditLog } from '../services/audit.service';
 import { toInscripcionDTO, toInscripcionDTOList } from '../dtos';
@@ -32,16 +33,16 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
       });
     }
     return res.status(201).json(toInscripcionDTO(inscripcion));
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message.includes('no encontrad') ||
-      error.message.includes('ya está inscrito') ||
-      error.message.includes('no está activo')
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('ya está inscrito') ||
+      getErrorMessage(error).includes('no está activo')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -65,14 +66,14 @@ export const inscribirPorCodigoHandler = async (req: Request, res: Response) => 
 
     const inscripcion = await inscribirPorCodigo(codigo, req.user.usuarioId.toString());
     return res.status(201).json(toInscripcionDTO(inscripcion));
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (
-      error.message.includes('no válido') ||
-      error.message.includes('Ya estás inscrito') ||
-      error.message.includes('no está activo') ||
-      error.message.includes('No tienes permiso')
+      getErrorMessage(error).includes('no válido') ||
+      getErrorMessage(error).includes('Ya estás inscrito') ||
+      getErrorMessage(error).includes('no está activo') ||
+      getErrorMessage(error).includes('No tienes permiso')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -86,7 +87,7 @@ export const getInscripcionesByClaseHandler = async (req: Request, res: Response
     const { claseId } = req.params as { claseId: string };
     const inscripciones = await findInscripcionesByClase(claseId, req.resolvedInstitucionId);
     return res.status(200).json(toInscripcionDTOList(inscripciones));
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -101,7 +102,7 @@ export const getMisInscripcionesHandler = async (req: Request, res: Response) =>
       req.resolvedInstitucionId,
     );
     return res.status(200).json(toInscripcionDTOList(inscripciones));
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -117,7 +118,7 @@ export const getInscripcionesByEstudianteHandler = async (req: Request, res: Res
       req.resolvedInstitucionId,
     );
     return res.status(200).json(toInscripcionDTOList(inscripciones));
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -140,9 +141,9 @@ export const eliminarInscripcionHandler = async (req: Request, res: Response) =>
       });
     }
     return res.status(204).send();
-  } catch (error: any) {
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('no encontrada')) {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -160,12 +161,12 @@ export const inscribirMasivoHandler = async (req: Request, res: Response) => {
       req.resolvedInstitucionId,
     );
     return res.status(200).json(resultados);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada') || error.message.includes('no activo')) {
-      return res.status(400).json({ message: error.message });
+    if (getErrorMessage(error).includes('no encontrada') || getErrorMessage(error).includes('no activo')) {
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

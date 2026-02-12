@@ -8,6 +8,7 @@ import {
 } from '../../services/institucion';
 import { institucionSchema } from '../../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../../utils/security';
+import { getErrorMessage, isZodError } from '../../utils/error-helpers';
 import { z } from 'zod';
 
 export const createInstitucionHandler = async (req: Request, res: Response) => {
@@ -23,23 +24,25 @@ export const createInstitucionHandler = async (req: Request, res: Response) => {
         tempPassword: result.tempPassword,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error creating institucion');
-    if (error.issues) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
+    const msg = getErrorMessage(error);
     // Errores de duplicado son seguros para mostrar
-    if (error.message?.includes('ya está en uso') || error.message?.includes('Sistema educativo')) {
-      return res.status(409).json({ message: error.message });
+    if (msg.includes('ya está en uso') || msg.includes('Sistema educativo')) {
+      return res.status(409).json({ message: msg });
     }
     // Errores de Prisma
-    if (error.code === 'P2002') {
+    const errCode = (error as { code?: string }).code;
+    if (errCode === 'P2002') {
       return res.status(409).json({ message: 'Ya existe un registro con estos datos únicos' });
     }
     // Mostrar el error real para debugging
     return res.status(500).json({
-      message: error.message || sanitizeErrorMessage(error),
-      code: error.code,
+      message: msg || sanitizeErrorMessage(error),
+      code: errCode,
     });
   }
 };
@@ -48,7 +51,7 @@ export const findInstitucionesHandler = async (req: Request, res: Response) => {
   try {
     const instituciones = await findInstituciones();
     return res.status(200).json(instituciones);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -61,7 +64,7 @@ export const findInstitucionByIdHandler = async (req: Request, res: Response) =>
       return res.status(404).json({ message: 'Institución no encontrada' });
     }
     return res.status(200).json(institucion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -84,8 +87,8 @@ export const updateInstitucionHandler = async (req: Request, res: Response) => {
 
     const institucion = await updateInstitucion(id, validatedData.body);
     return res.status(200).json(institucion);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -98,22 +101,24 @@ export const deleteInstitucionHandler = async (req: Request, res: Response) => {
 
     await deleteInstitucion(id);
     return res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error deleting institucion');
+    const msg = getErrorMessage(error);
     // Errores de validación/negocio son seguros para mostrar
     if (
-      error.message?.includes('No se puede eliminar') ||
-      error.message?.includes('no encontrada')
+      msg.includes('No se puede eliminar') ||
+      msg.includes('no encontrada')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: msg });
     }
     // Errores de Prisma por foreign key
-    if (error.code === 'P2003' || error.code === 'P2014') {
+    const errCode = (error as { code?: string }).code;
+    if (errCode === 'P2003' || errCode === 'P2014') {
       return res.status(400).json({
         message:
           'No se puede eliminar la institución porque tiene registros asociados. Desactívela en lugar de eliminarla.',
       });
     }
-    return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
+    return res.status(500).json({ message: msg || sanitizeErrorMessage(error) });
   }
 };

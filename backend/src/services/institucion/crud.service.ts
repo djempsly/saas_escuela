@@ -1,4 +1,4 @@
-import { Role, SistemaEducativo, Idioma } from '@prisma/client';
+import { Role, SistemaEducativo, Idioma, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../../config/db';
 import { logger } from '../../config/logger';
@@ -31,11 +31,11 @@ const generateUniqueSlug = async (nombre: string): Promise<string> => {
   return slug;
 };
 
-export const createInstitucion = async (input: any) => {
+export const createInstitucion = async (input: Record<string, unknown>) => {
   const {
-    director,
+    director: directorRaw,
     directorId,
-    colores,
+    colores: coloresRaw,
     sistemaEducativo,
     sistemasEducativos,
     idiomaPrincipal,
@@ -44,6 +44,12 @@ export const createInstitucion = async (input: any) => {
     autogestionActividades,
     ...rest
   } = input;
+
+  const director = directorRaw as { nombre: string; apellido: string; email?: string } | undefined;
+  const colores = coloresRaw as { primario?: string; secundario?: string } | undefined;
+  const typedDirectorId = directorId as string | undefined;
+  const typedDominioPersonalizado = dominioPersonalizado as string | undefined;
+  const typedAutogestionActividades = autogestionActividades as boolean | undefined;
 
   logger.debug(
     {
@@ -86,7 +92,7 @@ export const createInstitucion = async (input: any) => {
   logger.debug({ resolvedIdioma, sistemasValidos }, 'Resolved idioma and sistemas educativos');
 
   // Generar slug único
-  const slug = inputSlug ? generateSlug(inputSlug) : await generateUniqueSlug(rest.nombre);
+  const slug = inputSlug ? generateSlug(inputSlug as string) : await generateUniqueSlug(rest.nombre as string);
 
   // Verificar unicidad del slug
   const existingSlug = await prisma.institucion.findUnique({ where: { slug } });
@@ -95,9 +101,9 @@ export const createInstitucion = async (input: any) => {
   }
 
   // Verificar unicidad del dominio personalizado si se proporciona
-  if (dominioPersonalizado) {
+  if (typedDominioPersonalizado) {
     const existingDominio = await prisma.institucion.findUnique({
-      where: { dominioPersonalizado },
+      where: { dominioPersonalizado: typedDominioPersonalizado },
     });
     if (existingDominio) {
       throw new ConflictError('El dominio personalizado ya está en uso');
@@ -105,8 +111,8 @@ export const createInstitucion = async (input: any) => {
   }
 
   // Caso 1: Usar director existente
-  if (directorId) {
-    const existingDirector = await prisma.user.findUnique({ where: { id: directorId } });
+  if (typedDirectorId) {
+    const existingDirector = await prisma.user.findUnique({ where: { id: typedDirectorId } });
     if (!existingDirector) {
       throw new NotFoundError('Director no encontrado');
     }
@@ -120,14 +126,14 @@ export const createInstitucion = async (input: any) => {
         data: {
           ...rest,
           slug,
-          dominioPersonalizado: dominioPersonalizado || null,
-          autogestionActividades: autogestionActividades || false,
+          dominioPersonalizado: typedDominioPersonalizado || null,
+          autogestionActividades: typedAutogestionActividades || false,
           sistema: sistemaEducativo as SistemaEducativo,
           idiomaPrincipal: resolvedIdioma,
           colorPrimario: colores?.primario || '#000000',
           colorSecundario: colores?.secundario || '#ffffff',
           directorId: existingDirector.id,
-        },
+        } as Prisma.InstitucionUncheckedCreateInput,
       });
 
       // Crear registros de sistemas educativos que ofrece la institución
@@ -201,14 +207,14 @@ export const createInstitucion = async (input: any) => {
       data: {
         ...rest,
         slug,
-        dominioPersonalizado: dominioPersonalizado || null,
-        autogestionActividades: autogestionActividades || false,
+        dominioPersonalizado: (dominioPersonalizado as string) || null,
+        autogestionActividades: (autogestionActividades as boolean) || false,
         sistema: sistemaEducativo as SistemaEducativo,
         idiomaPrincipal: resolvedIdioma,
         colorPrimario: colores?.primario || '#000000',
         colorSecundario: colores?.secundario || '#ffffff',
         directorId: newDirector.id,
-      },
+      } as Prisma.InstitucionUncheckedCreateInput,
     });
 
     // 3. Crear registros de sistemas educativos que ofrece la institución
@@ -299,17 +305,18 @@ export const findInstitucionById = async (id: string) => {
   });
 };
 
-export const updateInstitucion = async (id: string, input: any) => {
-  const { director, colores, sistemaEducativo, ...rest } = input;
+export const updateInstitucion = async (id: string, input: Record<string, unknown>) => {
+  const { director, colores: coloresRaw, sistemaEducativo, ...rest } = input;
 
-  const data: any = { ...rest };
+  const colores = coloresRaw as { primario?: string; secundario?: string } | undefined;
+  const data: Record<string, unknown> = { ...rest };
   if (colores?.primario) data.colorPrimario = colores.primario;
   if (colores?.secundario) data.colorSecundario = colores.secundario;
   if (sistemaEducativo) data.sistema = sistemaEducativo as SistemaEducativo;
 
   return prisma.institucion.update({
     where: { id },
-    data,
+    data: data as Prisma.InstitucionUpdateInput,
   });
 };
 

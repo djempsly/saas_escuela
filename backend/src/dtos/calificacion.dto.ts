@@ -4,13 +4,13 @@
  */
 const INTERNAL_FIELDS = ['publicadoPor', 'publicadoAt', 'updatedAt'];
 
-export function toCalificacionDTO(cal: any) {
+export function toCalificacionDTO<T extends Record<string, unknown>>(cal: T) {
   if (!cal) return cal;
   const safe = { ...cal };
-  for (const field of INTERNAL_FIELDS) delete safe[field];
+  for (const field of INTERNAL_FIELDS) delete (safe as Record<string, unknown>)[field];
   return safe;
 }
 
-export function toCalificacionDTOList(cals: any[]) {
+export function toCalificacionDTOList<T extends Record<string, unknown>>(cals: T[]) {
   return cals.map(toCalificacionDTO);
 }

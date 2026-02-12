@@ -9,6 +9,7 @@ import {
   assignCoordinadoresACiclo,
 } from '../services/cicloEducativo.service';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { z } from 'zod';
 import { TipoCicloEducativo } from '@prisma/client';
 
@@ -36,11 +37,11 @@ export const createCicloEducativoHandler = async (req: Request, res: Response) =
     const validated = cicloEducativoSchema.parse(req.body);
     const ciclo = await createCicloEducativo(validated, req.resolvedInstitucionId);
     return res.status(201).json(ciclo);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.code === 'P2002') {
+    if (error instanceof Object && 'code' in error && error.code === 'P2002') {
       return res.status(400).json({ message: 'Ya existe un ciclo educativo con ese nombre' });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -55,7 +56,7 @@ export const getCiclosEducativosHandler = async (req: Request, res: Response) =>
 
     const ciclos = await findCiclosEducativos(req.resolvedInstitucionId);
     return res.status(200).json(ciclos);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -72,7 +73,7 @@ export const getCicloEducativoByIdHandler = async (req: Request, res: Response) 
       return res.status(404).json({ message: 'Ciclo educativo no encontrado' });
     }
     return res.status(200).json(ciclo);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -87,14 +88,14 @@ export const updateCicloEducativoHandler = async (req: Request, res: Response) =
     const validated = cicloEducativoSchema.partial().parse(req.body);
     const ciclo = await updateCicloEducativo(id, req.resolvedInstitucionId, validated);
     return res.status(200).json(ciclo);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message === 'Ciclo educativo no encontrado') {
-      return res.status(404).json({ message: error.message });
+    if (getErrorMessage(error) === 'Ciclo educativo no encontrado') {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
-    if (error.code === 'P2002') {
+    if (error instanceof Object && 'code' in error && error.code === 'P2002') {
       return res.status(400).json({ message: 'Ya existe un ciclo educativo con ese nombre' });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -110,9 +111,9 @@ export const deleteCicloEducativoHandler = async (req: Request, res: Response) =
 
     await deleteCicloEducativo(id, req.resolvedInstitucionId);
     return res.status(204).send();
-  } catch (error: any) {
-    if (error.message === 'Ciclo educativo no encontrado') {
-      return res.status(404).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error) === 'Ciclo educativo no encontrado') {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -128,12 +129,12 @@ export const assignNivelesHandler = async (req: Request, res: Response) => {
     const validated = assignNivelesSchema.parse(req.body);
     const ciclo = await assignNivelesACiclo(id, validated.nivelIds, req.resolvedInstitucionId);
     return res.status(200).json(ciclo);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message === 'Ciclo educativo no encontrado') {
-      return res.status(404).json({ message: error.message });
+    if (getErrorMessage(error) === 'Ciclo educativo no encontrado') {
+      return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -153,15 +154,15 @@ export const assignCoordinadoresHandler = async (req: Request, res: Response) =>
       req.resolvedInstitucionId,
     );
     return res.status(200).json(ciclo);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message === 'Ciclo educativo no encontrado' ||
-      error.message === 'Algunos coordinadores no son válidos'
+      getErrorMessage(error) === 'Ciclo educativo no encontrado' ||
+      getErrorMessage(error) === 'Algunos coordinadores no son válidos'
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

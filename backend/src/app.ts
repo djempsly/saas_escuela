@@ -145,8 +145,8 @@ app.get('/', async (req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     checks.database = { status: 'ok', latency: Date.now() - dbStart };
-  } catch (err: any) {
-    checks.database = { status: 'error', latency: Date.now() - dbStart, error: err.message };
+  } catch (err: unknown) {
+    checks.database = { status: 'error', latency: Date.now() - dbStart, error: err instanceof Error ? err.message : 'unknown error' };
   }
 
   // ---- S3 Storage ----
@@ -154,8 +154,8 @@ app.get('/', async (req, res, next) => {
   try {
     await checkS3Connection();
     checks.storage = { status: 'ok', latency: Date.now() - s3Start };
-  } catch (err: any) {
-    checks.storage = { status: 'error', latency: Date.now() - s3Start, error: err.message };
+  } catch (err: unknown) {
+    checks.storage = { status: 'error', latency: Date.now() - s3Start, error: err instanceof Error ? err.message : 'unknown error' };
   }
 
   const allHealthy = Object.values(checks).every((c) => c.status === 'ok');

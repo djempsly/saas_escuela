@@ -4,7 +4,7 @@
  * Soporta: Primaria, Secundaria General, y Politécnico (Módulos Técnicos con RA)
  */
 
-import { SistemaEducativo, FormatoSabana } from '@prisma/client';
+import { SistemaEducativo, FormatoSabana, Calificacion, CalificacionTecnica, CalificacionCompetencia } from '@prisma/client';
 import prisma from '../../config/db';
 import { logger } from '../../config/logger';
 import { redis } from '../../config/redis';
@@ -318,10 +318,10 @@ export const getSabanaByNivel = async (
   });
 
   // Organizar Calificaciones
-  // Map<EstudianteId, Map<MateriaId, { general: Calificacion?, tecnicas: any[], competencias: any[] }>>
+  // Map<EstudianteId, Map<MateriaId, { general?: Calificacion, tecnicas: CalificacionTecnica[], competencias: CalificacionCompetencia[] }>>
   const notasMap = new Map<
     string,
-    Map<string, { general?: any; tecnicas: any[]; competencias: any[] }>
+    Map<string, { general?: Calificacion; tecnicas: CalificacionTecnica[]; competencias: CalificacionCompetencia[] }>
   >();
 
   // Helper para inicializar mapa
@@ -382,7 +382,7 @@ export const getSabanaByNivel = async (
 
         // 1. Mapear Competencias (ID -> objeto notas)
         const competenciasMap: SabanaCalificacion['competencias'] = {};
-        competenciasRaw.forEach((c: any) => {
+        competenciasRaw.forEach((c) => {
           competenciasMap[c.competencia] = {
             p1: c.p1 ?? null,
             p2: c.p2 ?? null,
@@ -398,7 +398,7 @@ export const getSabanaByNivel = async (
         // 2. CALCULAR PROMEDIOS GENERALES DE LA MATERIA (Basado en competencias)
         // Esto asegura que p1, p2, p3, p4 de la materia sean el promedio de sus competencias
         const periodos = ['p1', 'p2', 'p3', 'p4', 'rp1', 'rp2', 'rp3', 'rp4'];
-        const mPromedios: any = {};
+        const mPromedios: Record<string, number | null> = {};
 
         periodos.forEach((p) => {
           let suma = 0;
@@ -427,7 +427,7 @@ export const getSabanaByNivel = async (
         if (countP > 0) promedioMateria = Math.round((sumaP / countP) * 10) / 10;
 
         const rasMap: { [key: string]: number } = {};
-        tecnicas.forEach((t: any) => {
+        tecnicas.forEach((t) => {
           rasMap[t.ra_codigo] = t.valor;
         });
 
@@ -510,7 +510,7 @@ export const getNivelesParaSabana = async (
   userId?: string,
   userRole?: string,
 ) => {
-  const where: any = { institucionId };
+  const where: Record<string, unknown> = { institucionId };
   if (userRole === 'DOCENTE' && userId) {
     where.clases = { some: { docenteId: userId } };
   }

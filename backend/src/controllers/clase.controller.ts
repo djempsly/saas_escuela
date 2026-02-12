@@ -11,6 +11,7 @@ import {
 } from '../services/clase.service';
 import { claseSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { Role } from '@prisma/client';
 import { getCoordinadorNivelIds } from '../utils/coordinador.utils';
 import { registrarAuditLog } from '../services/audit.service';
@@ -33,17 +34,17 @@ export const createClaseHandler = async (req: Request, res: Response) => {
       });
     }
     return res.status(201).json(clase);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message.includes('no encontrad') ||
-      error.message.includes('no pertenece') ||
-      error.message.includes('Ya existe') ||
-      error.message.includes('ya existe')
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('no pertenece') ||
+      getErrorMessage(error).includes('Ya existe') ||
+      getErrorMessage(error).includes('ya existe')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -73,7 +74,7 @@ export const getClasesHandler = async (req: Request, res: Response) => {
 
     const clases = await findClases(req.resolvedInstitucionId);
     return res.status(200).json(clases);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -89,7 +90,7 @@ export const getClaseByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Clase no encontrada' });
     }
     return res.status(200).json(clase);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -102,7 +103,7 @@ export const getClaseByCodigoHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Clase no encontrada' });
     }
     return res.status(200).json(clase);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -130,12 +131,12 @@ export const updateClaseHandler = async (req: Request, res: Response) => {
       });
     }
     return res.status(200).json({ message: 'Clase actualizada' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrad')) {
-      return res.status(400).json({ message: error.message });
+    if (getErrorMessage(error).includes('no encontrad')) {
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -159,9 +160,9 @@ export const deleteClaseHandler = async (req: Request, res: Response) => {
       });
     }
     return res.status(204).send();
-  } catch (error: any) {
-    if (error.message.includes('No se puede eliminar')) {
-      return res.status(409).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('No se puede eliminar')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

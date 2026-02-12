@@ -1,5 +1,5 @@
 import prisma from '../config/db';
-import { TipoEvento } from '@prisma/client';
+import { TipoEvento, Prisma } from '@prisma/client';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
 import { ForbiddenError, NotFoundError } from '../errors';
 
@@ -138,7 +138,7 @@ export const getEventos = async (
   fechaFin?: Date,
   claseId?: string,
 ) => {
-  const where: any = { institucionId };
+  const where: Prisma.EventoWhereInput = { institucionId };
 
   // Filtrar por fechas si se proporcionan
   if (fechaInicio && fechaFin) {

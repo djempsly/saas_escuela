@@ -89,8 +89,32 @@ interface Ciclo {
 }
 
 // Vista de asistencia del estudiante (componente interno)
+interface AsistenciaRegistro {
+  estado: string;
+  fecha: string;
+  clase?: { materia?: { nombre: string } };
+  materia?: string;
+}
+
+interface MiAsistenciaData {
+  registros?: AsistenciaRegistro[];
+  asistencias?: AsistenciaRegistro[];
+  resumen?: {
+    presentes: number;
+    ausentes: number;
+    tardes: number;
+    justificados: number;
+  };
+}
+
+interface ClaseOption {
+  id: string;
+  materia?: { nombre: string };
+  nivel?: { nombre: string };
+}
+
 function MiAsistenciaEstudiante() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MiAsistenciaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -119,7 +143,7 @@ function MiAsistenciaEstudiante() {
   const resumen = data?.resumen || null;
 
   // Agrupar registros por clase
-  const porClase: Record<string, { materia: string; registros: any[] }> = {};
+  const porClase: Record<string, { materia: string; registros: AsistenciaRegistro[] }> = {};
   for (const reg of (Array.isArray(registros) ? registros : [])) {
     const claseNombre = reg.clase?.materia?.nombre || reg.materia || 'Sin materia';
     if (!porClase[claseNombre]) {
@@ -204,7 +228,7 @@ function MiAsistenciaEstudiante() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
-                {grupo.registros.map((reg: any, idx: number) => {
+                {grupo.registros.map((reg, idx: number) => {
                   const info = getEstadoInfo(reg.estado);
                   const Icon = info.icon;
                   return (
@@ -235,7 +259,7 @@ function MiAsistenciaEstudiante() {
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
-              {registros.map((reg: any, idx: number) => {
+              {registros.map((reg: AsistenciaRegistro, idx: number) => {
                 const info = getEstadoInfo(reg.estado);
                 const Icon = info.icon;
                 return (
@@ -295,7 +319,7 @@ function AsistenciaStaffPage() {
 
   const { user } = useAuthStore();
   const [asistencias, setAsistencias] = useState<AsistenciaItem[]>([]);
-  const [clases, setClases] = useState<any[]>([]);
+  const [clases, setClases] = useState<ClaseOption[]>([]);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [claseInfo, setClaseInfo] = useState<{ materia: string; nivel: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -13,6 +13,7 @@ import {
 } from '../../services/institucion';
 import { uploadToS3, deleteFromS3, isS3Url } from '../../services/s3.service';
 import { sanitizeErrorMessage } from '../../utils/security';
+import { getErrorMessage, isZodError } from '../../utils/error-helpers';
 import { z } from 'zod';
 
 // Obtener branding de una institución (público)
@@ -24,7 +25,7 @@ export const getBrandingHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Institución no encontrada' });
     }
     return res.status(200).json(branding);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -104,18 +105,19 @@ export const updateConfigHandler = async (req: Request, res: Response) => {
     });
 
     return res.status(200).json(config);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error updating config');
-    if (error.issues) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message?.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+    const msg = getErrorMessage(error);
+    if (msg.includes('no encontrada')) {
+      return res.status(404).json({ message: msg });
     }
     // Return actual error message for debugging
     return res.status(500).json({
-      message: error.message || 'Error interno del servidor',
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      message: msg || 'Error interno del servidor',
+      stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
     });
   }
 };
@@ -146,15 +148,16 @@ export const updateDirectorConfigHandler = async (req: Request, res: Response) =
     });
 
     return res.status(200).json(config);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error updating director config');
-    if (error.issues) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message?.includes('no encontrada')) {
-      return res.status(404).json({ message: error.message });
+    const msg = getErrorMessage(error);
+    if (msg.includes('no encontrada')) {
+      return res.status(404).json({ message: msg });
     }
-    return res.status(500).json({ message: error.message || 'Error interno del servidor' });
+    return res.status(500).json({ message: msg || 'Error interno del servidor' });
   }
 };
 
@@ -173,7 +176,7 @@ export const getBrandingBySlugHandler = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json(branding);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -189,7 +192,7 @@ export const getBrandingByDominioHandler = async (req: Request, res: Response) =
     }
 
     return res.status(200).json(branding);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -223,12 +226,13 @@ export const updateSensitiveConfigHandler = async (req: Request, res: Response) 
     const result = await updateSensitiveConfig(id, validated);
 
     return res.status(200).json(result);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada') || error.message.includes('ya está en uso')) {
-      return res.status(400).json({ message: error.message });
+    const msg = getErrorMessage(error);
+    if (msg.includes('no encontrada') || msg.includes('ya está en uso')) {
+      return res.status(400).json({ message: msg });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -243,7 +247,7 @@ export const checkSlugHandler = async (req: Request, res: Response) => {
     const available = await checkSlugAvailability(slug, excludeId);
 
     return res.status(200).json({ available, slug });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -257,7 +261,7 @@ export const checkDominioHandler = async (req: Request, res: Response) => {
     const available = await checkDominioAvailability(dominio, excludeId);
 
     return res.status(200).json({ available, dominio });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -277,12 +281,13 @@ export const updateSistemasEducativosHandler = async (req: Request, res: Respons
     const result = await updateSistemasEducativos(id, validated.sistemasEducativos);
 
     return res.status(200).json(result);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('no encontrada') || error.message.includes('inválido')) {
-      return res.status(400).json({ message: error.message });
+    const msg = getErrorMessage(error);
+    if (msg.includes('no encontrada') || msg.includes('inválido')) {
+      return res.status(400).json({ message: msg });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

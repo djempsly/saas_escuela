@@ -3,6 +3,7 @@ import { SistemaEducativo, TipoMateria } from '@prisma/client';
 import { ValidationError } from '../../errors';
 import { invalidarCacheSabana } from '../sabana';
 import { validarAccesoClase, calcularPromedioFinal, CalificacionGeneralInput, CalificacionTecnicaInput } from './calculo';
+import { getErrorMessage } from '../../utils/error-helpers';
 
 // Guardar/Actualizar calificación general
 export const guardarCalificacion = async (
@@ -36,7 +37,7 @@ export const guardarCalificacion = async (
   }
 
   // Preparar datos según sistema
-  const dataToSave: any = {
+  const dataToSave: Record<string, unknown> = {
     p1: input.p1,
     p2: input.p2,
     p3: input.p3,
@@ -205,7 +206,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
   });
 
   // Si es Politécnico y materia técnica, incluir también las calificaciones técnicas
-  let calificacionesTecnicas: any[] = [];
+  let calificacionesTecnicas: Awaited<ReturnType<typeof prisma.calificacionTecnica.findMany>> = [];
   if (
     clase.institucion.sistema === SistemaEducativo.POLITECNICO_DO &&
     clase.materia.tipo === TipoMateria.TECNICA
@@ -257,8 +258,8 @@ export const guardarCalificacionesMasivas = async (
         institucionId,
       );
       resultados.exitosos++;
-    } catch (error: any) {
-      resultados.fallidos.push({ estudianteId: cal.estudianteId, error: error.message });
+    } catch (error: unknown) {
+      resultados.fallidos.push({ estudianteId: cal.estudianteId, error: getErrorMessage(error) });
     }
   }
 

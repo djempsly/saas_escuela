@@ -15,7 +15,7 @@ router.post('/file', upload.single('file'), async (req: Request, res: Response) 
       return;
     }
 
-    const institucionId = (req as any).resolvedInstitucionId || null;
+    const institucionId = req.resolvedInstitucionId || null;
     const url = await uploadToS3(req.file, 'recursos', institucionId);
 
     const mimetype = req.file.mimetype;

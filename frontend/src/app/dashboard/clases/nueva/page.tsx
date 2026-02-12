@@ -113,9 +113,10 @@ export default function NuevaClasePage() {
       };
       await clasesApi.create(dataToSend);
       router.push('/dashboard/clases');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creando clase:', err);
-      setError(err.response?.data?.message || 'Error al crear la clase');
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setError(axiosErr.response?.data?.message || (err instanceof Error ? err.message : 'Error al crear la clase'));
     } finally {
       setIsLoading(false);
     }

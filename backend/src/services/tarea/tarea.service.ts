@@ -152,7 +152,7 @@ export const getTareas = async (
 ) => {
   if (role === 'DOCENTE') {
     // Docente ve las tareas de sus clases
-    const where: any = {
+    const where: Record<string, unknown> = {
       docenteId: usuarioId,
       clase: { institucionId },
     };
@@ -177,7 +177,7 @@ export const getTareas = async (
 
     const claseIds = inscripciones.map((i) => i.claseId);
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       claseId: { in: claseIds },
       estado: EstadoTarea.PUBLICADA,
     };
@@ -199,7 +199,7 @@ export const getTareas = async (
     });
   } else {
     // Otros roles ven todas las tareas de la institución
-    const where: any = {
+    const where: Record<string, unknown> = {
       clase: { institucionId },
     };
     if (claseId) {

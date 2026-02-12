@@ -485,16 +485,17 @@ export default function InstitucionLandingPage() {
         const actividadesResponse = await actividadesApi.getBySlug(slug, 10);
         const actividadesData = actividadesResponse.data || [];
 
-        const processedActividades = actividadesData.map((act: any) => ({
+        const processedActividades = actividadesData.map((act: Actividad & { fotos?: string[] | string; videos?: string[] | string }) => ({
           ...act,
           fotos: Array.isArray(act.fotos) ? act.fotos : (act.fotos ? JSON.parse(act.fotos) : []),
           videos: Array.isArray(act.videos) ? act.videos : (act.videos ? JSON.parse(act.videos) : []),
         }));
 
         setActividades(processedActividades);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error loading institution:', err);
-        if (err.response?.status === 404) {
+        const axiosErr = err as { response?: { status?: number } };
+        if (axiosErr.response?.status === 404) {
           setError('notFound');
         } else {
           setError('error');

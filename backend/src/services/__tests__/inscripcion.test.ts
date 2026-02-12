@@ -66,7 +66,7 @@ describe('inscribirEstudianteEnNivel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Make $transaction call the callback with our mockTx
-    mockPrisma.$transaction.mockImplementation((fn: any) => fn(mockTx));
+    mockPrisma.$transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(mockTx));
   });
 
   // ──────────────────────────────────────────────
@@ -103,7 +103,7 @@ describe('inscribirEstudianteEnNivel', () => {
     expect(mockTx.calificacionCompetencia.createMany).toHaveBeenCalledTimes(3);
     const firstCompCall = mockTx.calificacionCompetencia.createMany.mock.calls[0][0];
     expect(firstCompCall.data).toHaveLength(5);
-    expect(firstCompCall.data.map((d: any) => d.competencia)).toEqual([
+    expect(firstCompCall.data.map((d: Record<string, unknown>) => d.competencia)).toEqual([
       'CF1', 'CF2', 'CF3', 'CF4', 'CF5',
     ]);
 

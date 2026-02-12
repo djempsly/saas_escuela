@@ -17,7 +17,7 @@ export const getCalificacionesByEstudiante = async (
     throw new NotFoundError('Estudiante no encontrado');
   }
 
-  const whereClause: any = {
+  const whereClause: Record<string, unknown> = {
     estudianteId,
     clase: { institucionId },
     publicado: true,
@@ -56,7 +56,7 @@ export const getCalificacionesByEstudiante = async (
   });
 
   // Calificaciones por competencia (publicadas)
-  const whereComp: any = {
+  const whereComp: Record<string, unknown> = {
     estudianteId,
     clase: { institucionId },
     publicado: true,

@@ -47,7 +47,7 @@ vi.mock('../services/email.service', () => ({
 // ── Mock: Logger (silence pino output in tests) ──
 vi.mock('../config/logger', () => {
   const noop = () => {};
-  const log: any = { info: noop, error: noop, warn: noop, debug: noop, trace: noop, fatal: noop };
+  const log: Record<string, (...args: unknown[]) => void> & { child: () => typeof log } = { info: noop, error: noop, warn: noop, debug: noop, trace: noop, fatal: noop, child: () => log };
   log.child = () => log;
   return { logger: log };
 });
@@ -59,7 +59,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 describe('Auth API', () => {
   let hashedPassword: string;
 
-  const makeUser = (overrides: Record<string, any> = {}) => ({
+  const makeUser = (overrides: Record<string, unknown> = {}) => ({
     id: 'user-1',
     username: 'testuser',
     email: 'test@test.com',
@@ -129,7 +129,7 @@ describe('Auth API', () => {
     it('retorna nuevos tokens y revoca el viejo', async () => {
       const mockUpdate = vi.fn().mockResolvedValue({});
 
-      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
         return fn({
           refreshToken: {
             findUnique: vi.fn().mockResolvedValue({
@@ -166,7 +166,7 @@ describe('Auth API', () => {
     // 5. Refresh con token revocado → 401
     // ──────────────────────────────────────────────
     it('retorna 401 con refresh token revocado', async () => {
-      mockPrisma.$transaction.mockImplementation(async (fn: any) => {
+      mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
         return fn({
           refreshToken: {
             findUnique: vi.fn().mockResolvedValue({

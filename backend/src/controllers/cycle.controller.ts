@@ -8,6 +8,7 @@ import {
 } from '../services/cycle.service';
 import { cicloLectivoSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { isZodError } from '../utils/error-helpers';
 
 export const createCicloHandler = async (req: Request, res: Response) => {
   try {
@@ -17,8 +18,8 @@ export const createCicloHandler = async (req: Request, res: Response) => {
     const validated = cicloLectivoSchema.parse({ body: req.body });
     const ciclo = await createCicloLectivo(validated.body, req.resolvedInstitucionId);
     return res.status(201).json(ciclo);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -32,7 +33,7 @@ export const getCiclosHandler = async (req: Request, res: Response) => {
     }
     const ciclos = await findCiclosLectivos(req.resolvedInstitucionId);
     return res.status(200).json(ciclos);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -48,7 +49,7 @@ export const getCicloByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Ciclo no encontrado' });
     }
     return res.status(200).json(ciclo);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -66,8 +67,8 @@ export const updateCicloHandler = async (req: Request, res: Response) => {
 
     await updateCicloLectivo(id, req.resolvedInstitucionId, validated);
     return res.status(200).json({ message: 'Ciclo actualizado' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -82,7 +83,7 @@ export const deleteCicloHandler = async (req: Request, res: Response) => {
     }
     await deleteCicloLectivo(id, req.resolvedInstitucionId);
     return res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

@@ -18,6 +18,7 @@ import {
   refreshTokenSchema,
 } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { toUserDTO } from '../dtos';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
@@ -31,13 +32,13 @@ export const registerSuperAdminHandler = async (req: Request, res: Response) => 
         tempPassword: result.tempPassword,
       },
     });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Manejar error específico de admin existente
-    if (error.message.includes('Ya existe un administrador')) {
-      return res.status(409).json({ message: error.message });
+    if (getErrorMessage(error).includes('Ya existe un administrador')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -48,20 +49,20 @@ export const loginHandler = async (req: Request, res: Response) => {
     const validatedData = loginSchema.parse({ body: req.body });
     const result = await login(validatedData.body);
     return res.status(200).json(result);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Errores de autenticación son seguros para mostrar
-    if (error.message.includes('Credenciales') || error.message.includes('desactivado')) {
-      return res.status(401).json({ message: error.message });
+    if (getErrorMessage(error).includes('Credenciales') || getErrorMessage(error).includes('desactivado')) {
+      return res.status(401).json({ message: getErrorMessage(error) });
     }
     // Error de acceso a institución
     if (
-      error.message.includes('No tienes acceso') ||
-      error.message.includes('Institución no encontrada')
+      getErrorMessage(error).includes('No tienes acceso') ||
+      getErrorMessage(error).includes('Institución no encontrada')
     ) {
-      return res.status(403).json({ message: error.message });
+      return res.status(403).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -78,8 +79,8 @@ export const forgotPasswordHandler = async (req: Request, res: Response) => {
       message:
         'Si el identificador está registrado y tiene email, recibirás instrucciones para resetear tu contraseña. Si no tienes email registrado, contacta al Director de tu institución.',
     });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Solo errores críticos del sistema (JWT_SECRET, DB, etc.)
@@ -93,19 +94,19 @@ export const resetPasswordHandler = async (req: Request, res: Response) => {
     const validatedData = resetPasswordSchema.parse({ body: req.body });
     await resetPassword(validatedData.body.token, validatedData.body.newPassword);
     return res.status(200).json({ message: 'Contraseña actualizada correctamente' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Errores específicos que son seguros para mostrar al usuario
     if (
-      error.message.includes('Token') ||
-      error.message.includes('enlace') ||
-      error.message.includes('expirado') ||
-      error.message.includes('desactivado') ||
-      error.message.includes('Usuario no encontrado')
+      getErrorMessage(error).includes('Token') ||
+      getErrorMessage(error).includes('enlace') ||
+      getErrorMessage(error).includes('expirado') ||
+      getErrorMessage(error).includes('desactivado') ||
+      getErrorMessage(error).includes('Usuario no encontrado')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     // Error inesperado - loguear y retornar mensaje genérico
     req.log.error({ err: error }, 'Error en resetPassword');
@@ -124,17 +125,17 @@ export const changePasswordHandler = async (req: Request, res: Response) => {
 
     const result = await changePassword(userId, validatedData.body);
     return res.status(200).json(result);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     // Errores específicos son seguros para mostrar
     if (
-      error.message.includes('Contraseña actual') ||
-      error.message.includes('Usuario') ||
-      error.message.includes('desactivado')
+      getErrorMessage(error).includes('Contraseña actual') ||
+      getErrorMessage(error).includes('Usuario') ||
+      getErrorMessage(error).includes('desactivado')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -158,14 +159,14 @@ export const manualResetPasswordHandler = async (req: Request, res: Response) =>
       message: 'Contraseña reseteada correctamente',
       tempPassword: result.tempPassword,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Errores de permisos son seguros para mostrar
     if (
-      error.message.includes('permisos') ||
-      error.message.includes('Usuario') ||
-      error.message.includes('institución')
+      getErrorMessage(error).includes('permisos') ||
+      getErrorMessage(error).includes('Usuario') ||
+      getErrorMessage(error).includes('institución')
     ) {
-      return res.status(403).json({ message: error.message });
+      return res.status(403).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -176,16 +177,16 @@ export const refreshTokenHandler = async (req: Request, res: Response) => {
     const validatedData = refreshTokenSchema.parse({ body: req.body });
     const result = await refreshAccessToken(validatedData.body.refreshToken);
     return res.status(200).json(result);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     if (
-      error.message.includes('inválido') ||
-      error.message.includes('expirado') ||
-      error.message.includes('desactivado')
+      getErrorMessage(error).includes('inválido') ||
+      getErrorMessage(error).includes('expirado') ||
+      getErrorMessage(error).includes('desactivado')
     ) {
-      return res.status(401).json({ message: error.message });
+      return res.status(401).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -196,8 +197,8 @@ export const logoutHandler = async (req: Request, res: Response) => {
     const validatedData = refreshTokenSchema.parse({ body: req.body });
     await logout(validatedData.body.refreshToken);
     return res.status(200).json({ message: 'Sesión cerrada correctamente' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no válidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

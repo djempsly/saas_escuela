@@ -73,7 +73,33 @@ export default function ClaseDetailPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Estado para calificaciones del estudiante
-  const [misCalificaciones, setMisCalificaciones] = useState<any>(null);
+  interface MisCalificacionesData {
+    calificacion: {
+      claseId?: string;
+      clase?: { id?: string };
+      p1: number | null;
+      p2: number | null;
+      p3: number | null;
+      p4: number | null;
+      rp1: number | null;
+      rp2: number | null;
+      rp3: number | null;
+      rp4: number | null;
+      promedioFinal: number | null;
+      [key: string]: unknown;
+    } | null;
+    competencias: Array<{
+      claseId?: string;
+      clase?: { id?: string };
+      competencia: string;
+      p1: number | null;
+      p2: number | null;
+      p3: number | null;
+      p4: number | null;
+      [key: string]: unknown;
+    }>;
+  }
+  const [misCalificaciones, setMisCalificaciones] = useState<MisCalificacionesData | null>(null);
   const [loadingMisCalificaciones, setLoadingMisCalificaciones] = useState(false);
 
   const isDocente = user?.role === 'DOCENTE';
@@ -132,12 +158,12 @@ export default function ClaseDetailPage() {
           // Filtrar solo la calificación de esta clase
           const cals = data.calificaciones || data || [];
           const calClase = Array.isArray(cals)
-            ? cals.find((c: any) => c.claseId === claseId || c.clase?.id === claseId)
+            ? cals.find((c: Record<string, unknown>) => c.claseId === claseId || (c.clase as Record<string, unknown> | undefined)?.id === claseId)
             : null;
           // Competencias de esta clase
           const comps = data.calificacionesCompetencia || [];
           const compsClase = Array.isArray(comps)
-            ? comps.filter((c: any) => c.claseId === claseId || c.clase?.id === claseId)
+            ? comps.filter((c: Record<string, unknown>) => c.claseId === claseId || (c.clase as Record<string, unknown> | undefined)?.id === claseId)
             : [];
           setMisCalificaciones({ calificacion: calClase, competencias: compsClase });
         } catch (error) {
@@ -402,8 +428,8 @@ export default function ClaseDetailPage() {
                     <tbody>
                       {['p1', 'p2', 'p3', 'p4'].map((periodo, idx) => {
                         const cal = misCalificaciones.calificacion;
-                        const nota = cal[periodo] as number | null;
-                        const rp = cal[`r${periodo}`] as number | null;
+                        const nota = cal?.[periodo] as number | null;
+                        const rp = cal?.[`r${periodo}`] as number | null;
                         const notaColor = nota != null ? (nota >= 70 ? 'text-green-600' : nota >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
                         const rpColor = rp != null ? (rp >= 70 ? 'text-green-600' : rp >= 60 ? 'text-yellow-600' : 'text-red-600') : 'text-muted-foreground';
                         return (
@@ -449,7 +475,7 @@ export default function ClaseDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {misCalificaciones.competencias.map((comp: any, idx: number) => {
+                        {misCalificaciones.competencias.map((comp, idx: number) => {
                           const COMP_NAMES: Record<string, string> = {
                             COMUNICATIVA: 'Comunicativa',
                             LOGICO: 'Pensamiento Lógico',

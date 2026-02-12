@@ -9,6 +9,7 @@ import {
 } from '../services/director.service';
 import { resetUserPasswordManual } from '../services/user';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { toUserDTO, toUserDTOList } from '../dtos';
 import { z } from 'zod';
 
@@ -51,7 +52,7 @@ export const getAllUsersGlobalHandler = async (req: Request, res: Response) => {
     const limitNum = Math.min(parseInt(limit), 100); // Max 100
     const skip = (pageNum - 1) * limitNum;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (institucionId) where.institucionId = institucionId;
     if (role) where.role = role as Role;
     if (activo !== undefined) where.activo = activo === 'true';
@@ -93,7 +94,7 @@ export const getAllUsersGlobalHandler = async (req: Request, res: Response) => {
         totalPages: Math.ceil(total / limitNum),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -134,7 +135,7 @@ export const getUserStatsHandler = async (req: Request, res: Response) => {
       institucionesActivas,
       usuariosPorRol: roleStats,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -154,12 +155,12 @@ export const createDirectorHandler = async (req: Request, res: Response) => {
         tempPassword: result.tempPassword,
       },
     });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (error.message.includes('correo electrónico ya está en uso')) {
-      return res.status(409).json({ message: error.message });
+    if (getErrorMessage(error).includes('correo electrónico ya está en uso')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -172,9 +173,9 @@ export const getAllDirectoresHandler = async (req: Request, res: Response) => {
     const directores = await findAllDirectores();
     req.log.debug({ count: directores.length }, 'Found directors');
     return res.status(200).json({ data: directores });
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error fetching directors');
-    return res.status(500).json({ message: error.message || sanitizeErrorMessage(error) });
+    return res.status(500).json({ message: getErrorMessage(error) || sanitizeErrorMessage(error) });
   }
 };
 
@@ -192,16 +193,16 @@ export const reassignDirectorHandler = async (req: Request, res: Response) => {
       message: 'Director reasignado correctamente',
       data: result,
     });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     if (
-      error.message.includes('no encontrado') ||
-      error.message.includes('no tiene rol') ||
-      error.message.includes('ya tiene un director')
+      getErrorMessage(error).includes('no encontrado') ||
+      getErrorMessage(error).includes('no tiene rol') ||
+      getErrorMessage(error).includes('ya tiene un director')
     ) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -221,7 +222,7 @@ export const getDirectorHistoryHandler = async (req: Request, res: Response) => 
     const historial = await getDirectorHistory(id);
 
     return res.status(200).json({ data: historial });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -252,13 +253,13 @@ export const forceResetPasswordHandler = async (req: Request, res: Response) => 
       message: 'Contraseña reseteada exitosamente',
       tempPassword: result.tempPassword,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (
-      error.message.includes('No tienes permisos') ||
-      error.message.includes('Usuario no encontrado') ||
-      error.message.includes('desactivado')
+      getErrorMessage(error).includes('No tienes permisos') ||
+      getErrorMessage(error).includes('Usuario no encontrado') ||
+      getErrorMessage(error).includes('desactivado')
     ) {
-      return res.status(403).json({ message: error.message });
+      return res.status(403).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

@@ -8,6 +8,7 @@ import {
 } from '../services/boletin';
 import prisma from '../config/db';
 import { sanitizeErrorMessage } from '../utils/security';
+import { getErrorMessage } from '../utils/error-helpers';
 
 /**
  * Genera y descarga un boletín de calificaciones vacío (plantilla)
@@ -37,7 +38,7 @@ export const getBoletinPlantillaHandler = async (req: Request, res: Response) =>
     );
     res.setHeader('Content-Disposition', `attachment; filename=boletin_${grado}_plantilla.docx`);
     return res.send(buffer);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error generando boletín plantilla');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -170,7 +171,7 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
     );
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error generando boletín estudiante');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -220,7 +221,7 @@ export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
         totalEstudiantes: clase.inscripciones.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error generando boletines clase');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -250,7 +251,7 @@ export const generarBoletinPersonalizadoHandler = async (req: Request, res: Resp
     );
     res.setHeader('Content-Disposition', `attachment; filename=${nombreArchivo}`);
     return res.send(buffer);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error generando boletín personalizado');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

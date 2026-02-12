@@ -131,7 +131,7 @@ export default function AdminUsuariosPage() {
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page: pagination.page,
         limit: pagination.limit,
       };
@@ -227,8 +227,9 @@ export default function AdminUsuariosPage() {
       setShowCreateModal(false);
       setNewUser({ nombre: '', segundoNombre: '', apellido: '', segundoApellido: '', email: '', rol: 'ESTUDIANTE', institucionId: '' });
       fetchUsers();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Error al crear usuario');
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string } } };
+      alert(axiosErr.response?.data?.message || (error instanceof Error ? error.message : 'Error al crear usuario'));
     } finally {
       setIsCreating(false);
     }

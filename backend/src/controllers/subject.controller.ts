@@ -8,6 +8,7 @@ import {
 } from '../services/subject.service';
 import { materiaSchema } from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
+import { isZodError } from '../utils/error-helpers';
 
 export const createMateriaHandler = async (req: Request, res: Response) => {
   try {
@@ -17,8 +18,8 @@ export const createMateriaHandler = async (req: Request, res: Response) => {
     const validated = materiaSchema.parse({ body: req.body });
     const materia = await createMateria(validated.body, req.resolvedInstitucionId);
     return res.status(201).json(materia);
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -32,7 +33,7 @@ export const getMateriasHandler = async (req: Request, res: Response) => {
     }
     const materias = await findMaterias(req.resolvedInstitucionId);
     return res.status(200).json(materias);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -48,7 +49,7 @@ export const getMateriaByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Materia no encontrada' });
     }
     return res.status(200).json(materia);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -66,8 +67,8 @@ export const updateMateriaHandler = async (req: Request, res: Response) => {
 
     await updateMateria(id, req.resolvedInstitucionId, validated);
     return res.status(200).json({ message: 'Materia actualizada' });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -82,7 +83,7 @@ export const deleteMateriaHandler = async (req: Request, res: Response) => {
     }
     await deleteMateria(id, req.resolvedInstitucionId);
     return res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

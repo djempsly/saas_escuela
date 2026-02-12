@@ -12,6 +12,7 @@ import {
 import { crearUsuarioSchema } from '../../utils/zod.schemas';
 import { ROLES } from '../../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../../utils/security';
+import { getErrorMessage, isZodError } from '../../utils/error-helpers';
 import { uploadToS3 } from '../../services/s3.service';
 import { registrarAuditLog } from '../../services/audit.service';
 import { toUserDTO, toUserDTOList } from '../../dtos';
@@ -98,13 +99,13 @@ export const createUserHandler = async (req: Request, res: Response) => {
         tempPassword: result.tempPassword,
       },
     });
-  } catch (error: any) {
-    if (error.issues) {
+  } catch (error: unknown) {
+    if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos no validos', errors: error.issues });
     }
     // Error de email duplicado es seguro mostrar
-    if (error.message.includes('correo electronico ya esta en uso')) {
-      return res.status(409).json({ message: error.message });
+    if (getErrorMessage(error).includes('correo electronico ya esta en uso')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -130,14 +131,15 @@ export const resetUserPasswordManualHandler = async (req: Request, res: Response
       message: 'Contrasena reseteada exitosamente',
       tempPassword: result.tempPassword,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Errores de permisos son seguros para mostrar
+    const msg = getErrorMessage(error);
     if (
-      error.message.includes('No tienes permisos') ||
-      error.message.includes('Usuario no encontrado') ||
-      error.message.includes('desactivado')
+      msg.includes('No tienes permisos') ||
+      msg.includes('Usuario no encontrado') ||
+      msg.includes('desactivado')
     ) {
-      return res.status(403).json({ message: error.message });
+      return res.status(403).json({ message: msg });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -178,7 +180,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
     );
 
     return res.status(200).json({ data: toUserDTOList(users) });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -199,7 +201,7 @@ export const getStaffHandler = async (req: Request, res: Response) => {
     const staff = await findStaffByInstitucion(req.resolvedInstitucionId, canSeePasswords);
 
     return res.status(200).json({ data: toUserDTOList(staff) });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -224,7 +226,7 @@ export const getUserByIdHandler = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({ data: toUserDTO(user) });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };
@@ -256,9 +258,9 @@ export const updateProfileHandler = async (req: Request, res: Response) => {
       data: userDTO,
       fotoUrl: userDTO.fotoUrl,
     });
-  } catch (error: any) {
-    if (error.message.includes('correo electronico ya esta en uso')) {
-      return res.status(409).json({ message: error.message });
+  } catch (error: unknown) {
+    if (getErrorMessage(error).includes('correo electronico ya esta en uso')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -285,12 +287,13 @@ export const updateUserHandler = async (req: Request, res: Response) => {
       message: 'Usuario actualizado correctamente',
       data: toUserDTO(updatedUser),
     });
-  } catch (error: any) {
-    if (error.message.includes('correo electronico ya esta en uso')) {
-      return res.status(409).json({ message: error.message });
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error);
+    if (msg.includes('correo electronico ya esta en uso')) {
+      return res.status(409).json({ message: msg });
     }
-    if (error.message.includes('No tienes permisos') || error.message.includes('no encontrado')) {
-      return res.status(403).json({ message: error.message });
+    if (msg.includes('No tienes permisos') || msg.includes('no encontrado')) {
+      return res.status(403).json({ message: msg });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
@@ -314,7 +317,7 @@ export const uploadPhotoHandler = async (req: Request, res: Response) => {
       message: 'Foto actualizada correctamente',
       fotoUrl: updatedUser.fotoUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

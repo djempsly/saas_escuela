@@ -11,6 +11,7 @@ import {
   publicarCalificaciones,
 } from '../services/sabana';
 import { z } from 'zod';
+import { getErrorMessage } from '../utils/error-helpers';
 import { registrarAuditLog } from '../services/audit.service';
 
 /**
@@ -19,7 +20,7 @@ import { registrarAuditLog } from '../services/audit.service';
  */
 export const getNivelesHandler = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user?.institucionId) {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
@@ -27,9 +28,9 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
 
     const niveles = await getNivelesParaSabana(user.institucionId, user.usuarioId, user.rol);
     return res.json(niveles);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error obteniendo niveles para sábana');
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };
 
@@ -39,7 +40,7 @@ export const getNivelesHandler = async (req: Request, res: Response) => {
  */
 export const getCiclosLectivosHandler = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user?.institucionId) {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
@@ -47,9 +48,9 @@ export const getCiclosLectivosHandler = async (req: Request, res: Response) => {
 
     const ciclos = await getCiclosLectivosParaSabana(user.institucionId);
     return res.json(ciclos);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error obteniendo ciclos lectivos');
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };
 
@@ -61,7 +62,7 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
   try {
     const nivelId = req.params.nivelId as string;
     const cicloLectivoId = req.params.cicloLectivoId as string;
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user?.institucionId) {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
@@ -78,9 +79,9 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
       user.usuarioId,
     );
     return res.json(sabana);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error obteniendo sábana de notas');
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };
 
@@ -100,7 +101,7 @@ const updateCalificacionSchema = z.object({
  */
 export const updateCalificacionHandler = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user?.institucionId) {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
@@ -142,9 +143,9 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
     });
 
     return res.json(calificacion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error actualizando calificación');
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };
 
@@ -160,7 +161,7 @@ const publicarCalificacionesSchema = z.object({
  */
 export const publicarCalificacionesHandler = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
 
     if (!user?.institucionId) {
       return res.status(400).json({ error: 'Usuario sin institución asignada' });
@@ -195,11 +196,11 @@ export const publicarCalificacionesHandler = async (req: Request, res: Response)
     });
 
     return res.json(resultado);
-  } catch (error: any) {
+  } catch (error: unknown) {
     req.log.error({ err: error }, 'Error publicando calificaciones');
-    if (error.message.includes('Sin permiso')) {
-      return res.status(403).json({ error: error.message });
+    if (getErrorMessage(error).includes('Sin permiso')) {
+      return res.status(403).json({ error: getErrorMessage(error) });
     }
-    return res.status(500).json({ error: error.message || 'Error del servidor' });
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };

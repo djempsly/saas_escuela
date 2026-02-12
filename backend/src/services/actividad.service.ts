@@ -97,7 +97,7 @@ export const findAllActividadesAdmin = async (
   },
   limit?: number,
 ) => {
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (filters?.institucionId !== undefined) {
     where.institucionId = filters.institucionId || null;
   }
@@ -151,7 +151,7 @@ export const updateActividad = async (id: string, input: Partial<ActividadInput>
     }
   }
 
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
     titulo: sanitizeOptional(input.titulo),
     contenido: sanitizeOptional(input.contenido),
     tipoMedia,
@@ -209,7 +209,7 @@ export const searchActividades = async (
   limit?: number,
   institucionId?: string | null,
 ) => {
-  const where: any = {
+  const where: Record<string, unknown> = {
     publicado: true,
     OR: [
       { titulo: { contains: query, mode: 'insensitive' } },

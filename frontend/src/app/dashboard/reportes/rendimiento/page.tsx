@@ -101,7 +101,16 @@ export default function ReporteRendimientoPage() {
 
       // La API devuelve { clase, calificaciones, totalEstudiantes }
       // Extraer el array de calificaciones
-      let calificacionesArray: any[] = [];
+      interface RawCalificacion {
+        estudiante?: { id: string; nombre: string; apellido: string };
+        estudianteId?: string;
+        promedioFinal?: number | null;
+        p1: number | null;
+        p2: number | null;
+        p3: number | null;
+        p4: number | null;
+      }
+      let calificacionesArray: RawCalificacion[] = [];
 
       if (Array.isArray(responseData)) {
         calificacionesArray = responseData;
@@ -110,8 +119,8 @@ export default function ReporteRendimientoPage() {
       }
 
       // Transformar al formato esperado por el componente
-      const calificacionesTransformadas = calificacionesArray.map((cal: any) => ({
-        estudiante: cal.estudiante || { id: cal.estudianteId, nombre: '', apellido: '' },
+      const calificacionesTransformadas = calificacionesArray.map((cal) => ({
+        estudiante: cal.estudiante || { id: cal.estudianteId || '', nombre: '', apellido: '' },
         promedio: cal.promedioFinal ?? 0,
         calificaciones: [
           { periodo: 'P1', valor: cal.p1 },

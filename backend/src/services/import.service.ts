@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/db';
 import { generateUsername } from '../utils/security';
+import { getErrorMessage } from '../utils/error-helpers';
 
 interface StudentRow {
   nombre: string;
@@ -37,7 +38,7 @@ export const parseExcelFile = (buffer: Buffer): StudentRow[] => {
   const worksheet = workbook.Sheets[sheetName];
 
   // Convert to JSON, header row is first row
-  const data = XLSX.utils.sheet_to_json<any>(worksheet, { defval: '' });
+  const data = XLSX.utils.sheet_to_json<Record<string, string>>(worksheet, { defval: '' });
 
   return data.map((row) => ({
     nombre: String(row.nombre || row.Nombre || row.NOMBRE || '').trim(),
@@ -213,8 +214,8 @@ export const importStudents = async (
       });
 
       result.exitosos++;
-    } catch (error: any) {
-      if (error.code === 'P2002') {
+    } catch (error: unknown) {
+      if (error instanceof Error && 'code' in error && (error as Record<string, unknown>).code === 'P2002') {
         result.errores.push({
           fila: rowNumber,
           error: 'Usuario duplicado (nombre de usuario ya existe)',
@@ -222,7 +223,7 @@ export const importStudents = async (
       } else {
         result.errores.push({
           fila: rowNumber,
-          error: error.message || 'Error al crear estudiante',
+          error: getErrorMessage(error) || 'Error al crear estudiante',
         });
       }
       result.fallidos++;
