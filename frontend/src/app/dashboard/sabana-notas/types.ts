@@ -72,7 +72,7 @@ export interface SabanaData {
     id: string;
     nombre: string;
   };
-  sistemaEducativo: string;
+  formatoSabana: string;
   numeroPeriodos: number;
   materias: Materia[];
   estudiantes: Estudiante[];

@@ -1,7 +1,7 @@
-const SISTEMAS_CON_MODULOS_TECNICOS = ['POLITECNICO_DO'];
-const SISTEMAS_PRIMARIA = ['PRIMARIA_DO', 'PRIMARIA_HT'];
-const SISTEMAS_INICIAL = ['INICIAL_DO', 'INICIAL_HT'];
-const SISTEMAS_SECUNDARIA = ['SECUNDARIA_GENERAL_DO', 'SECUNDARIA_HT', 'POLITECNICO_DO'];
+const FORMATOS_POLITECNICO = ['POLITECNICO_DO'];
+const FORMATOS_PRIMARIA = ['PRIMARIA_DO', 'PRIMARIA_HT'];
+const FORMATOS_INICIAL = ['INICIAL_DO', 'INICIAL_HT'];
+const FORMATOS_SECUNDARIA = ['SECUNDARIA_DO', 'SECUNDARIA_HT'];
 
 export const RAS_DISPLAY = ['RA1', 'RA2', 'RA3', 'RA4', 'RA5', 'RA6', 'RA7', 'RA8', 'RA9', 'RA10'];
 export const RA_SUBCOLS = [
@@ -11,11 +11,11 @@ export const RA_SUBCOLS = [
 ];
 export const TOTAL_MODULO_ROWS = 5;
 
-export const getFormatoSabana = (sistemaEducativo: string): 'politecnico' | 'secundaria' | 'primaria' | 'inicial' => {
-  if (SISTEMAS_CON_MODULOS_TECNICOS.includes(sistemaEducativo)) return 'politecnico';
-  if (SISTEMAS_SECUNDARIA.includes(sistemaEducativo)) return 'secundaria';
-  if (SISTEMAS_PRIMARIA.includes(sistemaEducativo)) return 'primaria';
-  if (SISTEMAS_INICIAL.includes(sistemaEducativo)) return 'inicial';
+export const getFormatoSabana = (formatoSabana: string): 'politecnico' | 'secundaria' | 'primaria' | 'inicial' => {
+  if (FORMATOS_POLITECNICO.includes(formatoSabana)) return 'politecnico';
+  if (FORMATOS_SECUNDARIA.includes(formatoSabana)) return 'secundaria';
+  if (FORMATOS_PRIMARIA.includes(formatoSabana)) return 'primaria';
+  if (FORMATOS_INICIAL.includes(formatoSabana)) return 'inicial';
   return 'secundaria';
 };
 

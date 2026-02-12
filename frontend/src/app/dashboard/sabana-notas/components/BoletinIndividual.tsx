@@ -224,8 +224,8 @@ export function BoletinIndividual({
                 {gn >= 1 && gn <= 3 ? 'Primer Ciclo' : 'Segundo Ciclo'}
               </p>
               <p style={{ margin: 0 }}>
-                {getFormatoSabana(sabanaData.sistemaEducativo) === 'primaria' ? 'Nivel Primario' :
-                 getFormatoSabana(sabanaData.sistemaEducativo) === 'inicial' ? 'Nivel Inicial' : 'Nivel Secundario'}
+                {getFormatoSabana(sabanaData.formatoSabana) === 'primaria' ? 'Nivel Primario' :
+                 getFormatoSabana(sabanaData.formatoSabana) === 'inicial' ? 'Nivel Inicial' : 'Nivel Secundario'}
               </p>
             </div>
 
@@ -235,7 +235,7 @@ export function BoletinIndividual({
               selectedMateriaId={selectedMateriaId} isHT={isHT} colorClaro={colorClaro}
             />
 
-            {getFormatoSabana(sabanaData.sistemaEducativo) === 'politecnico' && (
+            {getFormatoSabana(sabanaData.formatoSabana) === 'politecnico' && (
               <SabanaModulosTecnicos
                 estudiante={estudiante} materias={materias} editState={editState}
                 canEditMateria={canEditMateria} isReadOnly={isReadOnly}
