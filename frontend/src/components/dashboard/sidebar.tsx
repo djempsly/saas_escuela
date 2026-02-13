@@ -36,6 +36,8 @@ import {
   ArrowUpCircle,
   UserMinus,
   FileSpreadsheet,
+  CreditCard,
+  Wrench,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -56,6 +58,8 @@ const menuItems = {
     { href: '/dashboard/admin/actividades', label: 'Actividades', icon: BookOpen },
     { href: '/dashboard/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { href: '/dashboard/admin/jobs', label: 'Monitor de Jobs', icon: Activity },
+    { href: '/dashboard/admin/suscripciones', label: 'Suscripciones', icon: CreditCard },
+    { href: '/dashboard/admin/mantenimiento', label: 'Mantenimiento', icon: Wrench },
     { href: '/dashboard/admin/configuracion', label: 'Configuración', icon: Settings },
   ],
 
@@ -77,6 +81,7 @@ const menuItems = {
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
+    { href: '/dashboard/suscripcion', label: 'Mi Suscripción', icon: CreditCard },
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: PieChart },
     { href: '/dashboard/promocion', label: 'Promoción', icon: ArrowUpCircle },
     { href: '/dashboard/desinscripcion', label: 'Desinscripción', icon: UserMinus },

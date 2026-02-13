@@ -46,4 +46,16 @@ export const queryKeys = {
     overview: () => ['jobs', 'overview'] as const,
     status: (id: string) => ['jobs', 'status', id] as const,
   },
+  planes: {
+    list: () => ['planes', 'list'] as const,
+  },
+  mantenimiento: {
+    activo: () => ['mantenimiento', 'activo'] as const,
+    list: () => ['mantenimiento', 'list'] as const,
+  },
+  suscripciones: {
+    mi: () => ['suscripciones', 'mi'] as const,
+    adminList: (estado?: string) => ['suscripciones', 'admin', estado] as const,
+    pagos: (institucionId: string) => ['suscripciones', 'pagos', institucionId] as const,
+  },
 };

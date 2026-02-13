@@ -28,3 +28,19 @@ export interface NotificacionesMasivasJobData {
 export interface NotificacionesMasivasJobResult {
   totalEnviadas: number;
 }
+
+export interface VerificarSuscripcionesJobData {
+  triggeredAt: string;
+}
+export interface VerificarSuscripcionesJobResult {
+  suspendidas: number;
+  vencidas: number;
+}
+
+export interface RecordatorioMantenimientoJobData {
+  avisoId: string;
+  horasAntes: number;
+}
+export interface RecordatorioMantenimientoJobResult {
+  totalNotificados: number;
+}

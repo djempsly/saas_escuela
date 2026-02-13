@@ -10,6 +10,8 @@ import { Header } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { NotificacionesToast } from '@/components/dashboard/notificaciones-toast';
+import { SuscripcionBanner } from '@/components/dashboard/suscripcion-banner';
+import { MantenimientoBanner } from '@/components/dashboard/mantenimiento-banner';
 import { QueryProvider } from '@/lib/query-client';
 
 // Usar useSyncExternalStore para detectar hidratación sin cascading renders
@@ -101,6 +103,8 @@ export default function DashboardLayout({
             user={user}
             onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           />
+          {user?.role !== 'ADMIN' && <SuscripcionBanner />}
+          <MantenimientoBanner />
           <main className="p-6">
             <ErrorBoundary>
               {children}

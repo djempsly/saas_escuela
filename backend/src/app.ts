@@ -99,6 +99,10 @@ app.use(
   }),
 );
 
+// ============ Webhook Stripe (necesita raw body, ANTES de JSON parsing) ============
+import webhookRoutes from './routes/webhook.routes';
+app.use('/api/v1/webhooks', webhookRoutes);
+
 // ============ Middlewares de Parsing ============
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

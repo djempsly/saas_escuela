@@ -25,6 +25,9 @@ import uploadRoutes from './upload.routes';
 import fileRoutes from './file.routes';
 import notificacionRoutes from './notificacion.routes';
 import jobRoutes from './job.routes';
+import planRoutes from './plan.routes';
+import suscripcionRoutes from './suscripcion.routes';
+import mantenimientoRoutes from './mantenimiento.routes';
 
 const router = Router();
 
@@ -87,5 +90,12 @@ router.use('/notificaciones', notificacionRoutes);
 
 // Rutas de jobs (background tasks)
 router.use('/jobs', jobRoutes);
+
+// Rutas de planes y suscripciones
+router.use('/planes', planRoutes);
+router.use('/suscripciones', suscripcionRoutes);
+
+// Rutas de mantenimiento (publica)
+router.use('/mantenimiento', mantenimientoRoutes);
 
 export default router;

@@ -51,6 +51,7 @@ model User {
   refreshTokens               RefreshToken[]
   institucion                 Institucion?               @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
   coordinadorCiclosEducativos CicloEducativo[]           @relation("CoordinadorCicloEducativo")
+  avisosMantenimiento         AvisoMantenimiento[]       @relation("AvisosMantenimiento")
 }
 
 model Institucion {
@@ -92,6 +93,8 @@ model Institucion {
   logoWidth              Int?                          @default(120)
   nombreMostrar          String?
   sabanaColores          Json?
+  suscripcion            Suscripcion?
+  pagosHistorial         PagoHistorial[]
   actividades            Actividad[]
   ciclosEducativos       CicloEducativo[]
   ciclos                 CicloLectivo[]
@@ -734,4 +737,85 @@ enum TipoCicloEducativo {
   SECUNDARIA
   POLITECNICO
   ADULTOS
+}
+
+enum EstadoSuscripcion {
+  ACTIVA
+  VENCIDA
+  CANCELADA
+  PERIODO_GRACIA
+  SUSPENDIDA
+}
+
+enum EstadoPagoSuscripcion {
+  EXITOSO
+  FALLIDO
+  REEMBOLSADO
+}
+
+model Plan {
+  id             String        @id @default(cuid())
+  nombre         String        @unique
+  maxEstudiantes Int?
+  precioMensual  Decimal       @db.Decimal(10, 2)
+  precioAnual    Decimal       @db.Decimal(10, 2)
+  features       Json
+  activo         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  suscripciones  Suscripcion[]
+}
+
+model Suscripcion {
+  id                   String            @id @default(cuid())
+  institucionId        String            @unique
+  planId               String
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  estado               EstadoSuscripcion @default(ACTIVA)
+  fechaInicio          DateTime
+  fechaFin             DateTime?
+  proximoPago          DateTime?
+  periodoGracia        DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  institucion          Institucion       @relation(fields: [institucionId], references: [id])
+  plan                 Plan              @relation(fields: [planId], references: [id])
+  pagos                PagoHistorial[]
+
+  @@index([estado])
+}
+
+model AvisoMantenimiento {
+  id          String   @id @default(cuid())
+  titulo      String
+  mensaje     String
+  fechaInicio DateTime
+  fechaFin    DateTime
+  activo      Boolean  @default(true)
+  creadoPorId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creadoPor   User     @relation("AvisosMantenimiento", fields: [creadoPorId], references: [id])
+
+  @@index([activo, fechaFin])
+}
+
+model PagoHistorial {
+  id                    String                @id @default(cuid())
+  suscripcionId         String
+  institucionId         String
+  monto                 Decimal               @db.Decimal(10, 2)
+  moneda                String                @default("USD")
+  stripePaymentIntentId String?
+  estado                EstadoPagoSuscripcion
+  fechaPago             DateTime              @default(now())
+  descripcion           String?
+  createdAt             DateTime              @default(now())
+  suscripcion           Suscripcion           @relation(fields: [suscripcionId], references: [id])
+  institucion           Institucion           @relation(fields: [institucionId], references: [id])
+
+  @@index([suscripcionId])
+  @@index([institucionId])
 }

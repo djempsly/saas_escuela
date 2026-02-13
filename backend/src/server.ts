@@ -20,6 +20,7 @@ import prisma from './config/db';
 import { redis } from './config/redis';
 import { initSocketIO, closeSocketIO } from './config/socket';
 import { iniciarJobVerificacionDNS } from './jobs/verify-domains';
+import { iniciarJobVerificacionSuscripciones } from './jobs/verificar-suscripciones';
 import { closeAllWorkers } from './workers';
 import { closeAllQueues } from './queues';
 
@@ -41,6 +42,9 @@ const server = app.listen(PORT, () => {
       'BASE_DOMAIN o SERVER_IP no configurados. Job de verificación de dominios desactivado.',
     );
   }
+
+  // Iniciar job de verificación de suscripciones
+  iniciarJobVerificacionSuscripciones();
 });
 
 // ============ Graceful Shutdown ============

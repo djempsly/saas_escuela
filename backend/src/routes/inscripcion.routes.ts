@@ -17,6 +17,7 @@ import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
 import { inscripcionByUserLimiter } from '../middleware/rateLimit.middleware';
+import { checkSuscripcionMiddleware } from '../middleware/suscripcion.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
@@ -53,6 +54,7 @@ router.use(
   ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
+  checkSuscripcionMiddleware,
 );
 
 // Inscribir estudiante (admin/director/coordinador/secretaria)

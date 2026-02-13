@@ -12,6 +12,16 @@ import {
   getSystemSettingsHandler,
   updateSystemSettingsHandler,
 } from '../controllers/settings.controller';
+import {
+  getAllSuscripcionesHandler,
+  asignarPlanManualHandler,
+  getPagosHistorialHandler,
+} from '../controllers/suscripcion.controller';
+import {
+  crearAvisoHandler,
+  getAvisosHandler,
+  cancelarAvisoHandler,
+} from '../controllers/mantenimiento.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
 import { ROLES } from '../utils/zod.schemas';
@@ -51,5 +61,25 @@ router.get('/settings', getSystemSettingsHandler);
 
 // PUT /api/v1/admin/settings - Actualizar configuración
 router.put('/settings', updateSystemSettingsHandler);
+
+// ===== SUSCRIPCIONES =====
+// GET /api/v1/admin/suscripciones - Listar todas las suscripciones
+router.get('/suscripciones', getAllSuscripcionesHandler);
+
+// POST /api/v1/admin/suscripciones/asignar - Asignar plan manualmente
+router.post('/suscripciones/asignar', asignarPlanManualHandler);
+
+// GET /api/v1/admin/suscripciones/:institucionId/pagos - Historial de pagos
+router.get('/suscripciones/:institucionId/pagos', getPagosHistorialHandler);
+
+// ===== MANTENIMIENTO =====
+// GET /api/v1/admin/mantenimiento - Listar avisos activos
+router.get('/mantenimiento', getAvisosHandler);
+
+// POST /api/v1/admin/mantenimiento - Crear aviso de mantenimiento
+router.post('/mantenimiento', crearAvisoHandler);
+
+// DELETE /api/v1/admin/mantenimiento/:id - Cancelar aviso
+router.delete('/mantenimiento/:id', cancelarAvisoHandler);
 
 export default router;

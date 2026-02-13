@@ -2,8 +2,10 @@ import { logger } from '../config/logger';
 import { boletinWorker } from './generar-boletin.worker';
 import { excelWorker } from './exportar-excel.worker';
 import { notificacionesWorker } from './notificaciones-masivas.worker';
+import { suscripcionesWorker } from './verificar-suscripciones.worker';
+import { recordatorioMantenimientoWorker } from './recordatorio-mantenimiento.worker';
 
-const allWorkers = [boletinWorker, excelWorker, notificacionesWorker];
+const allWorkers = [boletinWorker, excelWorker, notificacionesWorker, suscripcionesWorker, recordatorioMantenimientoWorker];
 
 logger.info(
   { workers: allWorkers.map((w) => w.name) },

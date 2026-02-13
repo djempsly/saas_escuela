@@ -7,6 +7,8 @@ export const QUEUE_NAMES = {
   GENERAR_BOLETIN: 'generar-boletin',
   EXPORTAR_EXCEL: 'exportar-excel',
   NOTIFICACIONES_MASIVAS: 'notificaciones-masivas',
+  VERIFICAR_SUSCRIPCIONES: 'verificar-suscripciones',
+  RECORDATORIO_MANTENIMIENTO: 'recordatorio-mantenimiento',
 } as const;
 
 export const DEFAULT_JOB_OPTIONS = {

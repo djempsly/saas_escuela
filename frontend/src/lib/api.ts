@@ -782,6 +782,38 @@ export const jobsApi = {
     api.get('/jobs/admin/overview'),
 };
 
+// Planes API
+export const planesApi = {
+  getAll: () => api.get('/planes'),
+};
+
+// Suscripciones API (para DIRECTOR)
+export const suscripcionesApi = {
+  getMiSuscripcion: () => api.get('/suscripciones/mi-suscripcion'),
+  crearCheckout: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
+    api.post('/suscripciones/checkout', data),
+  crearPortal: () => api.post('/suscripciones/portal'),
+};
+
+// Admin Suscripciones API
+export const adminSuscripcionesApi = {
+  getAll: (estado?: string) =>
+    api.get('/admin/suscripciones', { params: estado ? { estado } : {} }),
+  asignarPlan: (data: { institucionId: string; planId: string }) =>
+    api.post('/admin/suscripciones/asignar', data),
+  getPagos: (institucionId: string) =>
+    api.get(`/admin/suscripciones/${institucionId}/pagos`),
+};
+
+// Mantenimiento API
+export const mantenimientoApi = {
+  getActivo: () => api.get('/mantenimiento'),
+  getAll: () => api.get('/admin/mantenimiento'),
+  crear: (data: { titulo: string; mensaje: string; fechaInicio: string; fechaFin: string }) =>
+    api.post('/admin/mantenimiento', data),
+  cancelar: (id: string) => api.delete(`/admin/mantenimiento/${id}`),
+};
+
 // Tipos de roles disponibles
 export const ROLES = {
   ADMIN: 'ADMIN',
