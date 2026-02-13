@@ -2,6 +2,7 @@ import prisma from '../../config/db';
 import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from '../../errors';
 import { InscripcionInput } from '../../utils/zod.schemas';
 import { getErrorMessage } from '../../utils/error-helpers';
+import { verificarCicloNoCerrado } from '../cycle.service';
 
 export const inscribirEstudiante = async (input: InscripcionInput, institucionId: string) => {
   // Verificar que la clase existe y pertenece a la institución
@@ -10,7 +11,7 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
     select: {
       id: true,
       cicloLectivoId: true,
-      cicloLectivo: { select: { activo: true } },
+      cicloLectivo: { select: { activo: true, cerrado: true } },
     },
   });
 
@@ -22,6 +23,8 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
   if (!clase.cicloLectivo.activo) {
     throw new ValidationError('No se puede inscribir: el ciclo lectivo no está activo');
   }
+
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   // Verificar que el estudiante existe y pertenece a la institución
   const estudiante = await prisma.user.findFirst({
@@ -85,7 +88,7 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
       id: true,
       institucionId: true,
       cicloLectivoId: true,
-      cicloLectivo: { select: { activo: true } },
+      cicloLectivo: { select: { activo: true, cerrado: true } },
     },
   });
 
@@ -96,6 +99,8 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   if (!clase.cicloLectivo.activo) {
     throw new ValidationError('No se puede inscribir: el ciclo lectivo no está activo');
   }
+
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   // Verificar que el estudiante pertenece a la misma institución
   const estudiante = await prisma.user.findFirst({
@@ -190,12 +195,19 @@ export const findInscripcionesByEstudiante = async (
 export const eliminarInscripcion = async (id: string, institucionId: string) => {
   const inscripcion = await prisma.inscripcion.findFirst({
     where: { id, clase: { institucionId } },
-    select: { id: true, estudianteId: true, claseId: true },
+    select: {
+      id: true,
+      estudianteId: true,
+      claseId: true,
+      clase: { select: { cicloLectivo: { select: { cerrado: true } } } },
+    },
   });
 
   if (!inscripcion) {
     throw new NotFoundError('Inscripción no encontrada');
   }
+
+  verificarCicloNoCerrado(inscripcion.clase.cicloLectivo);
 
   // Eliminar calificaciones asociadas
   await prisma.calificacion.deleteMany({
@@ -229,7 +241,7 @@ export const inscribirMasivo = async (
     select: {
       id: true,
       cicloLectivoId: true,
-      cicloLectivo: { select: { activo: true } },
+      cicloLectivo: { select: { activo: true, cerrado: true } },
     },
   });
 
@@ -240,6 +252,8 @@ export const inscribirMasivo = async (
   if (!clase.cicloLectivo.activo) {
     throw new ValidationError('Ciclo lectivo no activo');
   }
+
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   const resultados = {
     exitosos: [] as string[],

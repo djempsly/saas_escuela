@@ -8,8 +8,12 @@ interface AuditLogParams {
   entidadId?: string;
   descripcion: string;
   datos?: Prisma.InputJsonValue;
+  oldValue?: Prisma.InputJsonValue;
+  newValue?: Prisma.InputJsonValue;
+  ipAddress?: string;
+  userAgent?: string;
   usuarioId: string;
-  institucionId: string;
+  institucionId?: string;
 }
 
 /**
@@ -24,8 +28,12 @@ export const registrarAuditLog = (params: AuditLogParams): void => {
         entidadId: params.entidadId || null,
         descripcion: params.descripcion,
         datos: params.datos || undefined,
+        oldValue: params.oldValue || undefined,
+        newValue: params.newValue || undefined,
+        ipAddress: params.ipAddress || undefined,
+        userAgent: params.userAgent || undefined,
         usuarioId: params.usuarioId,
-        institucionId: params.institucionId,
+        institucionId: params.institucionId || undefined,
       },
     })
     .catch((err) => {
@@ -33,19 +41,31 @@ export const registrarAuditLog = (params: AuditLogParams): void => {
     });
 };
 
+const DIRECTOR_ALLOWED_ACTIONS: AccionAudit[] = [
+  'CREAR',
+  'ACTUALIZAR',
+  'ELIMINAR',
+  'IMPORTAR',
+  'CALIFICACION_PUBLICADA',
+  'CONFIG_MODIFICADA',
+];
+
 interface GetAuditLogsParams {
-  institucionId: string;
+  rol: string;
+  institucionId?: string;
   page?: number;
   limit?: number;
   fechaDesde?: string;
   fechaHasta?: string;
   usuarioId?: string;
   entidad?: string;
+  entidadId?: string;
   accion?: AccionAudit;
 }
 
 export const getAuditLogs = async (params: GetAuditLogsParams) => {
   const {
+    rol,
     institucionId,
     page = 1,
     limit = 50,
@@ -53,10 +73,19 @@ export const getAuditLogs = async (params: GetAuditLogsParams) => {
     fechaHasta,
     usuarioId,
     entidad,
+    entidadId,
     accion,
   } = params;
 
-  const where: Prisma.AuditLogWhereInput = { institucionId };
+  const where: Prisma.AuditLogWhereInput = {};
+
+  // ADMIN: ve todo. DIRECTOR: solo su institucion + acciones academicas
+  if (rol === 'DIRECTOR') {
+    where.institucionId = institucionId;
+    where.accion = { in: DIRECTOR_ALLOWED_ACTIONS };
+  } else if (rol === 'ADMIN' && institucionId) {
+    where.institucionId = institucionId;
+  }
 
   if (fechaDesde || fechaHasta) {
     where.createdAt = {};
@@ -66,7 +95,18 @@ export const getAuditLogs = async (params: GetAuditLogsParams) => {
 
   if (usuarioId) where.usuarioId = usuarioId;
   if (entidad) where.entidad = entidad;
-  if (accion) where.accion = accion;
+  if (entidadId) where.entidadId = entidadId;
+  if (accion) {
+    // For DIRECTOR, intersect with allowed actions
+    if (rol === 'DIRECTOR') {
+      if (DIRECTOR_ALLOWED_ACTIONS.includes(accion)) {
+        where.accion = accion;
+      }
+      // else keep the `in` filter already set
+    } else {
+      where.accion = accion;
+    }
+  }
 
   const skip = (page - 1) * limit;
 

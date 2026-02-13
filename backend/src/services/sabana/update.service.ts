@@ -8,6 +8,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from '../../errors';
 import { sanitizeOptional } from '../../utils/sanitize';
 import { crearNotificacionesMasivas } from '../notificacion.service';
 import { invalidarCacheSabana } from './query.service';
+import { verificarCicloNoCerrado } from '../cycle.service';
 
 /**
  * Actualiza calificación
@@ -32,7 +33,7 @@ export const updateCalificacionSabana = async (
       nivelId: true,
       cicloLectivoId: true,
       nivel: { select: { institucionId: true } },
-      cicloLectivo: { select: { activo: true } },
+      cicloLectivo: { select: { activo: true, cerrado: true } },
     },
   });
 
@@ -43,6 +44,7 @@ export const updateCalificacionSabana = async (
   if (!clase.cicloLectivo.activo) {
     throw new ValidationError('No se pueden editar calificaciones de un ciclo lectivo inactivo');
   }
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   const esDocente = clase.docenteId === userId;
   const esDirector = userRole === 'DIRECTOR';
@@ -200,6 +202,7 @@ export const publicarCalificaciones = async (
       cicloLectivoId: true,
       materia: { select: { nombre: true } },
       nivel: { select: { institucionId: true } },
+      cicloLectivo: { select: { cerrado: true } },
     },
   });
 
@@ -214,6 +217,8 @@ export const publicarCalificaciones = async (
   if (!esDocente && !esDirector && !esCoordinador) {
     throw new ForbiddenError('Sin permiso para publicar calificaciones');
   }
+
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   // Invalidar caché al publicar
   await invalidarCacheSabana(clase.nivelId, cicloLectivoId);

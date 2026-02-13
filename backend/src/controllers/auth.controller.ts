@@ -21,6 +21,7 @@ import {
 import { sanitizeErrorMessage } from '../utils/security';
 import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { toUserDTO } from '../dtos';
+import { registrarAuditLog } from '../services/audit.service';
 
 export const registerSuperAdminHandler = async (req: Request, res: Response) => {
   try {
@@ -49,6 +50,18 @@ export const loginHandler = async (req: Request, res: Response) => {
   try {
     const validatedData = loginSchema.parse({ body: req.body });
     const result = await login(validatedData.body);
+
+    registrarAuditLog({
+      accion: 'LOGIN',
+      entidad: 'User',
+      entidadId: result.user.id,
+      descripcion: `Login de ${result.user.username}`,
+      usuarioId: result.user.id,
+      institucionId: result.user.institucionId || undefined,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
+    });
+
     return res.status(200).json(result);
   } catch (error: unknown) {
     if (isZodError(error)) {
@@ -125,6 +138,18 @@ export const changePasswordHandler = async (req: Request, res: Response) => {
     }
 
     const result = await changePassword(userId, validatedData.body);
+
+    registrarAuditLog({
+      accion: 'PASSWORD_CAMBIADO',
+      entidad: 'User',
+      entidadId: userId,
+      descripcion: 'Cambio de contrasena',
+      usuarioId: userId,
+      institucionId: req.user?.institucionId || undefined,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
+    });
+
     return res.status(200).json(result);
   } catch (error: unknown) {
     if (isZodError(error)) {
@@ -200,6 +225,20 @@ export const logoutHandler = async (req: Request, res: Response) => {
       ? req.headers.authorization.slice(7)
       : undefined;
     await logout(validatedData.body.refreshToken, accessToken);
+
+    if (req.user) {
+      registrarAuditLog({
+        accion: 'LOGOUT',
+        entidad: 'User',
+        entidadId: req.user.usuarioId,
+        descripcion: 'Cierre de sesion',
+        usuarioId: req.user.usuarioId,
+        institucionId: req.user.institucionId || undefined,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
+      });
+    }
+
     return res.status(200).json({ message: 'Sesión cerrada correctamente' });
   } catch (error: unknown) {
     if (isZodError(error)) {

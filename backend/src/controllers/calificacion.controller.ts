@@ -31,7 +31,8 @@ export const guardarCalificacionHandler = async (req: Request, res: Response) =>
     if (
       getErrorMessage(error).includes('no encontrad') ||
       getErrorMessage(error).includes('no inscrito') ||
-      getErrorMessage(error).includes('técnica')
+      getErrorMessage(error).includes('técnica') ||
+      getErrorMessage(error).includes('cerrado')
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
@@ -58,7 +59,8 @@ export const guardarCalificacionTecnicaHandler = async (req: Request, res: Respo
       getErrorMessage(error).includes('no encontrad') ||
       getErrorMessage(error).includes('no inscrito') ||
       getErrorMessage(error).includes('Politécnico') ||
-      getErrorMessage(error).includes('no es de tipo técnica')
+      getErrorMessage(error).includes('no es de tipo técnica') ||
+      getErrorMessage(error).includes('cerrado')
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }

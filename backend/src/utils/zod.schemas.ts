@@ -197,6 +197,24 @@ export const inscripcionMasivaSchema = z.object({
   }),
 });
 
+// --- PROMOCION ---
+
+export const promoverMasivoSchema = z.object({
+  body: z.object({
+    nivelOrigenId: z.string().min(1, 'Nivel origen requerido'),
+    nivelDestinoId: z.string().min(1, 'Nivel destino requerido'),
+    cicloDestinoId: z.string().min(1, 'Ciclo destino requerido'),
+  }),
+});
+
+export const promoverIndividualSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    nivelDestinoId: z.string().min(1, 'Nivel destino requerido'),
+    cicloDestinoId: z.string().min(1, 'Ciclo destino requerido'),
+  }),
+});
+
 // --- ASISTENCIA (ATTENDANCE) ---
 
 export const tomarAsistenciaSchema = z.object({

@@ -140,6 +140,8 @@ export const updateCalificacionHandler = async (req: Request, res: Response) => 
       datos: { claseId, estudianteId, periodo, valor, competenciaId, valorTexto },
       usuarioId: user.usuarioId,
       institucionId: user.institucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
     });
 
     return res.json(calificacion);
@@ -193,11 +195,16 @@ export const publicarCalificacionesHandler = async (req: Request, res: Response)
       datos: { claseId, cicloLectivoId },
       usuarioId: user.usuarioId,
       institucionId: user.institucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
     });
 
     return res.json(resultado);
   } catch (error: unknown) {
     req.log.error({ err: error }, 'Error publicando calificaciones');
+    if (getErrorMessage(error).includes('cerrado')) {
+      return res.status(400).json({ error: getErrorMessage(error) });
+    }
     if (getErrorMessage(error).includes('Sin permiso')) {
       return res.status(403).json({ error: getErrorMessage(error) });
     }

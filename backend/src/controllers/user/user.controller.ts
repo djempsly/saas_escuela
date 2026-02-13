@@ -63,6 +63,8 @@ export const createUserHandler = async (req: Request, res: Response) => {
         descripcion: `Estudiante creado: ${result.user.nombre} ${result.user.apellido}`,
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
       return res.status(201).json({
         status: 'success',
@@ -91,6 +93,8 @@ export const createUserHandler = async (req: Request, res: Response) => {
       descripcion: `Usuario creado: ${result.user.nombre} ${result.user.apellido} (${result.user.role})`,
       usuarioId: req.user.usuarioId.toString(),
       institucionId: req.resolvedInstitucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
     });
     return res.status(201).json({
       status: 'success',

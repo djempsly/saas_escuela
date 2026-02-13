@@ -22,6 +22,7 @@ import importRoutes from './import.routes';
 import sabanaRoutes from './sabana.routes';
 import auditRoutes from './audit.routes';
 import uploadRoutes from './upload.routes';
+import fileRoutes from './file.routes';
 import notificacionRoutes from './notificacion.routes';
 
 const router = Router();
@@ -76,6 +77,9 @@ router.use('/audit-logs', auditRoutes);
 
 // Rutas de subida de archivos
 router.use('/upload', uploadRoutes);
+
+// Rutas de descarga de archivos privados (signed URLs)
+router.use('/files', fileRoutes);
 
 // Rutas de notificaciones
 router.use('/notificaciones', notificacionRoutes);

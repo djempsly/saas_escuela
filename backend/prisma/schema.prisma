@@ -175,6 +175,8 @@ model CicloLectivo {
   fechaInicio               DateTime
   fechaFin                  DateTime
   activo                    Boolean                   @default(true)
+  cerrado                   Boolean                   @default(false)
+  cerradoAt                 DateTime?
   institucionId             String
   calificaciones            Calificacion[]
   calificacionesCompetencia CalificacionCompetencia[] @relation("CicloCalificacionesCompetencia")
@@ -554,20 +556,25 @@ model DiasLaborables {
 }
 
 model AuditLog {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   accion        AccionAudit
   entidad       String
   entidadId     String?
   descripcion   String
   datos         Json?
+  oldValue      Json?
+  newValue      Json?
+  ipAddress     String?
+  userAgent     String?
   usuarioId     String
-  institucionId String
-  createdAt     DateTime    @default(now())
-  usuario       User        @relation("AuditLogs", fields: [usuarioId], references: [id])
-  institucion   Institucion @relation("AuditLogsInstitucion", fields: [institucionId], references: [id])
+  institucionId String?
+  createdAt     DateTime     @default(now())
+  usuario       User         @relation("AuditLogs", fields: [usuarioId], references: [id])
+  institucion   Institucion? @relation("AuditLogsInstitucion", fields: [institucionId], references: [id])
 
   @@index([institucionId, createdAt])
   @@index([usuarioId])
+  @@index([entidadId])
 }
 
 model SystemSettings {
@@ -701,6 +708,11 @@ enum AccionAudit {
   ACTUALIZAR
   ELIMINAR
   IMPORTAR
+  LOGIN
+  LOGOUT
+  PASSWORD_CAMBIADO
+  CALIFICACION_PUBLICADA
+  CONFIG_MODIFICADA
 }
 
 enum FormatoSabana {

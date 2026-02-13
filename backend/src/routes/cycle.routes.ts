@@ -5,6 +5,8 @@ import {
   getCicloByIdHandler,
   updateCicloHandler,
   deleteCicloHandler,
+  cerrarCicloHandler,
+  reabrirCicloHandler,
 } from '../controllers/cycle.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -46,5 +48,9 @@ router.get(
 router.post('/', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), createCicloHandler);
 router.put('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), updateCicloHandler);
 router.delete('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), deleteCicloHandler);
+
+// Cerrar / reabrir ciclo lectivo
+router.post('/:id/cerrar', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), cerrarCicloHandler);
+router.post('/:id/reabrir', roleMiddleware([ROLES.ADMIN]), reabrirCicloHandler);
 
 export default router;

@@ -7,6 +7,8 @@ import {
   getInscripcionesByEstudianteHandler,
   eliminarInscripcionHandler,
   inscribirMasivoHandler,
+  promoverMasivoHandler,
+  promoverIndividualHandler,
 } from '../controllers/inscripcion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -55,6 +57,10 @@ router.post('/', inscribirEstudianteHandler);
 
 // Inscripción masiva
 router.post('/masivo', inscribirMasivoHandler);
+
+// Promoción (solo admin/director)
+router.post('/promover-masivo', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), promoverMasivoHandler);
+router.post('/promover-individual', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), promoverIndividualHandler);
 
 // Ver inscripciones por clase
 router.get('/clase/:claseId', getInscripcionesByClaseHandler);

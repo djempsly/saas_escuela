@@ -3,7 +3,9 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadBucketCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import path from 'path';
 import { logger } from '../config/logger';
@@ -46,8 +48,17 @@ type S3Folder =
   | 'imagenes'
   | 'recursos';
 
+const ALL_FOLDERS: S3Folder[] = [
+  'logos', 'favicons', 'heroes', 'login-logos', 'login-bgs',
+  'fotos', 'videos', 'perfiles', 'imagenes', 'recursos',
+];
+
+const PRIVATE_FOLDERS = new Set<S3Folder>(['perfiles', 'recursos']);
+
 /**
- * Sube un archivo a S3 y retorna la URL pública.
+ * Sube un archivo a S3 y retorna la URL.
+ * Archivos privados retornan ruta al proxy de signed URLs.
+ * Archivos publicos retornan URL directa (CloudFront o S3).
  */
 export async function uploadToS3(
   file: Express.Multer.File,
@@ -75,6 +86,13 @@ export async function uploadToS3(
 
   await getS3Client().send(command);
 
+  // Archivos privados: retornar ruta al proxy de signed URLs
+  if (PRIVATE_FOLDERS.has(folder)) {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    return `${backendUrl}/api/v1/files/${key}`;
+  }
+
+  // Archivos publicos: retornar URL directa
   if (cloudfrontUrl) {
     return `${cloudfrontUrl.replace(/\/$/, '')}/${key}`;
   }
@@ -82,26 +100,13 @@ export async function uploadToS3(
 }
 
 /**
- * Elimina un archivo de S3 dado su URL pública.
+ * Elimina un archivo de S3 dado su URL (publica, CloudFront, o proxy).
  */
 export async function deleteFromS3(fileUrl: string): Promise<void> {
-  if (!isS3Url(fileUrl)) return;
-
-  const { bucket, cloudfrontUrl } = getConfig();
-  let key: string | undefined;
-
-  if (cloudfrontUrl && fileUrl.startsWith(cloudfrontUrl)) {
-    key = fileUrl.replace(cloudfrontUrl.replace(/\/$/, '') + '/', '');
-  } else {
-    // Extraer key de URL de S3: https://bucket.s3.region.amazonaws.com/key
-    const match = fileUrl.match(/\.amazonaws\.com\/(.+)$/);
-    if (match) {
-      key = match[1];
-    }
-  }
-
+  const key = extractKeyFromUrl(fileUrl);
   if (!key) return;
 
+  const { bucket } = getConfig();
   const command = new DeleteObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -127,12 +132,72 @@ export async function checkS3Connection(): Promise<void> {
 }
 
 /**
- * Detecta si una URL pertenece a S3 o CloudFront.
+ * Detecta si una URL pertenece a S3, CloudFront, o es una URL de proxy privada.
  */
 export function isS3Url(url: string): boolean {
   if (!url) return false;
   const { cloudfrontUrl } = getConfig();
   if (cloudfrontUrl && url.startsWith(cloudfrontUrl)) return true;
   if (url.includes('.amazonaws.com/')) return true;
+  if (url.includes('/api/v1/files/plataforma-escolar/')) return true;
   return false;
+}
+
+/**
+ * Genera una URL firmada temporal para acceder a un archivo privado en S3.
+ */
+export async function getSignedFileUrl(key: string, expiresIn = 900): Promise<string> {
+  const { bucket } = getConfig();
+  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  return awsGetSignedUrl(getS3Client(), command, { expiresIn });
+}
+
+/**
+ * Determina si un S3 key corresponde a una carpeta privada.
+ */
+export function isPrivateKey(key: string): boolean {
+  // key: plataforma-escolar/{institucionId?}/{folder}/{filename}
+  const parts = key.split('/');
+  // Con institucionId: [prefix, instId, folder, filename] → parts[2]
+  // Sin institucionId: [prefix, folder, filename] → parts[1]
+  const folder = parts.length >= 4 ? parts[2] : parts[1];
+  return PRIVATE_FOLDERS.has(folder as S3Folder);
+}
+
+/**
+ * Extrae el institucionId del S3 key, si existe.
+ * key: plataforma-escolar/{institucionId}/{folder}/{filename}
+ */
+export function extractInstitucionIdFromKey(key: string): string | null {
+  const parts = key.split('/');
+  if (parts.length >= 4) {
+    const possibleId = parts[1];
+    if (!ALL_FOLDERS.includes(possibleId as S3Folder)) {
+      return possibleId;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extrae el S3 key de una URL (CloudFront, S3 directa, o proxy).
+ */
+export function extractKeyFromUrl(fileUrl: string): string | null {
+  if (!fileUrl) return null;
+
+  // URL de proxy: .../api/v1/files/plataforma-escolar/...
+  const proxyMatch = fileUrl.match(/\/api\/v1\/files\/(plataforma-escolar\/.+)$/);
+  if (proxyMatch) return proxyMatch[1];
+
+  // URL de CloudFront
+  const { cloudfrontUrl } = getConfig();
+  if (cloudfrontUrl && fileUrl.startsWith(cloudfrontUrl)) {
+    return fileUrl.replace(cloudfrontUrl.replace(/\/$/, '') + '/', '');
+  }
+
+  // URL directa de S3
+  const s3Match = fileUrl.match(/\.amazonaws\.com\/(.+)$/);
+  if (s3Match) return s3Match[1];
+
+  return null;
 }

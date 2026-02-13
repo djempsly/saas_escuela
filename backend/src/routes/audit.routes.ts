@@ -2,16 +2,15 @@ import { Router } from 'express';
 import { getAuditLogsHandler } from '../controllers/audit.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
-import { resolveTenantMiddleware, requireTenantMiddleware } from '../middleware/tenant.middleware';
+import { resolveTenantMiddleware } from '../middleware/tenant.middleware';
 import { ROLES } from '../utils/zod.schemas';
 
 const router = Router();
 
 router.use(
   authMiddleware,
-  roleMiddleware([ROLES.DIRECTOR]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]),
   resolveTenantMiddleware,
-  requireTenantMiddleware,
 );
 
 router.get('/', getAuditLogsHandler);

@@ -39,6 +39,7 @@ export const validarAccesoClase = async (claseId: string, institucionId: string)
       cicloLectivoId: true,
       materia: { select: { id: true, nombre: true, tipo: true, codigo: true, esOficial: true, orden: true } },
       institucion: { select: { sistema: true } },
+      cicloLectivo: { select: { activo: true, cerrado: true } },
     },
   });
 

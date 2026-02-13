@@ -20,6 +20,9 @@ const mockPrisma = vi.hoisted(() => {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn().mockResolvedValue({}),
+    },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
   };

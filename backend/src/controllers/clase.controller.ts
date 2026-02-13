@@ -31,6 +31,8 @@ export const createClaseHandler = async (req: Request, res: Response) => {
         descripcion: `Clase creada: ${clase.materia.nombre} - ${clase.nivel.nombre}`,
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(201).json(clase);
@@ -42,7 +44,8 @@ export const createClaseHandler = async (req: Request, res: Response) => {
       getErrorMessage(error).includes('no encontrad') ||
       getErrorMessage(error).includes('no pertenece') ||
       getErrorMessage(error).includes('Ya existe') ||
-      getErrorMessage(error).includes('ya existe')
+      getErrorMessage(error).includes('ya existe') ||
+      getErrorMessage(error).includes('cerrado')
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
@@ -128,6 +131,8 @@ export const updateClaseHandler = async (req: Request, res: Response) => {
         datos: validated,
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(200).json({ message: 'Clase actualizada' });
@@ -135,7 +140,7 @@ export const updateClaseHandler = async (req: Request, res: Response) => {
     if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (getErrorMessage(error).includes('no encontrad')) {
+    if (getErrorMessage(error).includes('no encontrad') || getErrorMessage(error).includes('cerrado')) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -157,11 +162,13 @@ export const deleteClaseHandler = async (req: Request, res: Response) => {
         descripcion: `Clase eliminada`,
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(204).send();
   } catch (error: unknown) {
-    if (getErrorMessage(error).includes('No se puede eliminar')) {
+    if (getErrorMessage(error).includes('No se puede eliminar') || getErrorMessage(error).includes('cerrado')) {
       return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

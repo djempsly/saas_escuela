@@ -2,6 +2,7 @@ import prisma from '../config/db';
 import { ClaseInput } from '../utils/zod.schemas';
 import crypto from 'crypto';
 import { ConflictError, NotFoundError, ValidationError } from '../errors';
+import { verificarCicloNoCerrado } from './cycle.service';
 
 const generateCodigoClase = (): string => {
   return `CLS-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -20,6 +21,8 @@ export const createClase = async (input: ClaseInput, institucionId: string) => {
   if (!nivel) throw new NotFoundError('Nivel no encontrado o no pertenece a la institucion');
   if (!docente) throw new NotFoundError('Docente no encontrado o no pertenece a la institucion');
   if (!ciclo) throw new NotFoundError('Ciclo lectivo no encontrado o no pertenece a la institucion');
+
+  verificarCicloNoCerrado(ciclo);
 
   // SEGURIDAD: Verificar que no exista otra clase con la misma materia, nivel, ciclo y sección
   // No puede haber dos materias con el mismo nombre en el mismo grado
@@ -127,6 +130,13 @@ export const updateClase = async (
   institucionId: string,
   input: Partial<ClaseInput>,
 ) => {
+  const clase = await prisma.clase.findFirst({
+    where: { id, institucionId },
+    select: { cicloLectivo: { select: { cerrado: true } } },
+  });
+  if (!clase) throw new NotFoundError('Clase no encontrada');
+  verificarCicloNoCerrado(clase.cicloLectivo);
+
   // Si se cambia docente, verificar que pertenece a la institución
   if (input.docenteId) {
     const docente = await prisma.user.findFirst({
@@ -142,6 +152,12 @@ export const updateClase = async (
 };
 
 export const deleteClase = async (id: string, institucionId: string) => {
+  const claseToDelete = await prisma.clase.findFirst({
+    where: { id, institucionId },
+    select: { cicloLectivo: { select: { cerrado: true } } },
+  });
+  if (claseToDelete) verificarCicloNoCerrado(claseToDelete.cicloLectivo);
+
   // Verificar si tiene inscripciones activas
   const inscripciones = await prisma.inscripcion.count({
     where: { claseId: id, clase: { institucionId } },

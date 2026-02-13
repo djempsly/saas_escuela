@@ -39,6 +39,8 @@ export const importEstudiantesHandler = async (req: Request, res: Response) => {
         datos: { totalFilas: rows.length, nivelId },
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
 

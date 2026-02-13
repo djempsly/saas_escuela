@@ -6,8 +6,15 @@ import {
   findInscripcionesByEstudiante,
   eliminarInscripcion,
   inscribirMasivo,
+  promoverMasivo,
+  promoverIndividual,
 } from '../services/inscripcion';
-import { inscripcionSchema, inscripcionMasivaSchema } from '../utils/zod.schemas';
+import {
+  inscripcionSchema,
+  inscripcionMasivaSchema,
+  promoverMasivoSchema,
+  promoverIndividualSchema,
+} from '../utils/zod.schemas';
 import { sanitizeErrorMessage } from '../utils/security';
 import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { Role } from '@prisma/client';
@@ -30,6 +37,8 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
         datos: { claseId: validated.body.claseId, estudianteId: validated.body.estudianteId },
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(201).json(toInscripcionDTO(inscripcion));
@@ -40,7 +49,8 @@ export const inscribirEstudianteHandler = async (req: Request, res: Response) =>
     if (
       getErrorMessage(error).includes('no encontrad') ||
       getErrorMessage(error).includes('ya está inscrito') ||
-      getErrorMessage(error).includes('no está activo')
+      getErrorMessage(error).includes('no está activo') ||
+      getErrorMessage(error).includes('cerrado')
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
@@ -71,7 +81,8 @@ export const inscribirPorCodigoHandler = async (req: Request, res: Response) => 
       getErrorMessage(error).includes('no válido') ||
       getErrorMessage(error).includes('Ya estás inscrito') ||
       getErrorMessage(error).includes('no está activo') ||
-      getErrorMessage(error).includes('No tienes permiso')
+      getErrorMessage(error).includes('No tienes permiso') ||
+      getErrorMessage(error).includes('cerrado')
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
@@ -138,11 +149,13 @@ export const eliminarInscripcionHandler = async (req: Request, res: Response) =>
         descripcion: `Inscripción eliminada`,
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(204).send();
   } catch (error: unknown) {
-    if (getErrorMessage(error).includes('no encontrada')) {
+    if (getErrorMessage(error).includes('no encontrada') || getErrorMessage(error).includes('cerrado')) {
       return res.status(404).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
@@ -165,7 +178,100 @@ export const inscribirMasivoHandler = async (req: Request, res: Response) => {
     if (isZodError(error)) {
       return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
     }
-    if (getErrorMessage(error).includes('no encontrada') || getErrorMessage(error).includes('no activo')) {
+    if (getErrorMessage(error).includes('no encontrada') || getErrorMessage(error).includes('no activo') || getErrorMessage(error).includes('cerrado')) {
+      return res.status(400).json({ message: getErrorMessage(error) });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const promoverMasivoHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+    const validated = promoverMasivoSchema.parse({ body: req.body });
+    const resultado = await promoverMasivo(
+      validated.body.nivelOrigenId,
+      validated.body.nivelDestinoId,
+      validated.body.cicloDestinoId,
+      req.resolvedInstitucionId,
+    );
+
+    registrarAuditLog({
+      accion: 'CREAR',
+      entidad: 'Promocion',
+      descripcion: `Promocion masiva: ${resultado.promovidos} promovidos, ${resultado.yaInscritos} ya inscritos`,
+      datos: {
+        nivelOrigenId: validated.body.nivelOrigenId,
+        nivelDestinoId: validated.body.nivelDestinoId,
+        cicloDestinoId: validated.body.cicloDestinoId,
+        ...resultado,
+      },
+      usuarioId: req.user!.usuarioId,
+      institucionId: req.resolvedInstitucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
+    });
+
+    return res.status(200).json(resultado);
+  } catch (error: unknown) {
+    if (isZodError(error)) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('cerrado') ||
+      getErrorMessage(error).includes('no pueden ser el mismo') ||
+      getErrorMessage(error).includes('No se encontraron')
+    ) {
+      return res.status(400).json({ message: getErrorMessage(error) });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const promoverIndividualHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+    const validated = promoverIndividualSchema.parse({ body: req.body });
+    const resultado = await promoverIndividual(
+      validated.body.estudianteId,
+      validated.body.nivelDestinoId,
+      validated.body.cicloDestinoId,
+      req.resolvedInstitucionId,
+    );
+
+    registrarAuditLog({
+      accion: 'CREAR',
+      entidad: 'Promocion',
+      entidadId: validated.body.estudianteId,
+      descripcion: `Promocion individual de estudiante`,
+      datos: {
+        estudianteId: validated.body.estudianteId,
+        nivelDestinoId: validated.body.nivelDestinoId,
+        cicloDestinoId: validated.body.cicloDestinoId,
+        clasesInscritas: resultado.clasesInscritas,
+      },
+      usuarioId: req.user!.usuarioId,
+      institucionId: req.resolvedInstitucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
+    });
+
+    return res.status(200).json(resultado);
+  } catch (error: unknown) {
+    if (isZodError(error)) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (
+      getErrorMessage(error).includes('no encontrad') ||
+      getErrorMessage(error).includes('cerrado') ||
+      getErrorMessage(error).includes('No hay clases') ||
+      getErrorMessage(error).includes('ya está inscrito')
+    ) {
       return res.status(400).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

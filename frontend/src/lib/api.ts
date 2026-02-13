@@ -18,6 +18,11 @@ export const getMediaUrl = (url: string | undefined | null): string => {
     return url;
   }
 
+  // URLs de archivos privados (proxy a signed URLs)
+  if (url.startsWith('/api/v1/files/')) {
+    return `${BACKEND_URL.replace('/api/v1', '')}${url}`;
+  }
+
   // Si es una URL relativa de uploads, prefijar con la URL del backend
   if (url.startsWith('/uploads/')) {
     return `${BACKEND_URL}${url}`;
@@ -26,6 +31,20 @@ export const getMediaUrl = (url: string | undefined | null): string => {
   // Para cualquier otra URL relativa
   return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
+
+/**
+ * Resuelve una URL de archivo privado obteniendo una URL firmada temporal.
+ * Para URLs publicas, retorna la URL tal cual.
+ */
+export async function resolveFileUrl(url: string | undefined | null): Promise<string> {
+  if (!url) return '';
+  if (!url.includes('/api/v1/files/')) return getMediaUrl(url);
+
+  const fullUrl = getMediaUrl(url);
+  const apiPath = fullUrl.replace(/.*\/api\/v1\//, '');
+  const res = await api.get(apiPath);
+  return res.data.url;
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

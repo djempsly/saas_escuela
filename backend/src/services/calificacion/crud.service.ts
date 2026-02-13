@@ -4,6 +4,7 @@ import { ValidationError } from '../../errors';
 import { invalidarCacheSabana } from '../sabana';
 import { validarAccesoClase, calcularPromedioFinal, CalificacionGeneralInput, CalificacionTecnicaInput } from './calculo';
 import { getErrorMessage } from '../../utils/error-helpers';
+import { verificarCicloNoCerrado } from '../cycle.service';
 
 // Guardar/Actualizar calificación general
 export const guardarCalificacion = async (
@@ -11,6 +12,7 @@ export const guardarCalificacion = async (
   institucionId: string,
 ) => {
   const clase = await validarAccesoClase(input.claseId, institucionId);
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   // Verificar sistema educativo
   const sistema = clase.institucion.sistema;
@@ -105,6 +107,7 @@ export const guardarCalificacionTecnica = async (
   institucionId: string,
 ) => {
   const clase = await validarAccesoClase(input.claseId, institucionId);
+  verificarCicloNoCerrado(clase.cicloLectivo);
 
   // Verificar que es Politécnico
   if (clase.institucion.sistema !== SistemaEducativo.POLITECNICO_DO) {

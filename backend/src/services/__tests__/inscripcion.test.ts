@@ -23,7 +23,7 @@ vi.mock('../../config/db', () => ({ default: mockPrisma }));
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FormatoSabana } from '@prisma/client';
 import { inscribirEstudianteEnNivel } from '../inscripcion';
-import { NotFoundError, ValidationError, ConflictError } from '../../errors';
+import { NotFoundError, ValidationError } from '../../errors';
 
 // ── Factories ──
 const INST_ID = 'inst-1';
@@ -86,6 +86,7 @@ describe('inscribirEstudianteEnNivel', () => {
       calificacionesCreadas: 3,
       competenciasCreadas: 15, // 5 competencias × 3 clases
       tecnicasCreadas: 0, // no es POLITECNICO
+      yaInscrito: false,
     });
 
     // Verificar que se crearon las inscripciones
@@ -136,6 +137,7 @@ describe('inscribirEstudianteEnNivel', () => {
       calificacionesCreadas: 2,
       competenciasCreadas: 10, // 5 competencias × 2 clases
       tecnicasCreadas: 10, // 10 RAs para la clase TECNICA
+      yaInscrito: false,
     });
 
     // Calificaciones técnicas solo para la materia TECNICA
@@ -161,17 +163,25 @@ describe('inscribirEstudianteEnNivel', () => {
   });
 
   // ──────────────────────────────────────────────
-  // 3. Inscripción duplicada → ConflictError
+  // 3. Inscripción duplicada → retorna yaInscrito: true
   // ──────────────────────────────────────────────
-  it('lanza ConflictError si el estudiante ya está inscrito', async () => {
+  it('retorna yaInscrito: true si el estudiante ya está inscrito', async () => {
     const clases = [makeClase('clase-1')];
     setupHappyPath(FormatoSabana.SECUNDARIA_DO, clases);
     // Simular que ya tiene inscripciones
     mockTx.inscripcion.findMany.mockResolvedValue([{ claseId: 'clase-1' }]);
 
-    await expect(
-      inscribirEstudianteEnNivel(EST_ID, NIVEL_ID, INST_ID),
-    ).rejects.toThrow(ConflictError);
+    const result = await inscribirEstudianteEnNivel(EST_ID, NIVEL_ID, INST_ID);
+
+    expect(result).toEqual({
+      estudianteId: EST_ID,
+      nivelId: NIVEL_ID,
+      clasesInscritas: 0,
+      calificacionesCreadas: 0,
+      competenciasCreadas: 0,
+      tecnicasCreadas: 0,
+      yaInscrito: true,
+    });
 
     // No debería haber creado nada
     expect(mockTx.inscripcion.create).not.toHaveBeenCalled();

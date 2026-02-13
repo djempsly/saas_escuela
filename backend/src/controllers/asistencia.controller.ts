@@ -27,6 +27,8 @@ export const tomarAsistenciaHandler = async (req: Request, res: Response) => {
         datos: { claseId: validated.body.claseId, fecha: validated.body.fecha },
         usuarioId: req.user.usuarioId.toString(),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(200).json(resultado);

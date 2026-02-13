@@ -39,6 +39,8 @@ export const crearCobroHandler = async (req: Request, res: Response) => {
         descripcion: `Cobro creado: ${req.body.concepto} - $${req.body.monto}`,
         usuarioId: getUserId(req),
         institucionId: req.resolvedInstitucionId,
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'],
       });
     }
     return res.status(201).json(cobro);
@@ -151,6 +153,8 @@ export const registrarPagoHandler = async (req: Request, res: Response) => {
       datos: { cobroId: id, monto: req.body.monto, metodoPago: req.body.metodoPago },
       usuarioId: getUserId(req),
       institucionId: req.resolvedInstitucionId,
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'],
     });
 
     return res.status(200).json(result);

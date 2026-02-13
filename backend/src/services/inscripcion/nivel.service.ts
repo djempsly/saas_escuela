@@ -1,6 +1,6 @@
 import { FormatoSabana } from '@prisma/client';
 import prisma from '../../config/db';
-import { NotFoundError, ValidationError, ConflictError } from '../../errors';
+import { NotFoundError, ValidationError } from '../../errors';
 
 export const COMPETENCIAS_POR_FORMATO: Record<FormatoSabana, string[]> = {
   INICIAL_DO: ['IL1', 'IL2', 'IL3', 'IL4', 'IL5'],
@@ -18,19 +18,21 @@ const RA_CODIGOS_POLITECNICO = [
   'RA6', 'RA7', 'RA8', 'RA9', 'RA10',
 ];
 
-interface InscripcionNivelResult {
+export interface InscripcionNivelResult {
   estudianteId: string;
   nivelId: string;
   clasesInscritas: number;
   calificacionesCreadas: number;
   competenciasCreadas: number;
   tecnicasCreadas: number;
+  yaInscrito: boolean;
 }
 
 export const inscribirEstudianteEnNivel = async (
   estudianteId: string,
   nivelId: string,
   institucionId: string,
+  cicloLectivoId?: string,
 ): Promise<InscripcionNivelResult> => {
   return prisma.$transaction(async (tx) => {
     // 1. Buscar nivel con formatoSabana
@@ -52,29 +54,37 @@ export const inscribirEstudianteEnNivel = async (
       throw new NotFoundError('Estudiante no encontrado');
     }
 
-    // 3. Buscar ciclo lectivo activo
-    const cicloActivo = await tx.cicloLectivo.findFirst({
-      where: { institucionId, activo: true },
-      select: { id: true },
-    });
-
-    if (!cicloActivo) {
-      throw new ValidationError('No hay un ciclo lectivo activo');
+    // 3. Resolver ciclo lectivo: usar el proporcionado o buscar el activo
+    let cicloId: string;
+    if (cicloLectivoId) {
+      const ciclo = await tx.cicloLectivo.findFirst({
+        where: { id: cicloLectivoId, institucionId },
+        select: { id: true },
+      });
+      if (!ciclo) throw new NotFoundError('Ciclo lectivo no encontrado');
+      cicloId = ciclo.id;
+    } else {
+      const cicloActivo = await tx.cicloLectivo.findFirst({
+        where: { institucionId, activo: true },
+        select: { id: true },
+      });
+      if (!cicloActivo) throw new ValidationError('No hay un ciclo lectivo activo');
+      cicloId = cicloActivo.id;
     }
 
-    // 4. Buscar clases del nivel en el ciclo activo
+    // 4. Buscar clases del nivel en el ciclo
     const clases = await tx.clase.findMany({
-      where: { nivelId, cicloLectivoId: cicloActivo.id },
+      where: { nivelId, cicloLectivoId: cicloId },
       include: { materia: { select: { tipo: true } } },
     });
 
     if (clases.length === 0) {
       throw new ValidationError(
-        'No hay clases asignadas a este nivel en el ciclo activo',
+        'No hay clases asignadas a este nivel en el ciclo lectivo',
       );
     }
 
-    // 5. Verificar duplicados
+    // 5. Verificar duplicados — skip graceful si ya esta inscrito
     const inscripcionesExistentes = await tx.inscripcion.findMany({
       where: {
         estudianteId,
@@ -84,9 +94,15 @@ export const inscribirEstudianteEnNivel = async (
     });
 
     if (inscripcionesExistentes.length > 0) {
-      throw new ConflictError(
-        `El estudiante ya está inscrito en ${inscripcionesExistentes.length} clase(s) de este nivel`,
-      );
+      return {
+        estudianteId,
+        nivelId,
+        clasesInscritas: 0,
+        calificacionesCreadas: 0,
+        competenciasCreadas: 0,
+        tecnicasCreadas: 0,
+        yaInscrito: true,
+      };
     }
 
     // 6. Configuración según formatoSabana (usa el enum, no strings)
@@ -110,7 +126,7 @@ export const inscribirEstudianteEnNivel = async (
         data: {
           estudianteId,
           claseId: clase.id,
-          cicloLectivoId: cicloActivo.id,
+          cicloLectivoId: cicloId,
         },
       });
       calificacionesCreadas++;
@@ -121,7 +137,7 @@ export const inscribirEstudianteEnNivel = async (
           data: competencias.map((comp) => ({
             estudianteId,
             claseId: clase.id,
-            cicloLectivoId: cicloActivo.id,
+            cicloLectivoId: cicloId,
             competencia: comp,
           })),
         });
@@ -154,6 +170,7 @@ export const inscribirEstudianteEnNivel = async (
       calificacionesCreadas,
       competenciasCreadas,
       tecnicasCreadas,
+      yaInscrito: false,
     };
   });
 };
