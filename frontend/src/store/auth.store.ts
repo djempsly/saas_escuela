@@ -17,9 +17,11 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
+  login: (user: User, token: string, refreshToken: string) => void;
   logout: () => void;
+  setTokens: (token: string, refreshToken: string) => void;
   updateUser: (user: Partial<User>) => void;
 }
 
@@ -28,20 +30,31 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
 
-      login: (user, token) => {
-        set({ user, token, isAuthenticated: true });
+      login: (user, token, refreshToken) => {
+        set({ user, token, refreshToken, isAuthenticated: true });
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', token);
+          localStorage.setItem('refreshToken', refreshToken);
+        }
+      },
+
+      setTokens: (token, refreshToken) => {
+        set({ token, refreshToken });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', token);
+          localStorage.setItem('refreshToken', refreshToken);
         }
       },
 
       logout: () => {
         disconnectSocket();
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
         }
       },
 
@@ -55,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

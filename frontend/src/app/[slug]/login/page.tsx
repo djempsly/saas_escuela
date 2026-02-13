@@ -101,10 +101,10 @@ export default function InstitutionLoginPage() {
     try {
       // Enviar el slug para validar que el usuario pertenece a esta institución
       const response = await authApi.login(formData.identificador, formData.password, slug);
-      const { token, user, debeCambiarPassword } = response.data;
+      const { token, user, debeCambiarPassword, refreshToken } = response.data;
 
-      // Guardar usuario y token
-      login({ ...user, debeCambiarPassword }, token);
+      // Guardar usuario y tokens
+      login({ ...user, debeCambiarPassword }, token, refreshToken);
 
       // Si el usuario tiene institución, cargar branding
       if (user.institucionId) {

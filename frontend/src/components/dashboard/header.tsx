@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useAuthStore, User } from '@/store/auth.store';
 import { InstitutionBranding } from '@/store/institution.store';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -25,10 +26,15 @@ interface HeaderProps {
 
 export function Header({ branding, user, onMenuClick }: HeaderProps) {
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { logout, refreshToken } = useAuthStore();
 
   const handleLogout = () => {
     const slug = branding?.slug;
+
+    // Invalidate refresh token on backend (fire-and-forget)
+    if (refreshToken) {
+      api.post('/auth/logout', { refreshToken }).catch(() => {});
+    }
 
     logout();
     // No limpiar branding: se necesita para redirigir al landing de la institución

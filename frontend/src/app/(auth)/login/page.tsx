@@ -31,10 +31,10 @@ export default function LoginPage() {
 
     try {
       const response = await authApi.login(formData.identificador, formData.password);
-      const { token, user, debeCambiarPassword } = response.data;
+      const { token, user, debeCambiarPassword, refreshToken } = response.data;
 
-      // Guardar usuario y token (incluyendo debeCambiarPassword)
-      login({ ...user, debeCambiarPassword }, token);
+      // Guardar usuario y tokens (incluyendo debeCambiarPassword)
+      login({ ...user, debeCambiarPassword }, token, refreshToken);
 
       // Si el usuario tiene institución, cargar branding
       if (user.institucionId) {

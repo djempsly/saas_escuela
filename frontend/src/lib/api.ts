@@ -113,6 +113,38 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// ============ Token Refresh Logic ============
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+function onTokenRefreshed(newToken: string) {
+  refreshSubscribers.forEach((cb) => cb(newToken));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function forceLogout() {
+  if (typeof window === 'undefined') return;
+  let slug: string | undefined;
+  try {
+    const stored = localStorage.getItem('institution-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      slug = parsed?.state?.branding?.slug;
+    }
+  } catch {}
+
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem('auth-storage');
+  csrfToken = null;
+  window.location.href = slug ? `/${slug}` : '/';
+}
+
 // Interceptor para manejar errores de autenticación y CSRF
 api.interceptors.response.use(
   (response) => response,
@@ -142,24 +174,72 @@ api.interceptors.response.use(
       }
     }
 
-    // Error de autenticación — logout
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        let slug: string | undefined;
+    // Error de autenticación — intentar refresh antes de logout
+    if (error.response?.status === 401 && !originalRequest._authRetried) {
+      originalRequest._authRetried = true;
+
+      const storedRefreshToken = typeof window !== 'undefined'
+        ? localStorage.getItem('refreshToken')
+        : null;
+
+      if (!storedRefreshToken) {
+        forceLogout();
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Another refresh is in progress — wait for it
+        return new Promise((resolve) => {
+          addRefreshSubscriber((newToken: string) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
+      try {
+        const res = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken: storedRefreshToken },
+          { withCredentials: true },
+        );
+        const { accessToken, refreshToken: newRefreshToken } = res.data;
+
+        // Update localStorage
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+
+        // Update zustand store (persisted storage)
         try {
-          const stored = localStorage.getItem('institution-storage');
+          const stored = localStorage.getItem('auth-storage');
           if (stored) {
             const parsed = JSON.parse(stored);
-            slug = parsed?.state?.branding?.slug;
+            parsed.state.token = accessToken;
+            parsed.state.refreshToken = newRefreshToken;
+            localStorage.setItem('auth-storage', JSON.stringify(parsed));
           }
         } catch {}
 
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Invalidate CSRF since auth token changed
         csrfToken = null;
-        window.location.href = slug ? `/${slug}` : '/';
+        lastAuthToken = accessToken;
+
+        isRefreshing = false;
+        onTokenRefreshed(accessToken);
+
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch {
+        isRefreshing = false;
+        refreshSubscribers = [];
+        forceLogout();
+        return Promise.reject(error);
       }
     }
+
     return Promise.reject(error);
   }
 );
