@@ -9,6 +9,7 @@ import {
 import prisma from '../config/db';
 import { sanitizeErrorMessage } from '../utils/security';
 import { getErrorMessage } from '../utils/error-helpers';
+import { boletinQueue } from '../queues';
 
 /**
  * Genera y descarga un boletín de calificaciones vacío (plantilla)
@@ -184,45 +185,40 @@ export const getBoletinEstudianteHandler = async (req: Request, res: Response) =
 export const getBoletinesClaseHandler = async (req: Request, res: Response) => {
   try {
     const claseId = Array.isArray(req.params.claseId) ? req.params.claseId[0] : req.params.claseId;
+    const cicloLectivoId = Array.isArray(req.query.cicloId)
+      ? (req.query.cicloId[0] as string)
+      : (req.query.cicloId as string | undefined);
 
-    if (!req.resolvedInstitucionId) {
+    if (!req.resolvedInstitucionId || !req.user) {
       return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    if (!cicloLectivoId) {
+      return res.status(400).json({ message: 'cicloId es requerido' });
     }
 
     // Verificar que la clase pertenece a la institución
     const clase = await prisma.clase.findFirst({
-      where: {
-        id: claseId,
-        institucionId: req.resolvedInstitucionId,
-      },
-      include: {
-        nivel: true,
-        materia: true,
-        inscripciones: {
-          include: {
-            estudiante: true,
-          },
-        },
-      },
+      where: { id: claseId, institucionId: req.resolvedInstitucionId },
     });
 
     if (!clase) {
       return res.status(404).json({ message: 'Clase no encontrada' });
     }
 
-    // Por ahora, retornar información de la clase
-    // TODO: Implementar generación masiva con ZIP
-    return res.status(200).json({
-      message: 'Funcionalidad de boletines masivos en desarrollo',
-      clase: {
-        id: clase.id,
-        nombre: clase.materia?.nombre || clase.codigo,
-        nivel: clase.nivel?.nombre,
-        totalEstudiantes: clase.inscripciones.length,
-      },
+    const job = await boletinQueue.add('generar-clase', {
+      claseId,
+      cicloLectivoId,
+      institucionId: req.resolvedInstitucionId,
+      userId: req.user.usuarioId,
+    });
+
+    return res.status(202).json({
+      jobId: job.id,
+      message: 'Generación de boletines iniciada. Recibirá una notificación al completar.',
     });
   } catch (error: unknown) {
-    req.log.error({ err: error }, 'Error generando boletines clase');
+    req.log.error({ err: error }, 'Error encolando generación de boletines');
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }
 };

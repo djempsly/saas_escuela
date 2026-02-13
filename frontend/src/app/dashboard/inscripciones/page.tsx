@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { inscripcionesApi, clasesApi, estudiantesApi, nivelesApi } from '@/lib/api';
-import { Users, Loader2, Plus, Search, UserPlus, CheckSquare, Square, Filter, AlertTriangle } from 'lucide-react';
+import { inscripcionesApi } from '@/lib/api';
+import { Users, Loader2, Plus, Search, UserPlus, CheckSquare, Square, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -16,6 +16,9 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
+import { useClases, useEstudiantes, useNiveles } from '@/lib/query-hooks';
 
 interface Estudiante {
   id: string;
@@ -36,11 +39,6 @@ interface Inscripcion {
   estudiante?: Estudiante;
 }
 
-interface Nivel {
-  id: string;
-  nombre: string;
-}
-
 interface ApiError {
   response?: {
     data?: {
@@ -50,18 +48,21 @@ interface ApiError {
   message?: string;
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 interface DuplicateInscripcion {
   estudiante: Estudiante;
   inscritoExistente: Estudiante;
 }
 
 export default function InscripcionesPage() {
-  const [clases, setClases] = useState<Clase[]>([]);
-  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
-  const [niveles, setNiveles] = useState<Nivel[]>([]);
+  const queryClient = useQueryClient();
   const [selectedClase, setSelectedClase] = useState('');
-  const [inscritos, setInscritos] = useState<Inscripcion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterNivel, setFilterNivel] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
@@ -70,37 +71,33 @@ export default function InscripcionesPage() {
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateInscripcion[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [pendingInscripcionIds, setPendingInscripcionIds] = useState<string[]>([]);
+  const [inscritosPage, setInscritosPage] = useState(1);
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const [clasesRes, estudiantesRes, nivelesRes] = await Promise.all([
-          clasesApi.getAll(),
-          estudiantesApi.getAll(),
-          nivelesApi.getAll(),
-        ]);
-        setClases(clasesRes.data.data || clasesRes.data || []);
-        setEstudiantes(estudiantesRes.data.data || estudiantesRes.data || []);
-        setNiveles(nivelesRes.data || []);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetch();
-  }, []);
+  const { data: clases = [], isLoading: isLoadingClases } = useClases() as { data: Clase[] | undefined; isLoading: boolean };
+  const { data: estudiantes = [], isLoading: isLoadingEstudiantes } = useEstudiantes({ limit: 200 }) as { data: Estudiante[] | undefined; isLoading: boolean };
+  const { isLoading: isLoadingNiveles } = useNiveles();
 
-  const loadInscritos = async (claseId: string) => {
-    setSelectedClase(claseId);
-    setSelectedStudents(new Set());
-    try {
-      const response = await inscripcionesApi.getByClase(claseId);
-      setInscritos(response.data.data || response.data || []);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  const isLoading = isLoadingClases || isLoadingEstudiantes || isLoadingNiveles;
+
+  const { data: inscritosData } = useQuery({
+    queryKey: queryKeys.inscripciones.byClase(selectedClase, inscritosPage),
+    queryFn: async () => {
+      const response = await inscripcionesApi.getByClase(selectedClase, { page: inscritosPage, limit: 50 });
+      return response.data;
+    },
+    enabled: !!selectedClase,
+  });
+
+  const inscritos: Inscripcion[] = inscritosData?.data || [];
+  const inscritosPagination: Pagination | null = inscritosData?.pagination || null;
+
+  const inscribirMutation = useMutation({
+    mutationFn: ({ claseId, estudianteIds }: { claseId: string; estudianteIds: string[] }) =>
+      inscripcionesApi.inscribirMasivo(claseId, estudianteIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inscripciones.byClase(selectedClase, 1) });
+    },
+  });
 
   const checkDuplicatesForInscripcion = (estudianteIds: string[]): DuplicateInscripcion[] => {
     const matches: DuplicateInscripcion[] = [];
@@ -121,6 +118,12 @@ export default function InscripcionesPage() {
     return matches;
   };
 
+  const handleSelectClase = (claseId: string) => {
+    setSelectedClase(claseId);
+    setInscritosPage(1);
+    setSelectedStudents(new Set());
+  };
+
   const handleInscribir = async (estudianteId: string) => {
     if (!selectedClase) {
       alert('Selecciona una clase primero');
@@ -136,8 +139,9 @@ export default function InscripcionesPage() {
     }
 
     try {
-      await inscripcionesApi.inscribirMasivo(selectedClase, [estudianteId]);
-      loadInscritos(selectedClase);
+      await inscribirMutation.mutateAsync({ claseId: selectedClase, estudianteIds: [estudianteId] });
+      setInscritosPage(1);
+      queryClient.invalidateQueries({ queryKey: queryKeys.inscripciones.byClase(selectedClase, 1) });
     } catch (error) {
       const apiError = error as ApiError;
       alert(apiError.response?.data?.message || 'Error al inscribir');
@@ -173,7 +177,7 @@ export default function InscripcionesPage() {
     for (let i = 0; i < ids.length; i += batchSize) {
       const batch = ids.slice(i, i + batchSize);
       try {
-        await inscripcionesApi.inscribirMasivo(selectedClase, batch);
+        await inscribirMutation.mutateAsync({ claseId: selectedClase, estudianteIds: batch });
         enrolled += batch.length;
         setEnrollProgress({ current: enrolled, total: ids.length });
       } catch (error) {
@@ -184,7 +188,8 @@ export default function InscripcionesPage() {
 
     setSelectedStudents(new Set());
     setIsEnrolling(false);
-    loadInscritos(selectedClase);
+    setInscritosPage(1);
+    queryClient.invalidateQueries({ queryKey: queryKeys.inscripciones.byClase(selectedClase, 1) });
   };
 
   const estudiantesNoInscritos = estudiantes.filter(
@@ -232,7 +237,7 @@ export default function InscripcionesPage() {
         <CardContent>
           <select
             value={selectedClase}
-            onChange={(e) => loadInscritos(e.target.value)}
+            onChange={(e) => handleSelectClase(e.target.value)}
             className="w-full px-3 py-2 border rounded-md"
           >
             <option value="">-- Seleccionar clase --</option>
@@ -256,7 +261,7 @@ export default function InscripcionesPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Inscritos ({inscritos.length})
+                Inscritos ({inscritosPagination ? inscritosPagination.total : inscritos.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -280,6 +285,37 @@ export default function InscripcionesPage() {
                 <p className="text-muted-foreground text-center py-4">
                   No hay estudiantes inscritos
                 </p>
+              )}
+              {inscritosPagination && inscritosPagination.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                  <span className="text-sm text-muted-foreground">
+                    Página {inscritosPagination.page} de {inscritosPagination.totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={inscritosPagination.page <= 1}
+                      onClick={() => {
+                        const p = inscritosPage - 1;
+                        setInscritosPage(p);
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={inscritosPagination.page >= inscritosPagination.totalPages}
+                      onClick={() => {
+                        const p = inscritosPage + 1;
+                        setInscritosPage(p);
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

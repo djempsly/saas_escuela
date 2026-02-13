@@ -1,6 +1,8 @@
 import prisma from '../config/db';
 import { ForbiddenError, NotFoundError } from '../errors';
 import { sanitizeText, sanitizeOptional } from '../utils/sanitize';
+import { logger } from '../config/logger';
+import { emitirMensajeNuevo } from './socket-emitter.service';
 
 // Interfaces
 interface CrearConversacionInput {
@@ -300,6 +302,30 @@ export const enviarMensaje = async (
     where: { id: conversacionId },
     data: { updatedAt: new Date() },
   });
+
+  // Emitir mensaje en tiempo real via socket
+  try {
+    const participantes = await prisma.participanteConversacion.findMany({
+      where: { conversacionId },
+      select: { usuarioId: true },
+    });
+
+    emitirMensajeNuevo(
+      participantes.map((p) => p.usuarioId),
+      remitenteId,
+      conversacionId,
+      {
+        id: mensaje.id,
+        contenido: mensaje.contenido,
+        remitenteId: mensaje.remitenteId,
+        remitente: mensaje.remitente,
+        archivos: mensaje.archivos,
+        createdAt: mensaje.createdAt.toISOString(),
+      },
+    );
+  } catch (err) {
+    logger.error({ err, conversacionId }, 'Error emitiendo mensaje socket');
+  }
 
   return mensaje;
 };

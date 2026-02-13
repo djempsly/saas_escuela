@@ -84,16 +84,18 @@ export const inscribirEstudianteEnNivel = async (
       );
     }
 
-    // 5. Verificar duplicados — skip graceful si ya esta inscrito
-    const inscripcionesExistentes = await tx.inscripcion.findMany({
+    // 5. Verificar duplicados — skip graceful si ya esta inscrito (activa)
+    const claseIds = clases.map((c) => c.id);
+    const inscripcionesActivas = await tx.inscripcion.findMany({
       where: {
         estudianteId,
-        claseId: { in: clases.map((c) => c.id) },
+        activa: true,
+        claseId: { in: claseIds },
       },
       select: { claseId: true },
     });
 
-    if (inscripcionesExistentes.length > 0) {
+    if (inscripcionesActivas.length > 0) {
       return {
         estudianteId,
         nivelId,
@@ -103,6 +105,25 @@ export const inscribirEstudianteEnNivel = async (
         tecnicasCreadas: 0,
         yaInscrito: true,
       };
+    }
+
+    // 5b. Reactivar inscripciones inactivas (desinscrito previamente)
+    const inscripcionesInactivas = await tx.inscripcion.findMany({
+      where: {
+        estudianteId,
+        activa: false,
+        claseId: { in: claseIds },
+      },
+      select: { id: true, claseId: true },
+    });
+
+    const inactivaClaseIds = new Set(inscripcionesInactivas.map((i) => i.claseId));
+
+    if (inscripcionesInactivas.length > 0) {
+      await tx.inscripcion.updateMany({
+        where: { id: { in: inscripcionesInactivas.map((i) => i.id) } },
+        data: { activa: true },
+      });
     }
 
     // 6. Configuración según formatoSabana (usa el enum, no strings)
@@ -115,7 +136,10 @@ export const inscribirEstudianteEnNivel = async (
     let tecnicasCreadas = 0;
 
     // 7. Crear inscripciones y calificaciones por clase
-    for (const clase of clases) {
+    // Filtrar clases que ya fueron reactivadas (no necesitan nueva inscripcion ni calificacion)
+    const clasesNuevas = clases.filter((c) => !inactivaClaseIds.has(c.id));
+
+    for (const clase of clasesNuevas) {
       // Inscripción
       await tx.inscripcion.create({
         data: { estudianteId, claseId: clase.id },
@@ -166,7 +190,7 @@ export const inscribirEstudianteEnNivel = async (
     return {
       estudianteId,
       nivelId,
-      clasesInscritas: clases.length,
+      clasesInscritas: clasesNuevas.length + inscripcionesInactivas.length,
       calificacionesCreadas,
       competenciasCreadas,
       tecnicasCreadas,

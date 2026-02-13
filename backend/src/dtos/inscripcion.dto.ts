@@ -26,6 +26,7 @@ export function toInscripcionDTO(inscripcion: Record<string, unknown>) {
     fecha: inscripcion.fecha,
     estudianteId: inscripcion.estudianteId,
     claseId: inscripcion.claseId,
+    activa: inscripcion.activa,
   };
   if (inscripcion.estudiante) dto.estudiante = toEstudianteDTO(inscripcion.estudiante as Record<string, unknown>);
   if (inscripcion.clase) dto.clase = cleanClase(inscripcion.clase as Record<string, unknown>);

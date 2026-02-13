@@ -2,17 +2,27 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, User, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, User, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Estudiante } from '../types';
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 interface StudentListProps {
   estudiantes: Estudiante[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   onSelectStudent: (index: number) => void;
+  pagination?: PaginationInfo | null;
+  onPageChange?: (page: number) => void;
 }
 
-export function StudentList({ estudiantes, searchTerm, setSearchTerm, onSelectStudent }: StudentListProps) {
+export function StudentList({ estudiantes, searchTerm, setSearchTerm, onSelectStudent, pagination, onPageChange }: StudentListProps) {
   const filteredEstudiantes = estudiantes.filter((est) => {
     const nombreCompleto = `${est.nombre} ${est.segundoNombre || ''} ${est.apellido} ${est.segundoApellido || ''}`.toLowerCase();
     return nombreCompleto.includes(searchTerm.toLowerCase());
@@ -65,8 +75,34 @@ export function StudentList({ estudiantes, searchTerm, setSearchTerm, onSelectSt
         )}
 
         <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-          Mostrando {filteredEstudiantes.length} de {estudiantes.length} estudiantes
+          Mostrando {filteredEstudiantes.length} de {pagination ? pagination.total : estudiantes.length} estudiantes
         </div>
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <span className="text-sm text-muted-foreground">
+              Página {pagination.page} de {pagination.totalPages} (Total: {pagination.total})
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page <= 1}
+                onClick={() => onPageChange?.(pagination.page - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => onPageChange?.(pagination.page + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

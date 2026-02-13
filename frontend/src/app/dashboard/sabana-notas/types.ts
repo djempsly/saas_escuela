@@ -82,6 +82,12 @@ export interface SabanaData {
     fechaGeneracion: string;
     pais: string;
   };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface Nivel {

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuthStore, User } from '@/store/auth.store';
-import { useInstitutionStore, InstitutionBranding } from '@/store/institution.store';
+import { InstitutionBranding } from '@/store/institution.store';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,15 +26,15 @@ interface HeaderProps {
 export function Header({ branding, user, onMenuClick }: HeaderProps) {
   const router = useRouter();
   const { logout } = useAuthStore();
-  const { clearBranding } = useInstitutionStore();
 
   const handleLogout = () => {
     const slug = branding?.slug;
 
     logout();
-    clearBranding();
+    // No limpiar branding: se necesita para redirigir al landing de la institución
+    // y para que la página de login muestre el branding correcto.
+    // Se reemplaza automáticamente al iniciar sesión en otra institución.
 
-    // Siempre redirigir al landing de la institución
     if (slug) {
       router.push(`/${slug}`);
     } else {

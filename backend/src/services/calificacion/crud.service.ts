@@ -164,28 +164,43 @@ export const guardarCalificacionTecnica = async (
   return resultado;
 };
 
-// Obtener calificaciones de una clase (incluye TODOS los estudiantes inscritos)
-export const getCalificacionesByClase = async (claseId: string, institucionId: string) => {
+// Obtener calificaciones de una clase (incluye estudiantes inscritos, paginados)
+export const getCalificacionesByClase = async (
+  claseId: string,
+  institucionId: string,
+  page: number = 1,
+  limit: number = 50,
+) => {
   const clase = await validarAccesoClase(claseId, institucionId);
+  const safeLimit = Math.min(limit, 200);
+  const skip = (page - 1) * safeLimit;
 
-  // Obtener TODOS los estudiantes inscritos en la clase
-  const inscripciones = await prisma.inscripcion.findMany({
-    where: { claseId },
-    include: {
-      estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
-    },
-    orderBy: { estudiante: { apellido: 'asc' } },
-  });
+  const inscWhere = { claseId, activa: true };
 
-  // Obtener calificaciones existentes
+  // Paginar inscripciones + contar total
+  const [inscripciones, totalEstudiantes] = await Promise.all([
+    prisma.inscripcion.findMany({
+      where: inscWhere,
+      include: {
+        estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
+      },
+      orderBy: { estudiante: { apellido: 'asc' } },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.inscripcion.count({ where: inscWhere }),
+  ]);
+
+  // Obtener calificaciones solo para los estudiantes de esta página
+  const estudianteIds = inscripciones.map((i) => i.estudianteId);
   const calificacionesExistentes = await prisma.calificacion.findMany({
-    where: { claseId },
+    where: { claseId, estudianteId: { in: estudianteIds } },
   });
 
   // Crear mapa de calificaciones por estudianteId
   const calificacionesMap = new Map(calificacionesExistentes.map((c) => [c.estudianteId, c]));
 
-  // Combinar: todos los estudiantes inscritos con sus calificaciones (o vacías)
+  // Combinar: estudiantes de la página con sus calificaciones (o vacías)
   const calificaciones = inscripciones.map((insc) => {
     const cal = calificacionesMap.get(insc.estudianteId);
     return {
@@ -215,7 +230,7 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
     clase.materia.tipo === TipoMateria.TECNICA
   ) {
     calificacionesTecnicas = await prisma.calificacionTecnica.findMany({
-      where: { claseId },
+      where: { claseId, estudianteId: { in: estudianteIds } },
       include: {
         estudiante: { select: { id: true, nombre: true, apellido: true } },
       },
@@ -231,8 +246,14 @@ export const getCalificacionesByClase = async (claseId: string, institucionId: s
       tipoMateria: clase.materia.tipo,
     },
     calificaciones,
-    totalEstudiantes: inscripciones.length,
+    totalEstudiantes,
     calificacionesTecnicas: calificacionesTecnicas.length > 0 ? calificacionesTecnicas : undefined,
+    pagination: {
+      page,
+      limit: safeLimit,
+      total: totalEstudiantes,
+      totalPages: Math.ceil(totalEstudiantes / safeLimit),
+    },
   };
 };
 

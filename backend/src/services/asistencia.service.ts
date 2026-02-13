@@ -58,6 +58,7 @@ export const tomarAsistencia = async (input: TomarAsistenciaInput, institucionId
   const inscripciones = await prisma.inscripcion.findMany({
     where: {
       claseId: input.claseId,
+      activa: true,
       estudianteId: { in: estudianteIds },
     },
   });
@@ -132,9 +133,9 @@ export const getAsistenciaByClaseYFecha = async (
   const fechaNormalizada = new Date(fecha);
   fechaNormalizada.setHours(0, 0, 0, 0);
 
-  // Obtener TODOS los estudiantes inscritos
+  // Obtener TODOS los estudiantes inscritos activos
   const inscripciones = await prisma.inscripcion.findMany({
-    where: { claseId },
+    where: { claseId, activa: true },
     include: {
       estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
     },
@@ -199,9 +200,9 @@ export const getReporteAsistenciaByClase = async (
     throw new NotFoundError('Clase no encontrada');
   }
 
-  // Obtener estudiantes inscritos
+  // Obtener estudiantes inscritos activos
   const inscripciones = await prisma.inscripcion.findMany({
-    where: { claseId },
+    where: { claseId, activa: true },
     include: {
       estudiante: { select: { id: true, nombre: true, apellido: true } },
     },
@@ -270,10 +271,11 @@ export const getReporteAsistenciaByEstudiante = async (
     throw new NotFoundError('Estudiante no encontrado');
   }
 
-  // Obtener inscripciones del estudiante
+  // Obtener inscripciones activas del estudiante
   const inscripciones = await prisma.inscripcion.findMany({
     where: {
       estudianteId,
+      activa: true,
       clase: { institucionId },
     },
     include: {

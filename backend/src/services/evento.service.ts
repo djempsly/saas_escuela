@@ -163,7 +163,7 @@ export const getEventos = async (
   // Para estudiantes, filtrar solo eventos de sus clases o eventos generales
   if (role === 'ESTUDIANTE') {
     const inscripciones = await prisma.inscripcion.findMany({
-      where: { estudianteId: usuarioId },
+      where: { estudianteId: usuarioId, activa: true },
       select: { claseId: true },
     });
 

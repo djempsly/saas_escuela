@@ -194,9 +194,9 @@ export const getEntregasTarea = async (
     throw new ForbiddenError('Solo el docente puede ver las entregas');
   }
 
-  // Obtener todos los estudiantes inscritos
+  // Obtener todos los estudiantes inscritos activos
   const inscripciones = await prisma.inscripcion.findMany({
-    where: { claseId: tarea.claseId },
+    where: { claseId: tarea.claseId, activa: true },
     include: {
       estudiante: { select: { id: true, nombre: true, apellido: true, fotoUrl: true } },
     },

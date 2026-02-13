@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, Fragment } from 'react';
-import { sabanaApi, clasesApi, calificacionesApi, ciclosApi } from '@/lib/api';
+import { useState, Fragment, useEffect } from 'react';
+import { sabanaApi, calificacionesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,9 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, BookOpen, Edit3, Eye, Check, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
+import { useClases, useCiclosLectivos } from '@/lib/query-hooks';
 
 // CSS para quitar spinners de inputs numéricos
 const noSpinnerStyles = `
@@ -135,23 +138,17 @@ const ROLES_LECTURA = ['ADMIN', 'DIRECTOR', 'COORDINADOR', 'COORDINADOR_ACADEMIC
 
 export default function CalificacionesPage() {
   const { user } = useAuthStore();
-  const [clases, setClases] = useState<Clase[]>([]);
+  const queryClient = useQueryClient();
+
   const [selectedClaseId, setSelectedClaseId] = useState('');
   const [selectedCompetencia, setSelectedCompetencia] = useState('');
   const [students, setStudents] = useState<StudentRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingGrades, setIsLoadingGrades] = useState(false);
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Vista estudiante
-  const [studentCalificaciones, setStudentCalificaciones] = useState<StudentCalificacion[]>([]);
-  const [studentCompetencias, setStudentCompetencias] = useState<StudentCompetencia[]>([]);
-  const [ciclosLectivos, setCiclosLectivos] = useState<CicloLectivo[]>([]);
+  // Vista estudiante UI state
   const [selectedCicloId, setSelectedCicloId] = useState('');
-  const [boletinData, setBoletinData] = useState<BoletinData | null>(null);
-  const [isLoadingBoletin, setIsLoadingBoletin] = useState(false);
   const [boletinOpen, setBoletinOpen] = useState(false);
 
   const userRole = user?.role || '';
@@ -159,69 +156,49 @@ export default function CalificacionesPage() {
   const canEdit = userRole === 'DOCENTE';
   const isEstudiante = userRole === 'ESTUDIANTE';
 
+  // --- Student view queries ---
+  const { data: misCalificacionesData, isLoading: isLoadingMisCal } = useQuery({
+    queryKey: queryKeys.calificaciones.mis(),
+    queryFn: async () => {
+      const res = await calificacionesApi.getMisCalificaciones();
+      return res.data?.data || res.data || {};
+    },
+    enabled: isEstudiante,
+  });
+
+  const studentCalificaciones: StudentCalificacion[] = misCalificacionesData?.calificaciones || misCalificacionesData || [];
+  const studentCompetencias: StudentCompetencia[] = misCalificacionesData?.calificacionesCompetencia || [];
+
+  const { data: ciclosLectivos = [] } = useCiclosLectivos() as { data: CicloLectivo[] | undefined };
+
+  // Auto-select active ciclo
+  useEffect(() => {
+    if (isEstudiante && ciclosLectivos.length > 0 && !selectedCicloId) {
+      const activo = ciclosLectivos.find((c) => c.activo);
+      if (activo) setSelectedCicloId(activo.id);
+    }
+  }, [isEstudiante, ciclosLectivos, selectedCicloId]);
+
+  const { data: boletinData = null, isLoading: isLoadingBoletin, refetch: refetchBoletin } = useQuery({
+    queryKey: queryKeys.calificaciones.miBoletin(selectedCicloId),
+    queryFn: async () => {
+      const res = await calificacionesApi.getMiBoletin(selectedCicloId);
+      return (res.data?.data || res.data || null) as BoletinData | null;
+    },
+    enabled: isEstudiante && boletinOpen && !!selectedCicloId,
+  });
+
+  // --- Teacher/Admin view queries ---
+  const { data: clases = [], isLoading: isLoadingClases } = useClases() as { data: Clase[] | undefined; isLoading: boolean };
+
   const selectedClase = clases.find(c => c.id === selectedClaseId);
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    const load = async () => {
-      try {
-        if (isEstudiante) {
-          const res = await calificacionesApi.getMisCalificaciones();
-          const data = res.data?.data || res.data || {};
-          setStudentCalificaciones(data.calificaciones || data || []);
-          setStudentCompetencias(data.calificacionesCompetencia || []);
-          // Cargar ciclos lectivos para el selector de boletín
-          try {
-            const ciclosRes = await ciclosApi.getAll();
-            const ciclosData = ciclosRes.data?.data || ciclosRes.data || [];
-            setCiclosLectivos(Array.isArray(ciclosData) ? ciclosData : []);
-            // Seleccionar el ciclo activo por defecto
-            const activo = ciclosData.find((c: CicloLectivo) => c.activo);
-            if (activo) setSelectedCicloId(activo.id);
-          } catch {
-            // silently fail
-          }
-        } else if (canRead) {
-          const res = await clasesApi.getAll();
-          const data = res.data?.data || res.data || [];
-          setClases(Array.isArray(data) ? data : []);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [isEstudiante, canRead]);
-
-  // Cargar boletín
-  const loadBoletin = useCallback(async () => {
-    if (!selectedCicloId || !isEstudiante) return;
-    setIsLoadingBoletin(true);
-    try {
-      const res = await calificacionesApi.getMiBoletin(selectedCicloId);
-      setBoletinData(res.data?.data || res.data || null);
-    } catch (err) {
-      toast.error('Error al cargar boletín');
-    } finally {
-      setIsLoadingBoletin(false);
-    }
-  }, [selectedCicloId, isEstudiante]);
-
-  // Cargar calificaciones por competencia
-  const loadGrades = useCallback(async () => {
-    if (!selectedClaseId || !selectedCompetencia) {
-      setStudents([]);
-      return;
-    }
-
-    const clase = clases.find(c => c.id === selectedClaseId);
-    if (!clase) return;
-
-    setIsLoadingGrades(true);
-    try {
-      const res = await sabanaApi.getSabana(clase.nivelId, clase.cicloLectivoId);
+  const { data: gradesData, isLoading: isLoadingGrades } = useQuery({
+    queryKey: queryKeys.calificaciones.grades(selectedClaseId, selectedCompetencia),
+    queryFn: async () => {
+      const clase = clases.find(c => c.id === selectedClaseId);
+      if (!clase) return [];
+      const res = await sabanaApi.getSabana(clase.nivelId, clase.cicloLectivoId, { page: 1, limit: 200 });
       const sabana = res.data?.data || res.data;
       const materiaId = clase.materiaId;
 
@@ -242,18 +219,38 @@ export default function CalificacionesPage() {
         }
       }
       rows.sort((a, b) => a.apellido.localeCompare(b.apellido));
-      setStudents(rows);
-    } catch (err) {
-      console.error('Error loading grades:', err);
-      toast.error('Error al cargar calificaciones');
-    } finally {
-      setIsLoadingGrades(false);
-    }
-  }, [selectedClaseId, selectedCompetencia, clases]);
+      return rows;
+    },
+    enabled: !isEstudiante && canRead && !!selectedClaseId && !!selectedCompetencia,
+  });
 
+  // Sync query data to local state for optimistic edits
   useEffect(() => {
-    loadGrades();
-  }, [loadGrades]);
+    if (gradesData) {
+      setStudents(gradesData);
+    }
+  }, [gradesData]);
+
+  const isLoading = isEstudiante ? isLoadingMisCal : isLoadingClases;
+
+  // Mutation for saving grades
+  const saveGradeMutation = useMutation({
+    mutationFn: ({ studentId, periodo, value }: { studentId: string; periodo: string; value: number | null }) =>
+      sabanaApi.updateCalificacion({
+        claseId: selectedClaseId,
+        estudianteId: studentId,
+        periodo,
+        valor: value,
+        competenciaId: selectedCompetencia,
+      }),
+    onSuccess: () => {
+      toast.success('Calificación guardada');
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosErr.response?.data?.message || (err instanceof Error ? err.message : 'Error al guardar'));
+    },
+  });
 
   // Edición
   const startEditing = (studentId: string, periodo: string, currentValue: number | null) => {
@@ -276,13 +273,7 @@ export default function CalificacionesPage() {
 
     setIsSaving(true);
     try {
-      await sabanaApi.updateCalificacion({
-        claseId: selectedClaseId,
-        estudianteId: studentId,
-        periodo,
-        valor: value,
-        competenciaId: selectedCompetencia,
-      });
+      await saveGradeMutation.mutateAsync({ studentId, periodo, value });
 
       setStudents(prev =>
         prev.map(s =>
@@ -294,10 +285,6 @@ export default function CalificacionesPage() {
 
       setEditingCell(null);
       setEditValue('');
-      toast.success('Calificación guardada');
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      toast.error(axiosErr.response?.data?.message || (err instanceof Error ? err.message : 'Error al guardar'));
     } finally {
       setIsSaving(false);
     }
@@ -422,13 +409,7 @@ export default function CalificacionesPage() {
           </div>
           <Dialog open={boletinOpen} onOpenChange={setBoletinOpen}>
             <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => {
-                  if (selectedCicloId && !boletinData) loadBoletin();
-                }}
-              >
+              <Button variant="outline" className="gap-2">
                 <FileText className="w-4 h-4" />
                 Ver mi Boletín
               </Button>
@@ -444,7 +425,6 @@ export default function CalificacionesPage() {
                     value={selectedCicloId}
                     onChange={(e) => {
                       setSelectedCicloId(e.target.value);
-                      setBoletinData(null);
                     }}
                     className="px-3 py-1.5 border rounded-md text-sm"
                   >
@@ -457,7 +437,7 @@ export default function CalificacionesPage() {
                   </select>
                   <Button
                     size="sm"
-                    onClick={loadBoletin}
+                    onClick={() => refetchBoletin()}
                     disabled={!selectedCicloId || isLoadingBoletin}
                   >
                     {isLoadingBoletin ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cargar'}

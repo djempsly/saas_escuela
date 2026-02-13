@@ -31,6 +31,11 @@ import {
   Clock,
   Table2,
   Upload,
+  ScrollText,
+  Activity,
+  ArrowUpCircle,
+  UserMinus,
+  FileSpreadsheet,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -49,6 +54,8 @@ const menuItems = {
     { href: '/dashboard/admin/directores', label: 'Directores', icon: UserCog },
     { href: '/dashboard/admin/instituciones', label: 'Instituciones', icon: Building2 },
     { href: '/dashboard/admin/actividades', label: 'Actividades', icon: BookOpen },
+    { href: '/dashboard/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+    { href: '/dashboard/admin/jobs', label: 'Monitor de Jobs', icon: Activity },
     { href: '/dashboard/admin/configuracion', label: 'Configuración', icon: Settings },
   ],
 
@@ -71,8 +78,11 @@ const menuItems = {
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
     { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
     { href: '/dashboard/estadisticas', label: 'Estadísticas', icon: PieChart },
+    { href: '/dashboard/promocion', label: 'Promoción', icon: ArrowUpCircle },
+    { href: '/dashboard/desinscripcion', label: 'Desinscripción', icon: UserMinus },
+    { href: '/dashboard/sabana-notas/exportar', label: 'Exportar Sábana', icon: FileSpreadsheet },
     { href: '/dashboard/actividades', label: 'Actividades', icon: FileText, conditional: 'autogestionActividades' },
-    { href: '/dashboard/historial', label: 'Historial', icon: Clock },
+    { href: '/dashboard/historial', label: 'Audit Logs', icon: ScrollText },
     { href: '/dashboard/reportes', label: 'Reportes', icon: BarChart3 },
   ],
 

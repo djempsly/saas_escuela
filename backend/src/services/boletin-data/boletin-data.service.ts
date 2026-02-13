@@ -31,6 +31,7 @@ export async function getBoletinData(
     include: {
       institucion: true,
       inscripciones: {
+        where: { activa: true },
         include: {
           clase: {
             include: {
@@ -282,10 +283,11 @@ export async function getBoletinesClase(
   cicloId: string,
   institucionId: string,
 ): Promise<BoletinDataResponse[]> {
-  // Obtener inscripciones de la clase
+  // Obtener inscripciones activas de la clase
   const inscripciones = await prisma.inscripcion.findMany({
     where: {
       claseId,
+      activa: true,
       clase: {
         institucionId,
         cicloLectivoId: cicloId,

@@ -47,7 +47,25 @@ export const inscribirEstudiante = async (input: InscripcionInput, institucionId
   });
 
   if (existente) {
-    throw new ConflictError('El estudiante ya está inscrito en esta clase');
+    if (existente.activa) {
+      throw new ConflictError('El estudiante ya está inscrito en esta clase');
+    }
+    // Reactivar inscripción inactiva (desinscrito previamente)
+    const reactivada = await prisma.inscripcion.update({
+      where: { id: existente.id },
+      data: { activa: true },
+      include: {
+        estudiante: { select: { id: true, nombre: true, apellido: true, email: true } },
+        clase: {
+          include: {
+            materia: true,
+            nivel: true,
+            docente: { select: { id: true, nombre: true, apellido: true } },
+          },
+        },
+      },
+    });
+    return reactivada;
   }
 
   // Crear la inscripción
@@ -123,7 +141,24 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   });
 
   if (existente) {
-    throw new ConflictError('Ya estás inscrito en esta clase');
+    if (existente.activa) {
+      throw new ConflictError('Ya estás inscrito en esta clase');
+    }
+    // Reactivar inscripción inactiva
+    const reactivada = await prisma.inscripcion.update({
+      where: { id: existente.id },
+      data: { activa: true },
+      include: {
+        clase: {
+          include: {
+            materia: true,
+            nivel: true,
+            docente: { select: { id: true, nombre: true, apellido: true } },
+          },
+        },
+      },
+    });
+    return reactivada;
   }
 
   // Crear inscripción
@@ -155,19 +190,37 @@ export const inscribirPorCodigo = async (codigoClase: string, estudianteId: stri
   return inscripcion;
 };
 
-export const findInscripcionesByClase = async (claseId: string, institucionId: string) => {
-  return prisma.inscripcion.findMany({
-    where: {
-      claseId,
-      clase: { institucionId },
-    },
-    include: {
-      estudiante: {
-        select: { id: true, nombre: true, apellido: true, email: true, fotoUrl: true },
+export const findInscripcionesByClase = async (
+  claseId: string,
+  institucionId: string,
+  page: number = 1,
+  limit: number = 50,
+) => {
+  const safeLimit = Math.min(limit, 200);
+  const skip = (page - 1) * safeLimit;
+
+  const where = {
+    claseId,
+    activa: true,
+    clase: { institucionId },
+  };
+
+  const [inscripciones, total] = await Promise.all([
+    prisma.inscripcion.findMany({
+      where,
+      include: {
+        estudiante: {
+          select: { id: true, nombre: true, apellido: true, email: true, fotoUrl: true },
+        },
       },
-    },
-    orderBy: { estudiante: { apellido: 'asc' } },
-  });
+      orderBy: { estudiante: { apellido: 'asc' } },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.inscripcion.count({ where }),
+  ]);
+
+  return { data: inscripciones, total };
 };
 
 export const findInscripcionesByEstudiante = async (
@@ -177,6 +230,7 @@ export const findInscripcionesByEstudiante = async (
   return prisma.inscripcion.findMany({
     where: {
       estudianteId,
+      activa: true,
       clase: { institucionId },
     },
     include: {
@@ -281,7 +335,16 @@ export const inscribirMasivo = async (
       });
 
       if (existe) {
-        resultados.fallidos.push({ estudianteId, error: 'Ya inscrito' });
+        if (existe.activa) {
+          resultados.fallidos.push({ estudianteId, error: 'Ya inscrito' });
+          continue;
+        }
+        // Reactivar inscripción inactiva
+        await prisma.inscripcion.update({
+          where: { id: existe.id },
+          data: { activa: true },
+        });
+        resultados.exitosos.push(estudianteId);
         continue;
       }
 

@@ -100,6 +100,41 @@ export async function uploadToS3(
 }
 
 /**
+ * Sube un Buffer a S3 y retorna la URL publica/proxy.
+ */
+export async function uploadBufferToS3(
+  buffer: Buffer,
+  filename: string,
+  folder: S3Folder,
+  institucionId?: string,
+): Promise<string> {
+  const { region, bucket, cloudfrontUrl } = getConfig();
+  const keyParts = [BASE_PREFIX];
+  if (institucionId) keyParts.push(institucionId);
+  keyParts.push(folder, filename);
+  const key = keyParts.join('/');
+
+  await getS3Client().send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentDisposition: `attachment; filename="${filename}"`,
+    }),
+  );
+
+  if (PRIVATE_FOLDERS.has(folder)) {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000';
+    return `${backendUrl}/api/v1/files/${key}`;
+  }
+
+  if (cloudfrontUrl) {
+    return `${cloudfrontUrl.replace(/\/$/, '')}/${key}`;
+  }
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/**
  * Elimina un archivo de S3 dado su URL (publica, CloudFront, o proxy).
  */
 export async function deleteFromS3(fileUrl: string): Promise<void> {

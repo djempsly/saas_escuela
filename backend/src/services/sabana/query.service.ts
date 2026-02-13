@@ -117,6 +117,12 @@ export interface SabanaData {
     fechaGeneracion: string;
     pais: string;
   };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 /**
@@ -203,6 +209,8 @@ export const getSabanaByNivel = async (
   cicloLectivoId: string,
   institucionId: string,
   userId?: string,
+  page: number = 1,
+  limit: number = 50,
 ): Promise<SabanaData> => {
   // 1. Obtener el nivel y ciclo
   const nivel = await prisma.nivel.findUnique({
@@ -224,7 +232,19 @@ export const getSabanaByNivel = async (
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached) as SabanaData;
+      const cachedData = JSON.parse(cached) as SabanaData;
+      // Paginar estudiantes post-cache
+      const safeLim = Math.min(limit, 200);
+      const totalEst = cachedData.estudiantes.length;
+      const s = (page - 1) * safeLim;
+      cachedData.estudiantes = cachedData.estudiantes.slice(s, s + safeLim);
+      cachedData.pagination = {
+        page,
+        limit: safeLim,
+        total: totalEst,
+        totalPages: Math.ceil(totalEst / safeLim),
+      };
+      return cachedData;
     }
   } catch (err) {
     logger.error({ err }, 'Error leyendo caché de sábana');
@@ -248,6 +268,7 @@ export const getSabanaByNivel = async (
       materia: { select: { id: true, nombre: true, tipo: true } },
       docente: { select: { id: true, nombre: true, apellido: true } },
       inscripciones: {
+        where: { activa: true },
         include: {
           estudiante: {
             select: {
@@ -492,12 +513,24 @@ export const getSabanaByNivel = async (
     },
   };
 
-  // Cache: guardar en Redis (1 hora)
+  // Cache: guardar en Redis (1 hora) — data completa sin paginación
   try {
     await redis.setex(cacheKey, SABANA_CACHE_TTL, JSON.stringify(result));
   } catch (err) {
     logger.error({ err }, 'Error guardando caché de sábana');
   }
+
+  // Paginar estudiantes post-cache
+  const safeLimit = Math.min(limit, 200);
+  const totalEstudiantesAll = result.estudiantes.length;
+  const start = (page - 1) * safeLimit;
+  result.estudiantes = result.estudiantes.slice(start, start + safeLimit);
+  result.pagination = {
+    page,
+    limit: safeLimit,
+    total: totalEstudiantesAll,
+    totalPages: Math.ceil(totalEstudiantesAll / safeLimit),
+  };
 
   return result;
 };

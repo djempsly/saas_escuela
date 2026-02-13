@@ -9,6 +9,7 @@ import {
   getSabanaHandler,
   updateCalificacionHandler,
   publicarCalificacionesHandler,
+  exportarExcelHandler,
 } from '../controllers/sabana.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -40,6 +41,13 @@ router.patch(
   '/publicar',
   roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
   publicarCalificacionesHandler,
+);
+
+// GET /sabana/:nivelId/:cicloLectivoId/exportar-excel - Exportar a Excel (background job)
+router.get(
+  '/:nivelId/:cicloLectivoId/exportar-excel',
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  exportarExcelHandler,
 );
 
 // GET /sabana/:nivelId/:cicloLectivoId - Obtener sábana de notas

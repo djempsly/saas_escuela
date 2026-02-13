@@ -147,61 +147,85 @@ export const findUsersByInstitucion = async (
   role?: string,
   _includePasswordTemporal: boolean = false,
   nivelId?: string,
+  page: number = 1,
+  limit: number = 50,
 ) => {
-  // SEGURIDAD: passwordTemporal ya no existe en el schema
-  return prisma.user.findMany({
-    where: {
-      institucionId,
-      ...(role && { role: role as Role }),
-      // Filtrar por nivel si se proporciona y es rol ESTUDIANTE
-      ...(nivelId &&
-        (role === Role.ESTUDIANTE || !role) && {
-          inscripciones: {
-            some: {
-              clase: {
-                nivelId: nivelId,
-              },
+  const safeLimit = Math.min(limit, 200);
+  const skip = (page - 1) * safeLimit;
+
+  const where = {
+    institucionId,
+    ...(role && { role: role as Role }),
+    // Filtrar por nivel si se proporciona y es rol ESTUDIANTE
+    ...(nivelId &&
+      (role === Role.ESTUDIANTE || !role) && {
+        inscripciones: {
+          some: {
+            clase: {
+              nivelId: nivelId,
             },
           },
-        }),
-    },
-    select: {
-      id: true,
-      nombre: true,
-      segundoNombre: true,
-      apellido: true,
-      segundoApellido: true,
-      email: true,
-      username: true,
-      role: true,
-      activo: true,
-      fotoUrl: true,
-      debeCambiarPassword: true,
-      createdAt: true,
-      // Incluir nivel a través de inscripciones para estudiantes
-      ...(role === Role.ESTUDIANTE && {
-        inscripciones: {
-          take: 1,
-          select: {
-            clase: {
-              select: {
-                nivel: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                  },
+        },
+      }),
+  };
+
+  const select = {
+    id: true,
+    nombre: true,
+    segundoNombre: true,
+    apellido: true,
+    segundoApellido: true,
+    email: true,
+    username: true,
+    role: true,
+    activo: true,
+    fotoUrl: true,
+    debeCambiarPassword: true,
+    createdAt: true,
+    // Incluir nivel a través de inscripciones para estudiantes
+    ...(role === Role.ESTUDIANTE && {
+      inscripciones: {
+        take: 1,
+        select: {
+          clase: {
+            select: {
+              nivel: {
+                select: {
+                  id: true,
+                  nombre: true,
                 },
               },
             },
           },
         },
-      }),
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      },
+    }),
+  } as const;
+
+  // SEGURIDAD: passwordTemporal ya no existe en el schema
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return { data: users, total };
 };
 
-export const findStudentsByDocente = async (docenteId: string, institucionId: string) => {
+export const findStudentsByDocente = async (
+  docenteId: string,
+  institucionId: string,
+  page: number = 1,
+  limit: number = 50,
+) => {
+  const safeLimit = Math.min(limit, 200);
+  const skip = (page - 1) * safeLimit;
+
   // Find all classes taught by this teacher in the institution
   const clases = await prisma.clase.findMany({
     where: {
@@ -214,36 +238,44 @@ export const findStudentsByDocente = async (docenteId: string, institucionId: st
   const claseIds = clases.map((c) => c.id);
 
   if (claseIds.length === 0) {
-    return [];
+    return { data: [], total: 0 };
   }
 
-  // Find all students enrolled in these classes
-  // We use findMany on User directly to get unique students easily using where condition
-  return prisma.user.findMany({
-    where: {
-      institucionId,
-      role: Role.ESTUDIANTE,
-      inscripciones: {
-        some: {
-          claseId: { in: claseIds },
-        },
+  const where = {
+    institucionId,
+    role: Role.ESTUDIANTE as Role,
+    inscripciones: {
+      some: {
+        claseId: { in: claseIds },
       },
     },
-    select: {
-      id: true,
-      nombre: true,
-      segundoNombre: true,
-      apellido: true,
-      segundoApellido: true,
-      email: true,
-      username: true,
-      role: true,
-      activo: true,
-      fotoUrl: true,
-      createdAt: true,
-    },
-    orderBy: { apellido: 'asc' },
-  });
+  };
+
+  // Find all students enrolled in these classes
+  const [students, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        nombre: true,
+        segundoNombre: true,
+        apellido: true,
+        segundoApellido: true,
+        email: true,
+        username: true,
+        role: true,
+        activo: true,
+        fotoUrl: true,
+        createdAt: true,
+      },
+      orderBy: { apellido: 'asc' },
+      skip,
+      take: safeLimit,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return { data: students, total };
 };
 
 export const findStaffByInstitucion = async (

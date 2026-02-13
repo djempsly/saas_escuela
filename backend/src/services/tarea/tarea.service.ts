@@ -2,6 +2,9 @@ import prisma from '../../config/db';
 import { EstadoTarea, TipoRecurso } from '@prisma/client';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../errors';
 import { sanitizeText, sanitizeOptional } from '../../utils/sanitize';
+import { logger } from '../../config/logger';
+import { crearNotificacionesMasivas } from '../notificacion.service';
+import { emitirNotificacionMasiva } from '../socket-emitter.service';
 
 // Interfaces
 interface CrearTareaInput {
@@ -103,7 +106,7 @@ export const actualizarTarea = async (
     }),
   };
 
-  return prisma.tarea.update({
+  const tareaActualizada = await prisma.tarea.update({
     where: { id: tareaId },
     data: sanitizedInput,
     include: {
@@ -112,6 +115,37 @@ export const actualizarTarea = async (
       recursos: true,
     },
   });
+
+  // Notificar estudiantes cuando la tarea se publica
+  if (input.estado === EstadoTarea.PUBLICADA && tarea.estado !== EstadoTarea.PUBLICADA) {
+    try {
+      const inscripciones = await prisma.inscripcion.findMany({
+        where: { claseId: tarea.claseId, activa: true },
+        select: { estudianteId: true },
+      });
+
+      const userIds = inscripciones.map((i) => i.estudianteId);
+      const materiaNombre = tareaActualizada.clase.materia?.nombre || 'tu clase';
+
+      await crearNotificacionesMasivas(
+        userIds,
+        'Nueva Tarea',
+        `Se ha publicado la tarea "${tareaActualizada.titulo}" en ${materiaNombre}.`,
+      );
+
+      emitirNotificacionMasiva(userIds, {
+        tipo: 'tarea_publicada',
+        titulo: 'Nueva Tarea',
+        mensaje: `Se ha publicado la tarea "${tareaActualizada.titulo}" en ${materiaNombre}.`,
+        data: { tareaId, claseId: tarea.claseId },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      logger.error({ err, tareaId }, 'Error notificando tarea publicada');
+    }
+  }
+
+  return tareaActualizada;
 };
 
 // Eliminar tarea
@@ -169,9 +203,9 @@ export const getTareas = async (
       orderBy: { createdAt: 'desc' },
     });
   } else if (role === 'ESTUDIANTE') {
-    // Estudiante ve tareas de clases donde está inscrito
+    // Estudiante ve tareas de clases donde está inscrito activamente
     const inscripciones = await prisma.inscripcion.findMany({
-      where: { estudianteId: usuarioId },
+      where: { estudianteId: usuarioId, activa: true },
       select: { claseId: true },
     });
 

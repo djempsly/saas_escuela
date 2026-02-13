@@ -24,6 +24,7 @@ import auditRoutes from './audit.routes';
 import uploadRoutes from './upload.routes';
 import fileRoutes from './file.routes';
 import notificacionRoutes from './notificacion.routes';
+import jobRoutes from './job.routes';
 
 const router = Router();
 
@@ -83,5 +84,8 @@ router.use('/files', fileRoutes);
 
 // Rutas de notificaciones
 router.use('/notificaciones', notificacionRoutes);
+
+// Rutas de jobs (background tasks)
+router.use('/jobs', jobRoutes);
 
 export default router;

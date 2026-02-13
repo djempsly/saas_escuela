@@ -7,6 +7,7 @@ import { logger } from '../../config/logger';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../errors';
 import { sanitizeOptional } from '../../utils/sanitize';
 import { crearNotificacionesMasivas } from '../notificacion.service';
+import { emitirNotificacionMasiva } from '../socket-emitter.service';
 import { invalidarCacheSabana } from './query.service';
 import { verificarCicloNoCerrado } from '../cycle.service';
 
@@ -258,7 +259,7 @@ export const publicarCalificaciones = async (
   if (totalPublicadas > 0) {
     try {
       const inscripciones = await prisma.inscripcion.findMany({
-        where: { claseId },
+        where: { claseId, activa: true },
         select: { estudianteId: true },
       });
 
@@ -268,11 +269,21 @@ export const publicarCalificaciones = async (
       });
 
       const materiaNombre = clase.materia?.nombre || 'tu clase';
+      const userIds = estudianteUserIds.map((u) => u.id);
       await crearNotificacionesMasivas(
-        estudianteUserIds.map((u) => u.id),
+        userIds,
         'Calificaciones Publicadas',
         `Se han publicado nuevas calificaciones en ${materiaNombre}. Revisa tu boletín.`,
       );
+
+      // Emitir notificación en tiempo real via socket
+      emitirNotificacionMasiva(userIds, {
+        tipo: 'calificaciones_publicadas',
+        titulo: 'Calificaciones Publicadas',
+        mensaje: `Se han publicado nuevas calificaciones en ${materiaNombre}. Revisa tu boletín.`,
+        data: { claseId, cicloLectivoId },
+        timestamp: new Date().toISOString(),
+      });
     } catch (err) {
       // No falla la publicación si las notificaciones fallan
       logger.error({ err }, 'Error creando notificaciones');

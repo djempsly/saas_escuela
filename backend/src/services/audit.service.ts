@@ -108,14 +108,15 @@ export const getAuditLogs = async (params: GetAuditLogsParams) => {
     }
   }
 
-  const skip = (page - 1) * limit;
+  const safeLimit = Math.min(limit, 200);
+  const skip = (page - 1) * safeLimit;
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       skip,
-      take: limit,
+      take: safeLimit,
       include: {
         usuario: {
           select: { id: true, nombre: true, apellido: true, role: true },
@@ -129,9 +130,9 @@ export const getAuditLogs = async (params: GetAuditLogsParams) => {
     data: logs,
     pagination: {
       page,
-      limit,
+      limit: safeLimit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / safeLimit),
     },
   };
 };

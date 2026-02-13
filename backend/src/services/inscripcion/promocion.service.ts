@@ -55,6 +55,7 @@ export const promoverMasivo = async (
   // 4. Buscar estudiantes inscritos en el nivel origen
   const inscripciones = await prisma.inscripcion.findMany({
     where: {
+      activa: true,
       clase: { nivelId: nivelOrigenId, cicloLectivoId: cicloOrigenId },
     },
     select: { estudianteId: true },

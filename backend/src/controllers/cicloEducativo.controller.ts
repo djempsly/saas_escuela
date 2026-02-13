@@ -8,6 +8,7 @@ import {
   assignNivelesACiclo,
   assignCoordinadoresACiclo,
 } from '../services/cicloEducativo.service';
+import { generarEstructuraAcademica } from '../services/estructura-academica.service';
 import { sanitizeErrorMessage } from '../utils/security';
 import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { z } from 'zod';
@@ -163,6 +164,30 @@ export const assignCoordinadoresHandler = async (req: Request, res: Response) =>
       getErrorMessage(error) === 'Algunos coordinadores no son válidos'
     ) {
       return res.status(400).json({ message: getErrorMessage(error) });
+    }
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+const generarEstructuraSchema = z.object({
+  tipo: z.nativeEnum(TipoCicloEducativo),
+});
+
+export const generarEstructuraHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const validated = generarEstructuraSchema.parse(req.body);
+    const result = await generarEstructuraAcademica(validated.tipo, req.resolvedInstitucionId);
+    return res.status(201).json(result);
+  } catch (error: unknown) {
+    if (isZodError(error)) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: error.issues });
+    }
+    if (getErrorMessage(error).startsWith('Ya existe')) {
+      return res.status(409).json({ message: getErrorMessage(error) });
     }
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

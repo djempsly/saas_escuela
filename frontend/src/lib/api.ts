@@ -56,6 +56,7 @@ export const api = axios.create({
 
 // ============ CSRF Token Management ============
 let csrfToken: string | null = null;
+let lastAuthToken: string | null = null;
 
 const MUTATING_METHODS = ['post', 'put', 'delete', 'patch'];
 
@@ -65,8 +66,16 @@ const MUTATING_METHODS = ['post', 'put', 'delete', 'patch'];
  * completo para enviarlo en el header X-CSRF-Token.
  */
 export async function fetchCsrfToken(): Promise<string> {
+  const headers: Record<string, string> = {};
+  if (typeof window !== 'undefined') {
+    const authToken = localStorage.getItem('token');
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
+  }
   const response = await axios.get(`${API_BASE_URL}/auth/csrf-token`, {
     withCredentials: true,
+    headers,
   });
   const token: string = response.data.csrfToken;
   csrfToken = token;
@@ -84,6 +93,11 @@ api.interceptors.request.use(async (config) => {
 
     // CSRF token para requests mutantes
     if (MUTATING_METHODS.includes(config.method?.toLowerCase() || '')) {
+      // Invalidar CSRF si el auth token cambió (session identifier cambió)
+      if (token !== lastAuthToken) {
+        csrfToken = null;
+        lastAuthToken = token;
+      }
       if (!csrfToken) {
         try {
           await fetchCsrfToken();
@@ -106,10 +120,14 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // CSRF token expirado/invalido — refrescar y reintentar una vez
+    const errData = error.response?.data;
+    const csrfErrorMsg =
+      (typeof errData?.error === 'string' && errData.error) ||
+      (typeof errData?.message === 'string' && errData.message) ||
+      '';
     if (
       error.response?.status === 403 &&
-      typeof error.response?.data?.error === 'string' &&
-      error.response.data.error.includes('CSRF') &&
+      csrfErrorMsg.includes('CSRF') &&
       !originalRequest._csrfRetried
     ) {
       originalRequest._csrfRetried = true;
@@ -343,10 +361,20 @@ export const inscripcionesApi = {
     api.post('/inscripciones/por-codigo', { codigo }),
   getMisClases: () =>
     api.get('/inscripciones/mis-clases'),
-  getByClase: (claseId: string) =>
-    api.get(`/inscripciones/clase/${claseId}`),
+  getByClase: (claseId: string, params?: { page?: number; limit?: number }) =>
+    api.get(`/inscripciones/clase/${claseId}`, { params }),
   inscribirMasivo: (claseId: string, estudianteIds: string[]) =>
     api.post('/inscripciones/masivo', { claseId, estudianteIds }),
+  promoverMasivo: (data: { nivelOrigenId: string; nivelDestinoId: string; cicloDestinoId: string }) =>
+    api.post('/inscripciones/promover-masivo', data),
+  promoverIndividual: (data: { estudianteId: string; nivelDestinoId: string; cicloDestinoId: string }) =>
+    api.post('/inscripciones/promover-individual', data),
+  desinscribir: (data: { estudianteId: string; nivelId: string; motivo?: string }) =>
+    api.post('/inscripciones/desinscribir', data),
+  desinscribirMasivo: (data: { estudianteIds: string[]; nivelId: string; motivo?: string }) =>
+    api.post('/inscripciones/desinscribir-masivo', data),
+  reactivar: (data: { estudianteId: string; nivelId: string }) =>
+    api.post('/inscripciones/reactivar', data),
 };
 
 // Asistencia API
@@ -386,8 +414,8 @@ export const calificacionesApi = {
     api.post('/calificaciones', data),
   guardarTecnica: (data: Record<string, unknown>) =>
     api.post('/calificaciones/tecnica', data),
-  getByClase: (claseId: string) =>
-    api.get(`/calificaciones/clase/${claseId}`),
+  getByClase: (claseId: string, params?: { page?: number; limit?: number }) =>
+    api.get(`/calificaciones/clase/${claseId}`, { params }),
   getMisCalificaciones: () =>
     api.get('/calificaciones/mis-calificaciones'),
   getMiBoletin: (cicloLectivoId: string) =>
@@ -419,7 +447,7 @@ export const boletinesApi = {
 
 // Usuarios API
 export const usersApi = {
-  getAll: (filters?: { role?: string; nivelId?: string }) =>
+  getAll: (filters?: { role?: string; nivelId?: string; page?: number; limit?: number }) =>
     api.get('/users', { params: filters }),
   getStaff: () =>
     api.get('/users/staff'),
@@ -478,6 +506,8 @@ export const ciclosEducativosApi = {
     api.post(`/ciclos-educativos/${id}/niveles`, { nivelIds }),
   assignCoordinadores: (id: string, coordinadorIds: string[]) =>
     api.post(`/ciclos-educativos/${id}/coordinadores`, { coordinadorIds }),
+  generarEstructura: (tipo: string) =>
+    api.post('/ciclos-educativos/generar-estructura', { tipo }),
 };
 
 // Import API (bulk student import)
@@ -516,7 +546,7 @@ export const materiasApi = {
 
 // Estudiantes API
 export const estudiantesApi = {
-  getAll: (filters?: { nivelId?: string }) => 
+  getAll: (filters?: { nivelId?: string; page?: number; limit?: number }) =>
     usersApi.getAll({ role: ROLES.ESTUDIANTE, ...filters }),
   getById: (id: string) => api.get(`/users/${id}`),
   getByClase: (claseId: string) => api.get(`/inscripciones/clase/${claseId}`),
@@ -715,8 +745,8 @@ export const sabanaApi = {
     api.get('/sabana/niveles'),
   getCiclosLectivos: () =>
     api.get('/sabana/ciclos-lectivos'),
-  getSabana: (nivelId: string, cicloLectivoId: string) =>
-    api.get(`/sabana/${nivelId}/${cicloLectivoId}`),
+  getSabana: (nivelId: string, cicloLectivoId: string, params?: { page?: number; limit?: number }) =>
+    api.get(`/sabana/${nivelId}/${cicloLectivoId}`, { params }),
   updateCalificacion: (data: {
     claseId: string;
     estudianteId: string;
@@ -727,6 +757,8 @@ export const sabanaApi = {
   }) => api.patch('/sabana/calificacion', data),
   publicar: (claseId: string, cicloLectivoId: string) =>
     api.patch('/sabana/publicar', { claseId, cicloLectivoId }),
+  exportarExcel: (nivelId: string, cicloLectivoId: string) =>
+    api.get(`/sabana/${nivelId}/${cicloLectivoId}/exportar-excel`),
 };
 
 // Audit Logs API (Historial)
@@ -740,6 +772,14 @@ export const auditLogsApi = {
     entidad?: string;
     accion?: string;
   }) => api.get('/audit-logs', { params }),
+};
+
+// Jobs API (BullMQ monitoring)
+export const jobsApi = {
+  getStatus: (id: string) =>
+    api.get(`/jobs/${id}/status`),
+  getOverview: () =>
+    api.get('/jobs/admin/overview'),
 };
 
 // Tipos de roles disponibles

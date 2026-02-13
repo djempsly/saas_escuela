@@ -13,6 +13,8 @@ import {
 import { z } from 'zod';
 import { getErrorMessage } from '../utils/error-helpers';
 import { registrarAuditLog } from '../services/audit.service';
+import { parsePagination } from '../utils/pagination';
+import { excelQueue } from '../queues';
 
 /**
  * GET /sabana/niveles
@@ -72,11 +74,15 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Debe proporcionar nivelId y cicloLectivoId' });
     }
 
+    const { page, limit } = parsePagination(req.query as { page?: string; limit?: string });
+
     const sabana = await getSabanaByNivel(
       nivelId,
       cicloLectivoId,
       user.institucionId,
       user.usuarioId,
+      page,
+      limit,
     );
     return res.json(sabana);
   } catch (error: unknown) {
@@ -208,6 +214,41 @@ export const publicarCalificacionesHandler = async (req: Request, res: Response)
     if (getErrorMessage(error).includes('Sin permiso')) {
       return res.status(403).json({ error: getErrorMessage(error) });
     }
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
+  }
+};
+
+/**
+ * GET /sabana/:nivelId/:cicloLectivoId/exportar-excel
+ * Encola exportación de la sábana de notas a Excel
+ */
+export const exportarExcelHandler = async (req: Request, res: Response) => {
+  try {
+    const nivelId = req.params.nivelId as string;
+    const cicloLectivoId = req.params.cicloLectivoId as string;
+    const user = req.user;
+
+    if (!user?.institucionId) {
+      return res.status(400).json({ error: 'Usuario sin institución asignada' });
+    }
+
+    if (!nivelId || !cicloLectivoId) {
+      return res.status(400).json({ error: 'Debe proporcionar nivelId y cicloLectivoId' });
+    }
+
+    const job = await excelQueue.add('exportar', {
+      nivelId,
+      cicloLectivoId,
+      institucionId: user.institucionId,
+      userId: user.usuarioId,
+    });
+
+    return res.status(202).json({
+      jobId: job.id,
+      message: 'Exportación Excel iniciada. Recibirá una notificación al completar.',
+    });
+  } catch (error: unknown) {
+    req.log.error({ err: error }, 'Error encolando exportación Excel');
     return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };

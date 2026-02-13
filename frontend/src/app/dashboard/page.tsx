@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useInstitutionStore } from '@/store/institution.store';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboardApi } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 import {
   Users,
   GraduationCap,
@@ -60,8 +61,11 @@ interface DashboardStats {
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { branding } = useInstitutionStore();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: stats = null, isLoading } = useQuery<DashboardStats>({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: () => dashboardApi.getStats().then(r => r.data),
+    staleTime: 60_000,
+  });
 
   const primaryColor = branding?.colorPrimario || '#1a365d';
 
@@ -102,21 +106,6 @@ export default function DashboardPage() {
 
     return 'Centro Educativo';
   };
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await dashboardApi.getStats();
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
 
   // Stats cards based on role
   const getStatsCards = () => {

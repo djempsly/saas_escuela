@@ -111,9 +111,11 @@ export default function VerInstitucionPage() {
 
   const formatSistema = (sistema: string) => {
     const map: Record<string, string> = {
+      INICIAL_DO: 'Nivel Inicial (Rep. Dominicana)',
       PRIMARIA_DO: 'Primaria (Rep. Dominicana)',
       SECUNDARIA_GENERAL_DO: 'Secundaria General (Rep. Dominicana)',
       POLITECNICO_DO: 'Politecnico (Rep. Dominicana)',
+      INICIAL_HT: 'Niveau Initial (Haiti)',
       PRIMARIA_HT: 'Primaria (Haiti)',
       SECUNDARIA_HT: 'Secundaria (Haiti)',
     };

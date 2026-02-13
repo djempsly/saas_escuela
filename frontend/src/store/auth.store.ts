@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { disconnectSocket } from '@/hooks/useSocket';
 
 export interface User {
   id: string;
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        disconnectSocket();
         set({ user: null, token: null, isAuthenticated: false });
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');

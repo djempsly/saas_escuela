@@ -9,6 +9,9 @@ import {
   inscribirMasivoHandler,
   promoverMasivoHandler,
   promoverIndividualHandler,
+  desinscribirHandler,
+  desinscribirMasivoHandler,
+  reactivarHandler,
 } from '../controllers/inscripcion.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -61,6 +64,11 @@ router.post('/masivo', inscribirMasivoHandler);
 // Promoción (solo admin/director)
 router.post('/promover-masivo', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), promoverMasivoHandler);
 router.post('/promover-individual', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), promoverIndividualHandler);
+
+// Desinscripción (solo admin/director)
+router.post('/desinscribir', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), desinscribirHandler);
+router.post('/desinscribir-masivo', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), desinscribirMasivoHandler);
+router.post('/reactivar', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), reactivarHandler);
 
 // Ver inscripciones por clase
 router.get('/clase/:claseId', getInscripcionesByClaseHandler);

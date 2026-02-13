@@ -18,13 +18,20 @@ import { logger } from './config/logger';
 import app from './app';
 import prisma from './config/db';
 import { redis } from './config/redis';
+import { initSocketIO, closeSocketIO } from './config/socket';
 import { iniciarJobVerificacionDNS } from './jobs/verify-domains';
+import { closeAllWorkers } from './workers';
+import { closeAllQueues } from './queues';
 
 const PORT = env.PORT;
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 const server = app.listen(PORT, () => {
   logger.info({ port: PORT, env: env.NODE_ENV }, `Servidor corriendo en http://localhost:${PORT}`);
+
+  // Inicializar Socket.IO
+  const allowedOrigins = env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()) || [];
+  initSocketIO(server, allowedOrigins);
 
   // Iniciar job de verificación de dominios en producción
   if (isProd && env.BASE_DOMAIN && env.SERVER_IP) {
@@ -53,12 +60,35 @@ async function gracefulShutdown(signal: string) {
   }, SHUTDOWN_TIMEOUT_MS);
   forceTimeout.unref();
 
-  // 1. Dejar de aceptar nuevas conexiones y esperar que las actuales terminen
+  // 1. Cerrar Socket.IO (desconecta todos los sockets)
+  try {
+    await closeSocketIO();
+    logger.info('Socket.IO cerrado');
+  } catch (err) {
+    logger.error({ err }, 'Error al cerrar Socket.IO');
+  }
+
+  // 2. Dejar de aceptar nuevas conexiones y esperar que las actuales terminen
   server.close(() => {
     logger.info('Servidor HTTP cerrado (no más conexiones activas)');
   });
 
-  // 2. Cerrar conexiones a servicios externos
+  // 3. Cerrar BullMQ workers y colas (antes de Redis)
+  try {
+    await closeAllWorkers();
+    logger.info('BullMQ workers cerrados');
+  } catch (err) {
+    logger.error({ err }, 'Error al cerrar BullMQ workers');
+  }
+
+  try {
+    await closeAllQueues();
+    logger.info('BullMQ colas cerradas');
+  } catch (err) {
+    logger.error({ err }, 'Error al cerrar BullMQ colas');
+  }
+
+  // 4. Cerrar conexiones a servicios externos
   try {
     await prisma.$disconnect();
     logger.info('PostgreSQL desconectado');

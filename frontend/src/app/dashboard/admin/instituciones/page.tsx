@@ -155,10 +155,10 @@ export default function AdminInstitucionesPage() {
       PRIMARIA_DO: 'RD - Primaria',
       SECUNDARIA_GENERAL_DO: 'RD - Secundaria General',
       POLITECNICO_DO: 'RD - Politécnico',
-      NIVEL_INICIAL_DO: 'RD - Nivel Inicial',
+      INICIAL_DO: 'RD - Nivel Inicial',
       PRIMARIA_HT: 'Haití - Primaria',
       SECUNDARIA_HT: 'Haití - Secundaria',
-      NIVEL_INICIAL_HT: 'Haití - Nivel Inicial',
+      INICIAL_HT: 'Haití - Nivel Inicial',
     };
     return map[sistema] || sistema;
   };

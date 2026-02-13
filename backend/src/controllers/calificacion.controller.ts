@@ -15,6 +15,7 @@ import {
 import { sanitizeErrorMessage } from '../utils/security';
 import { getErrorMessage, isZodError } from '../utils/error-helpers';
 import { toCalificacionDTO, toCalificacionDTOList } from '../dtos';
+import { parsePagination } from '../utils/pagination';
 
 export const guardarCalificacionHandler = async (req: Request, res: Response) => {
   try {
@@ -74,7 +75,8 @@ export const getCalificacionesClaseHandler = async (req: Request, res: Response)
       return res.status(403).json({ message: 'No autorizado' });
     }
     const { claseId } = req.params as { claseId: string };
-    const calificaciones = await getCalificacionesByClase(claseId, req.resolvedInstitucionId);
+    const { page, limit } = parsePagination(req.query as { page?: string; limit?: string });
+    const calificaciones = await getCalificacionesByClase(claseId, req.resolvedInstitucionId, page, limit);
     return res.status(200).json(calificaciones);
   } catch (error: unknown) {
     if (getErrorMessage(error).includes('no encontrada')) {

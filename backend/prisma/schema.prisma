@@ -255,6 +255,7 @@ model Inscripcion {
   fecha        DateTime @default(now())
   estudianteId String
   claseId      String
+  activa       Boolean  @default(true)
   clase        Clase    @relation(fields: [claseId], references: [id])
   estudiante   User     @relation(fields: [estudianteId], references: [id])
 
@@ -713,6 +714,7 @@ enum AccionAudit {
   PASSWORD_CAMBIADO
   CALIFICACION_PUBLICADA
   CONFIG_MODIFICADA
+  DESINSCRIPCION
 }
 
 enum FormatoSabana {

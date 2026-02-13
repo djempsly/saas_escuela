@@ -15,6 +15,8 @@ import {
   Loader2,
   Save,
   X,
+  Wand2,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface CicloEducativo {
@@ -54,6 +56,13 @@ export default function NivelesPage() {
     cicloEducativoId: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [showGenerarModal, setShowGenerarModal] = useState(false);
+  const [generarTipo, setGenerarTipo] = useState('');
+  const [isGenerando, setIsGenerando] = useState(false);
+  const [generarResult, setGenerarResult] = useState<{
+    ciclosCreados: { id: string; nombre: string }[];
+    nivelesCreados: { id: string; nombre: string }[];
+  } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -141,6 +150,28 @@ export default function NivelesPage() {
     setShowModal(false);
   };
 
+  const handleGenerarEstructura = async () => {
+    if (!generarTipo) return;
+    setIsGenerando(true);
+    setGenerarResult(null);
+    try {
+      const res = await ciclosEducativosApi.generarEstructura(generarTipo);
+      setGenerarResult(res.data);
+      await fetchData();
+    } catch (error) {
+      const apiError = error as ApiError;
+      alert(apiError.response?.data?.message || 'Error al generar estructura');
+    } finally {
+      setIsGenerando(false);
+    }
+  };
+
+  const closeGenerarModal = () => {
+    setShowGenerarModal(false);
+    setGenerarTipo('');
+    setGenerarResult(null);
+  };
+
   const openNewModal = () => {
     setFormData({
       nombre: '',
@@ -182,10 +213,16 @@ export default function NivelesPage() {
             Gestiona los niveles educativos (grados, cursos) de tu institucion
           </p>
         </div>
-        <Button onClick={openNewModal}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Nivel
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowGenerarModal(true)}>
+            <Wand2 className="w-4 h-4 mr-2" />
+            Generar Estructura
+          </Button>
+          <Button onClick={openNewModal}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Nivel
+          </Button>
+        </div>
       </div>
 
       {/* Busqueda */}
@@ -358,6 +395,130 @@ export default function NivelesPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Generar Estructura */}
+      {showGenerarModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Generar Estructura Academica</h2>
+                <Button variant="ghost" size="icon" onClick={closeGenerarModal}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {generarResult ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <p className="font-medium">Estructura generada exitosamente</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Se crearon {generarResult.ciclosCreados.length} ciclo(s) y{' '}
+                    {generarResult.nivelesCreados.length} nivel(es).
+                  </p>
+                  {generarResult.ciclosCreados.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Ciclos creados:</p>
+                      <ul className="text-sm text-muted-foreground list-disc pl-5">
+                        {generarResult.ciclosCreados.map((c) => (
+                          <li key={c.id}>{c.nombre}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium mb-1">Niveles creados:</p>
+                    <ul className="text-sm text-muted-foreground list-disc pl-5">
+                      {generarResult.nivelesCreados.map((n) => (
+                        <li key={n.id}>{n.nombre}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <Button className="w-full" onClick={closeGenerarModal}>
+                    Cerrar
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Selecciona un tipo de nivel educativo para generar automaticamente
+                    los ciclos y grados correspondientes segun el MINERD.
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Tipo de nivel educativo</Label>
+                    <select
+                      value={generarTipo}
+                      onChange={(e) => setGenerarTipo(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md"
+                    >
+                      <option value="">-- Seleccionar --</option>
+                      <option value="INICIAL">Inicial</option>
+                      <option value="PRIMARIA">Primaria</option>
+                      <option value="SECUNDARIA">Secundaria</option>
+                      <option value="POLITECNICO">Politecnico</option>
+                    </select>
+                  </div>
+
+                  {generarTipo && (
+                    <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                      <p className="font-medium">Se creara:</p>
+                      {generarTipo === 'INICIAL' && (
+                        <p className="text-muted-foreground">
+                          3 niveles: Pre-Kinder, Kinder, Pre-Primario (sin ciclos)
+                        </p>
+                      )}
+                      {generarTipo === 'PRIMARIA' && (
+                        <p className="text-muted-foreground">
+                          2 ciclos (Primer Ciclo, Segundo Ciclo) con 6 niveles:
+                          1ro a 6to de Primaria
+                        </p>
+                      )}
+                      {generarTipo === 'SECUNDARIA' && (
+                        <p className="text-muted-foreground">
+                          2 ciclos (Primer Ciclo, Segundo Ciclo) con 6 niveles:
+                          1ro a 6to de Secundaria
+                        </p>
+                      )}
+                      {generarTipo === 'POLITECNICO' && (
+                        <p className="text-muted-foreground">
+                          2 ciclos (Primer Ciclo, Segundo Ciclo) con 6 niveles:
+                          1ro a 6to Politecnico (con modulos tecnicos)
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={closeGenerarModal}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      disabled={!generarTipo || isGenerando}
+                      onClick={handleGenerarEstructura}
+                    >
+                      {isGenerando ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Wand2 className="w-4 h-4 mr-2" />
+                          Generar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

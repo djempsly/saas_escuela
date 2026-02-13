@@ -197,6 +197,31 @@ export const inscripcionMasivaSchema = z.object({
   }),
 });
 
+// --- DESINSCRIPCION (DISENROLLMENT) ---
+
+export const desinscribirSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    nivelId: z.string().min(1, 'Nivel requerido'),
+    motivo: z.string().max(500).optional(),
+  }),
+});
+
+export const desinscribirMasivoSchema = z.object({
+  body: z.object({
+    estudianteIds: z.array(z.string()).min(1, 'Al menos un estudiante requerido'),
+    nivelId: z.string().min(1, 'Nivel requerido'),
+    motivo: z.string().max(500).optional(),
+  }),
+});
+
+export const reactivarSchema = z.object({
+  body: z.object({
+    estudianteId: z.string().min(1, 'Estudiante requerido'),
+    nivelId: z.string().min(1, 'Nivel requerido'),
+  }),
+});
+
 // --- PROMOCION ---
 
 export const promoverMasivoSchema = z.object({

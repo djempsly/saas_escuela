@@ -123,13 +123,13 @@ const PAISES = [
 
 const SISTEMAS_EDUCATIVOS: Record<string, Array<{ value: string; label: string }>> = {
   DO: [
-    { value: 'NIVEL_INICIAL_DO', label: 'Nivel Inicial' },
+    { value: 'INICIAL_DO', label: 'Nivel Inicial' },
     { value: 'PRIMARIA_DO', label: 'Primaria' },
     { value: 'SECUNDARIA_GENERAL_DO', label: 'Secundaria General' },
     { value: 'POLITECNICO_DO', label: 'Politecnico' },
   ],
   HT: [
-    { value: 'NIVEL_INICIAL_HT', label: 'Niveau Initial' },
+    { value: 'INICIAL_HT', label: 'Niveau Initial' },
     { value: 'PRIMARIA_HT', label: 'Primaire' },
     { value: 'SECUNDARIA_HT', label: 'Secondaire' },
   ],
@@ -231,8 +231,8 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
     lema: '',
     slug: '',
     pais: 'DO' as 'DO' | 'HT',
-    sistemaEducativo: 'SECUNDARIA_GENERAL_DO', // Sistema principal (para compatibilidad)
-    sistemasEducativos: ['SECUNDARIA_GENERAL_DO'] as string[], // Sistemas seleccionados
+    sistemaEducativo: '' as string, // Sistema principal (primer sistema seleccionado)
+    sistemasEducativos: [] as string[], // Sistemas seleccionados
     idiomaPrincipal: 'ESPANOL',
     logoPosicion: 'center',
     logoWidth: 120,
@@ -299,7 +299,7 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
 
       // Extraer sistemas educativos si están disponibles
       const sistemasFromApi = inst.sistemasEducativos?.map((s: { sistema: string }) => s.sistema) || [];
-      const sistemaPrincipal = inst.sistema || inst.sistemaEducativo || 'SECUNDARIA_GENERAL_DO';
+      const sistemaPrincipal = inst.sistema || inst.sistemaEducativo || '';
       const sistemasEducativos = sistemasFromApi.length > 0 ? sistemasFromApi : [sistemaPrincipal];
 
       setFormData({
@@ -397,13 +397,12 @@ export function InstitucionForm({ mode, institucionId, initialData }: Institucio
   };
 
   const handlePaisChange = (pais: 'DO' | 'HT') => {
-    const defaultSistema = pais === 'DO' ? 'SECUNDARIA_GENERAL_DO' : 'PRIMARIA_HT';
     const defaultIdioma = pais === 'DO' ? 'ESPANOL' : 'KREYOL';
     setFormData({
       ...formData,
       pais,
-      sistemaEducativo: defaultSistema,
-      sistemasEducativos: [defaultSistema], // Reset con el sistema por defecto
+      sistemaEducativo: '',
+      sistemasEducativos: [], // Reset — el usuario debe seleccionar
       idiomaPrincipal: defaultIdioma,
     });
   };

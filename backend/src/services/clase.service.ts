@@ -90,7 +90,7 @@ export const findClases = async (institucionId: string) => {
       nivel: true,
       docente: { select: { id: true, nombre: true, apellido: true, email: true } },
       cicloLectivo: true,
-      _count: { select: { inscripciones: true } },
+      _count: { select: { inscripciones: { where: { activa: true } } } },
     },
   });
 };
@@ -104,6 +104,7 @@ export const findClaseById = async (id: string, institucionId: string) => {
       docente: { select: { id: true, nombre: true, apellido: true, email: true } },
       cicloLectivo: true,
       inscripciones: {
+        where: { activa: true },
         include: {
           estudiante: { select: { id: true, nombre: true, apellido: true, email: true } },
         },
@@ -160,7 +161,7 @@ export const deleteClase = async (id: string, institucionId: string) => {
 
   // Verificar si tiene inscripciones activas
   const inscripciones = await prisma.inscripcion.count({
-    where: { claseId: id, clase: { institucionId } },
+    where: { claseId: id, activa: true, clase: { institucionId } },
   });
 
   if (inscripciones > 0) {
@@ -181,7 +182,7 @@ export const findClasesByNiveles = async (nivelIds: string[], institucionId: str
       nivel: true,
       docente: { select: { id: true, nombre: true, apellido: true, email: true } },
       cicloLectivo: true,
-      _count: { select: { inscripciones: true } },
+      _count: { select: { inscripciones: { where: { activa: true } } } },
     },
   });
 };
@@ -194,7 +195,7 @@ export const findClasesByDocente = async (docenteId: string, institucionId: stri
       materia: true,
       nivel: true,
       cicloLectivo: true,
-      _count: { select: { inscripciones: true } },
+      _count: { select: { inscripciones: { where: { activa: true } } } },
     },
   });
 };

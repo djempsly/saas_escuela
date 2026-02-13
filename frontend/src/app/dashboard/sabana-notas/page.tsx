@@ -21,10 +21,11 @@ export default function SabanaNotasPage() {
     selectedMateriaId, setSelectedMateriaId,
     loading, loadingData,
     isDocente, isReadOnly, materiasDocente, canEditMateria,
-    loadSabana, handleSaveCalificacion,
+    handleSaveCalificacion,
+    pagination, onPageChange,
   } = useSabanaData();
 
-  const { isPublishing, handlePublicar } = useSabanaPublish(selectedCiclo, loadSabana);
+  const { isPublishing, handlePublicar } = useSabanaPublish(selectedCiclo);
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
@@ -96,6 +97,8 @@ export default function SabanaNotasPage() {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           onSelectStudent={handleSelectStudent}
+          pagination={pagination}
+          onPageChange={onPageChange}
         />
       )}
     </div>

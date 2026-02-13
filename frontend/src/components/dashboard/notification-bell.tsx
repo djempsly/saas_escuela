@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, CheckCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bell, CheckCheck } from 'lucide-react';
+import { useSocket } from '@/hooks/useSocket';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { notificacionesApi } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 
 interface Notificacion {
   id: string;
@@ -22,63 +25,100 @@ interface Notificacion {
 }
 
 export function NotificationBell() {
-  const [noLeidas, setNoLeidas] = useState(0);
-  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
 
-  const fetchNoLeidas = useCallback(async () => {
-    try {
+  const { data: noLeidas = 0 } = useQuery({
+    queryKey: queryKeys.notificaciones.noLeidas(),
+    queryFn: async () => {
       const res = await notificacionesApi.getNoLeidas();
-      setNoLeidas(res.data?.count || 0);
-    } catch {
-      // silently fail
-    }
-  }, []);
+      return res.data?.count || 0;
+    },
+    refetchInterval: 30_000,
+  });
 
-  const fetchNotificaciones = useCallback(async () => {
-    try {
+  const { data: notificaciones = [] } = useQuery({
+    queryKey: queryKeys.notificaciones.list({ limit: 10 }),
+    queryFn: async () => {
       const res = await notificacionesApi.getAll({ limit: 10 });
-      setNotificaciones(res.data?.notificaciones || []);
-    } catch {
-      // silently fail
-    }
-  }, []);
+      return (res.data?.notificaciones || []) as Notificacion[];
+    },
+    enabled: isOpen,
+  });
 
-  // Polling every 30s for unread count
+  // Socket: invalidate on new notification
   useEffect(() => {
-    fetchNoLeidas();
-    const interval = setInterval(fetchNoLeidas, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNoLeidas]);
+    const unsubNotif = on('notificacion:nueva', () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notificaciones.noLeidas() });
+    });
+    const unsubMsg = on('mensaje:nuevo', () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notificaciones.noLeidas() });
+    });
+    return () => {
+      unsubNotif();
+      unsubMsg();
+    };
+  }, [on, queryClient]);
 
-  // Load notifications when dropdown opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotificaciones();
-    }
-  }, [isOpen, fetchNotificaciones]);
+  const marcarLeidaMutation = useMutation({
+    mutationFn: (id: string) => notificacionesApi.marcarComoLeida(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.notificaciones.all() });
+      const prevList = queryClient.getQueryData<Notificacion[]>(queryKeys.notificaciones.list({ limit: 10 }));
+      const prevCount = queryClient.getQueryData<number>(queryKeys.notificaciones.noLeidas());
 
-  const handleMarcarLeida = async (id: string) => {
-    try {
-      await notificacionesApi.marcarComoLeida(id);
-      setNotificaciones((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
+      queryClient.setQueryData<Notificacion[]>(
+        queryKeys.notificaciones.list({ limit: 10 }),
+        (old) => old?.map((n) => (n.id === id ? { ...n, leida: true } : n)),
       );
-      setNoLeidas((prev) => Math.max(0, prev - 1));
-    } catch {
-      // silently fail
-    }
-  };
+      queryClient.setQueryData<number>(
+        queryKeys.notificaciones.noLeidas(),
+        (old) => Math.max(0, (old ?? 0) - 1),
+      );
 
-  const handleMarcarTodas = async () => {
-    try {
-      await notificacionesApi.marcarTodasComoLeidas();
-      setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
-      setNoLeidas(0);
-    } catch {
-      // silently fail
-    }
-  };
+      return { prevList, prevCount };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prevList) {
+        queryClient.setQueryData(queryKeys.notificaciones.list({ limit: 10 }), context.prevList);
+      }
+      if (context?.prevCount !== undefined) {
+        queryClient.setQueryData(queryKeys.notificaciones.noLeidas(), context.prevCount);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notificaciones.all() });
+    },
+  });
+
+  const marcarTodasMutation = useMutation({
+    mutationFn: () => notificacionesApi.marcarTodasComoLeidas(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.notificaciones.all() });
+      const prevList = queryClient.getQueryData<Notificacion[]>(queryKeys.notificaciones.list({ limit: 10 }));
+      const prevCount = queryClient.getQueryData<number>(queryKeys.notificaciones.noLeidas());
+
+      queryClient.setQueryData<Notificacion[]>(
+        queryKeys.notificaciones.list({ limit: 10 }),
+        (old) => old?.map((n) => ({ ...n, leida: true })),
+      );
+      queryClient.setQueryData(queryKeys.notificaciones.noLeidas(), 0);
+
+      return { prevList, prevCount };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevList) {
+        queryClient.setQueryData(queryKeys.notificaciones.list({ limit: 10 }), context.prevList);
+      }
+      if (context?.prevCount !== undefined) {
+        queryClient.setQueryData(queryKeys.notificaciones.noLeidas(), context.prevCount);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notificaciones.all() });
+    },
+  });
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -117,7 +157,7 @@ export function NotificationBell() {
               className="h-7 text-xs text-muted-foreground"
               onClick={(e) => {
                 e.preventDefault();
-                handleMarcarTodas();
+                marcarTodasMutation.mutate();
               }}
             >
               <CheckCheck className="w-3 h-3 mr-1" />
@@ -139,7 +179,7 @@ export function NotificationBell() {
                   !notif.leida ? 'bg-blue-50/50' : ''
                 }`}
                 onClick={() => {
-                  if (!notif.leida) handleMarcarLeida(notif.id);
+                  if (!notif.leida) marcarLeidaMutation.mutate(notif.id);
                 }}
               >
                 <div className="flex items-start justify-between w-full gap-2">

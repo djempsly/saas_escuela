@@ -16,6 +16,7 @@ import { getErrorMessage, isZodError } from '../../utils/error-helpers';
 import { uploadToS3 } from '../../services/s3.service';
 import { registrarAuditLog } from '../../services/audit.service';
 import { toUserDTO, toUserDTOList } from '../../dtos';
+import { parsePagination, paginateResponse } from '../../utils/pagination';
 
 export const createUserHandler = async (req: Request, res: Response) => {
   try {
@@ -156,6 +157,7 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
     }
 
     const { role, nivelId } = req.query as { role?: string; nivelId?: string };
+    const { page, limit } = parsePagination(req.query as { page?: string; limit?: string });
 
     // Usar resolvedInstitucionId (ya resuelto por el middleware)
     if (!req.resolvedInstitucionId) {
@@ -167,23 +169,27 @@ export const getAllUsersHandler = async (req: Request, res: Response) => {
       if (role && role !== ROLES.ESTUDIANTE) {
         return res.status(403).json({ message: 'Solo puedes ver listados de estudiantes' });
       }
-      const students = await findStudentsByDocente(
+      const result = await findStudentsByDocente(
         req.user.usuarioId.toString(),
         req.resolvedInstitucionId,
+        page,
+        limit,
       );
-      return res.status(200).json({ data: toUserDTOList(students) });
+      return res.status(200).json(paginateResponse(toUserDTOList(result.data), result.total, page, limit));
     }
 
     // Solo ADMIN y DIRECTOR pueden ver contrasenas temporales
     const canSeePasswords = req.user.rol === ROLES.ADMIN || req.user.rol === ROLES.DIRECTOR;
-    const users = await findUsersByInstitucion(
+    const result = await findUsersByInstitucion(
       req.resolvedInstitucionId,
       role,
       canSeePasswords,
       nivelId,
+      page,
+      limit,
     );
 
-    return res.status(200).json({ data: toUserDTOList(users) });
+    return res.status(200).json(paginateResponse(toUserDTOList(result.data), result.total, page, limit));
   } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });
   }

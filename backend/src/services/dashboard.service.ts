@@ -46,7 +46,7 @@ export const getDashboardStats = async (institucionId: string) => {
   // Inscripciones totales (del ciclo activo)
   const totalInscripciones = cicloActivo
     ? await prisma.inscripcion.count({
-        where: { clase: { institucionId, cicloLectivoId: cicloActivo.id } },
+        where: { activa: true, clase: { institucionId, cicloLectivoId: cicloActivo.id } },
       })
     : 0;
 
@@ -131,7 +131,7 @@ export const getDashboardStatsDocente = async (docenteId: string, institucionId:
         include: {
           materia: true,
           nivel: true,
-          _count: { select: { inscripciones: true } },
+          _count: { select: { inscripciones: { where: { activa: true } } } },
         },
       })
     : [];
@@ -168,6 +168,7 @@ export const getDashboardStatsEstudiante = async (estudianteId: string, instituc
   const inscripciones = await prisma.inscripcion.findMany({
     where: {
       estudianteId,
+      activa: true,
       clase: { institucionId },
     },
     include: {

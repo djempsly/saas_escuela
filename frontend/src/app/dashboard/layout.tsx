@@ -9,6 +9,8 @@ import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { NotificacionesToast } from '@/components/dashboard/notificaciones-toast';
+import { QueryProvider } from '@/lib/query-client';
 
 // Usar useSyncExternalStore para detectar hidratación sin cascading renders
 const emptySubscribe = () => () => {};
@@ -72,35 +74,40 @@ export default function DashboardLayout({
   // Si debe cambiar contraseña, mostrar solo el contenido sin sidebar/header
   if (user?.debeCambiarPassword && pathname === '/dashboard/cambiar-password') {
     return (
-      <div className="min-h-screen bg-slate-50">
-        {children}
-      </div>
+      <QueryProvider>
+        <div className="min-h-screen bg-slate-50">
+          {children}
+        </div>
+      </QueryProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-        branding={branding}
-        user={user}
-      />
-
-      {/* Main content */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <Header
+    <QueryProvider>
+      <div className="min-h-screen bg-slate-50">
+        <NotificacionesToast />
+        {/* Sidebar */}
+        <Sidebar
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
           branding={branding}
           user={user}
-          onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         />
-        <main className="p-6">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </main>
+
+        {/* Main content */}
+        <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+          <Header
+            branding={branding}
+            user={user}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          />
+          <main className="p-6">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </main>
+        </div>
       </div>
-    </div>
+    </QueryProvider>
   );
 }

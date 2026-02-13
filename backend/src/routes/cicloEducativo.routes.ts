@@ -7,6 +7,7 @@ import {
   deleteCicloEducativoHandler,
   assignNivelesHandler,
   assignCoordinadoresHandler,
+  generarEstructuraHandler,
 } from '../controllers/cicloEducativo.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { roleMiddleware } from '../middleware/role.middleware';
@@ -22,6 +23,9 @@ router.use(
   resolveTenantMiddleware,
   requireTenantMiddleware,
 );
+
+// Generate academic structure (must be before /:id)
+router.post('/generar-estructura', generarEstructuraHandler);
 
 // CRUD routes
 router.post('/', createCicloEducativoHandler);
