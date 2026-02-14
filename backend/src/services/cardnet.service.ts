@@ -41,7 +41,7 @@ export async function crearPagoCardNet(
   const requestBody = {
     TransactionType: 'Sale',
     MerchantId: CARDNET_MERCHANT_ID,
-    MerchantName: 'Plataforma Escolar',
+    MerchantName: 'LHAMS',
     InvoiceNumber: invoiceNumber,
     CurrencyCode: '840', // USD
     Amount: Math.round(Number(monto) * 100), // cents

@@ -470,6 +470,25 @@ export default function InstitucionLandingPage() {
     return LOCALES_BY_COUNTRY[branding.pais] || ['es', 'en'];
   }, [branding?.pais]);
 
+  // Aplicar titulo y favicon de la institucion en la pestana del navegador
+  useEffect(() => {
+    if (branding?.nombre) {
+      document.title = branding.nombre;
+    }
+    const faviconSrc = (branding as unknown as { faviconUrl?: string })?.faviconUrl
+      || branding?.logoUrl;
+    if (faviconSrc) {
+      const url = getMediaUrl(faviconSrc);
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = url;
+    }
+  }, [branding]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {

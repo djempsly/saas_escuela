@@ -13,6 +13,7 @@ import { NotificacionesToast } from '@/components/dashboard/notificaciones-toast
 import { SuscripcionBanner } from '@/components/dashboard/suscripcion-banner';
 import { MantenimientoBanner } from '@/components/dashboard/mantenimiento-banner';
 import { QueryProvider } from '@/lib/query-client';
+import { getMediaUrl } from '@/lib/api';
 
 // Usar useSyncExternalStore para detectar hidratación sin cascading renders
 const emptySubscribe = () => () => {};
@@ -63,6 +64,25 @@ export default function DashboardLayout({
       document.documentElement.style.setProperty('--secondary', branding.colorSecundario);
     }
   }, [branding]);
+
+  // Aplicar titulo y favicon de la institucion
+  useEffect(() => {
+    if (branding?.nombre) {
+      document.title = branding.nombre;
+    }
+
+    const faviconUrl = branding?.faviconUrl || branding?.logoUrl;
+    if (faviconUrl) {
+      const url = getMediaUrl(faviconUrl);
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = url;
+    }
+  }, [branding?.nombre, branding?.faviconUrl, branding?.logoUrl]);
 
   // Mostrar loading mientras se hidrata o no está autenticado
   if (!hydrated || !isAuthenticated) {

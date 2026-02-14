@@ -2,7 +2,7 @@
 // Uses a hosted payment page where customer is redirected
 export const AZUL_MERCHANT_ID = process.env.AZUL_MERCHANT_ID || '';
 export const AZUL_AUTH_KEY = process.env.AZUL_AUTH_KEY || '';
-export const AZUL_MERCHANT_NAME = process.env.AZUL_MERCHANT_NAME || 'Plataforma Escolar';
+export const AZUL_MERCHANT_NAME = process.env.AZUL_MERCHANT_NAME || 'LHAMS';
 export const AZUL_MERCHANT_TYPE = process.env.AZUL_MERCHANT_TYPE || '';
 
 const isProd = process.env.NODE_ENV === 'production';

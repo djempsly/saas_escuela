@@ -360,47 +360,71 @@ export default function AdminUsuariosPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Usuarios
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4 pb-4">
               <div className="text-2xl font-bold">{stats.totalUsuarios}</div>
+              <div className="text-sm text-muted-foreground">Total</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Usuarios Activos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4 pb-4">
               <div className="text-2xl font-bold text-green-600">{stats.usuariosActivos}</div>
+              <div className="text-sm text-muted-foreground">Activos</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Instituciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4 pb-4">
               <div className="text-2xl font-bold">{stats.totalInstituciones}</div>
+              <div className="text-sm text-muted-foreground">Instituciones</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Directores
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {stats.usuariosPorRol?.DIRECTOR || 0}
-              </div>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-blue-600">{stats.usuariosPorRol?.DIRECTOR || 0}</div>
+              <div className="text-sm text-muted-foreground">Directores</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-yellow-600">{stats.usuariosPorRol?.ESTUDIANTE || 0}</div>
+              <div className="text-sm text-muted-foreground">Estudiantes</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-green-600">{stats.usuariosPorRol?.DOCENTE || 0}</div>
+              <div className="text-sm text-muted-foreground">Docentes</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-purple-600">{(stats.usuariosPorRol?.COORDINADOR || 0) + (stats.usuariosPorRol?.COORDINADOR_ACADEMICO || 0)}</div>
+              <div className="text-sm text-muted-foreground">Coordinadores</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-orange-600">{stats.usuariosPorRol?.SECRETARIA || 0}</div>
+              <div className="text-sm text-muted-foreground">Secretarias</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-teal-600">{stats.usuariosPorRol?.BIBLIOTECARIO || 0}</div>
+              <div className="text-sm text-muted-foreground">Bibliotecarios</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-cyan-600">{stats.usuariosPorRol?.DIGITADOR || 0}</div>
+              <div className="text-sm text-muted-foreground">Digitadores</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="text-2xl font-bold text-pink-600">{stats.usuariosPorRol?.PSICOLOGO || 0}</div>
+              <div className="text-sm text-muted-foreground">Psicologos</div>
             </CardContent>
           </Card>
         </div>

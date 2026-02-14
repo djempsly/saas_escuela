@@ -29,7 +29,7 @@ export const translations = {
     },
     // Generales
     app: {
-      name: 'Plataforma Educativa',
+      name: 'LHAMS',
       dashboard: 'Panel Principal',
       loading: 'Cargando...',
       save: 'Guardar',

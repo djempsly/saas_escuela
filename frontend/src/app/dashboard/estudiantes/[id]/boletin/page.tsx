@@ -133,7 +133,7 @@ export default function BoletinEstudiantePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 print-hidden">
         <Link href={`/dashboard/estudiantes/${id}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="w-4 h-4" />
@@ -147,7 +147,7 @@ export default function BoletinEstudiantePage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="print-hidden">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Seleccionar Ciclo</CardTitle>
           {boletin && (

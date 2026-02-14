@@ -773,7 +773,7 @@ export const cobrosApi = {
     api.get('/cobros/metodos-pago'),
   getMisCobros: () =>
     api.get('/cobros/mis-cobros'),
-  getAll: (params?: { estado?: string; concepto?: string; estudianteId?: string; cicloLectivoId?: string }) =>
+  getAll: (params?: { estado?: string; concepto?: string; estudianteId?: string; cicloLectivoId?: string; nivelId?: string }) =>
     api.get('/cobros', { params }),
   getPendientes: () =>
     api.get('/cobros/pendientes'),
@@ -848,6 +848,8 @@ export const sabanaApi = {
     api.patch('/sabana/publicar', { claseId, cicloLectivoId }),
   exportarExcel: (nivelId: string, cicloLectivoId: string) =>
     api.get(`/sabana/${nivelId}/${cicloLectivoId}/exportar-excel`),
+  exportarTodo: (cicloLectivoId: string) =>
+    api.get(`/sabana/${cicloLectivoId}/exportar-todo`),
 };
 
 // Audit Logs API (Historial)

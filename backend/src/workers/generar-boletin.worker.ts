@@ -89,9 +89,9 @@ async function processor(job: Job<GenerarBoletinJobData>): Promise<GenerarBoleti
 
   await job.updateProgress(90);
 
-  // 4. Subir ZIP a S3
+  // 4. Subir ZIP a S3 (carpeta exports: URL directa, sin proxy de signed URLs)
   const filename = `boletines-${claseId}-${Date.now()}.zip`;
-  const url = await uploadBufferToS3(zipBuffer, filename, 'recursos', institucionId);
+  const url = await uploadBufferToS3(zipBuffer, filename, 'exports', institucionId);
 
   await job.updateProgress(100);
 

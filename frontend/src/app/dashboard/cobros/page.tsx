@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { cobrosApi, ciclosApi, estudiantesApi } from '@/lib/api';
+import { cobrosApi, ciclosApi, estudiantesApi, sabanaApi } from '@/lib/api';
 import {
   DollarSign,
   Loader2,
@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
+  Eye,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -70,6 +71,11 @@ interface Ciclo {
   nombre: string;
 }
 
+interface Nivel {
+  id: string;
+  nombre: string;
+}
+
 interface ApiError {
   response?: {
     data?: {
@@ -105,12 +111,14 @@ const metodoPagoLabels: Record<string, string> = {
 export default function CobrosPage() {
   const [cobros, setCobros] = useState<Cobro[]>([]);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
+  const [niveles, setNiveles] = useState<Nivel[]>([]);
   const [conceptos, setConceptos] = useState<string[]>([]);
   const [metodosPago, setMetodosPago] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
   const [conceptoFilter, setConceptoFilter] = useState<string>('all');
+  const [nivelFilter, setNivelFilter] = useState<string>('all');
 
   const [selectedCobro, setSelectedCobro] = useState<Cobro | null>(null);
   const [showPagoModal, setShowPagoModal] = useState(false);
@@ -127,6 +135,7 @@ export default function CobrosPage() {
       const response = await cobrosApi.getAll({
         estado: estadoFilter !== 'all' ? estadoFilter : undefined,
         concepto: conceptoFilter !== 'all' ? conceptoFilter : undefined,
+        nivelId: nivelFilter !== 'all' ? nivelFilter : undefined,
       });
       setCobros(response.data || []);
     } catch (error) {
@@ -137,16 +146,18 @@ export default function CobrosPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cobrosRes, ciclosRes, conceptosRes, metodosRes] = await Promise.all([
+        const [cobrosRes, ciclosRes, conceptosRes, metodosRes, nivelesRes] = await Promise.all([
           cobrosApi.getAll(),
           ciclosApi.getAll(),
           cobrosApi.getConceptos(),
           cobrosApi.getMetodosPago(),
+          sabanaApi.getNiveles(),
         ]);
         setCobros(cobrosRes.data || []);
         setCiclos(ciclosRes.data || []);
         setConceptos(conceptosRes.data || []);
         setMetodosPago(metodosRes.data || []);
+        setNiveles(nivelesRes.data?.data || nivelesRes.data || []);
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -160,7 +171,7 @@ export default function CobrosPage() {
     if (!isLoading) {
       fetchCobros();
     }
-  }, [estadoFilter, conceptoFilter]);
+  }, [estadoFilter, conceptoFilter, nivelFilter]);
 
   const filteredCobros = cobros.filter((cobro) => {
     const searchLower = searchTerm.toLowerCase();
@@ -346,6 +357,19 @@ export default function CobrosPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={nivelFilter} onValueChange={setNivelFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Nivel" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los niveles</SelectItem>
+            {niveles.map((n) => (
+              <SelectItem key={n.id} value={n.id}>
+                {n.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -372,7 +396,12 @@ export default function CobrosPage() {
                 return (
                   <TableRow key={cobro.id}>
                     <TableCell>
-                      {cobro.estudiante.nombre} {cobro.estudiante.apellido}
+                      <Link
+                        href={`/dashboard/cobros/estudiante/${cobro.estudiante.id}`}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        {cobro.estudiante.nombre} {cobro.estudiante.apellido}
+                      </Link>
                     </TableCell>
                     <TableCell>
                       {conceptoLabels[cobro.concepto] || cobro.concepto}
@@ -402,6 +431,11 @@ export default function CobrosPage() {
                             Registrar pago
                           </Button>
                         )}
+                        <Link href={`/dashboard/cobros/estudiante/${cobro.estudiante.id}`}>
+                          <Button variant="outline" size="sm" title="Ver historial del estudiante">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </Link>
                         <Link href={`/dashboard/cobros/${cobro.id}`}>
                           <Button variant="outline" size="sm">
                             Ver

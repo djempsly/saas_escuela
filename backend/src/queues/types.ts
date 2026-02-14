@@ -19,6 +19,16 @@ export interface ExportarExcelJobResult {
   url: string;
 }
 
+export interface ExportarTodoJobData {
+  cicloLectivoId: string;
+  institucionId: string;
+  userId: string;
+}
+export interface ExportarTodoJobResult {
+  url: string;
+  totalNiveles: number;
+}
+
 export interface NotificacionesMasivasJobData {
   usuarioIds: string[];
   titulo: string;

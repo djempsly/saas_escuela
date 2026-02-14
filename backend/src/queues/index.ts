@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import { bullmqConnection, QUEUE_NAMES, DEFAULT_JOB_OPTIONS } from '../config/bullmq';
-import type { GenerarBoletinJobData, ExportarExcelJobData, NotificacionesMasivasJobData, VerificarSuscripcionesJobData, RecordatorioMantenimientoJobData } from './types';
+import type { GenerarBoletinJobData, ExportarExcelJobData, ExportarTodoJobData, NotificacionesMasivasJobData, VerificarSuscripcionesJobData, RecordatorioMantenimientoJobData } from './types';
 
 export const boletinQueue = new Queue<GenerarBoletinJobData>(QUEUE_NAMES.GENERAR_BOLETIN, {
   connection: bullmqConnection,
@@ -8,6 +8,11 @@ export const boletinQueue = new Queue<GenerarBoletinJobData>(QUEUE_NAMES.GENERAR
 });
 
 export const excelQueue = new Queue<ExportarExcelJobData>(QUEUE_NAMES.EXPORTAR_EXCEL, {
+  connection: bullmqConnection,
+  defaultJobOptions: DEFAULT_JOB_OPTIONS,
+});
+
+export const exportarTodoQueue = new Queue<ExportarTodoJobData>(QUEUE_NAMES.EXPORTAR_TODO, {
   connection: bullmqConnection,
   defaultJobOptions: DEFAULT_JOB_OPTIONS,
 });
@@ -36,7 +41,7 @@ export const recordatorioMantenimientoQueue = new Queue<RecordatorioMantenimient
   },
 );
 
-const allQueues = [boletinQueue, excelQueue, notificacionesQueue, suscripcionesQueue, recordatorioMantenimientoQueue];
+const allQueues = [boletinQueue, excelQueue, exportarTodoQueue, notificacionesQueue, suscripcionesQueue, recordatorioMantenimientoQueue];
 
 export async function closeAllQueues(): Promise<void> {
   await Promise.all(allQueues.map((q) => q.close()));

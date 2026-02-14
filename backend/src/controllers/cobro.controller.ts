@@ -76,11 +76,12 @@ export const getCobrosHandler = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const { estado, concepto, estudianteId, cicloLectivoId } = req.query as {
+    const { estado, concepto, estudianteId, cicloLectivoId, nivelId } = req.query as {
       estado?: EstadoPago;
       concepto?: ConceptoCobro;
       estudianteId?: string;
       cicloLectivoId?: string;
+      nivelId?: string;
     };
 
     const cobros = await getCobros(req.resolvedInstitucionId, {
@@ -88,6 +89,7 @@ export const getCobrosHandler = async (req: Request, res: Response) => {
       concepto,
       estudianteId,
       cicloLectivoId,
+      nivelId,
     });
 
     return res.status(200).json(cobros);

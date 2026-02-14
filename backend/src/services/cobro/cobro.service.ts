@@ -126,6 +126,7 @@ export const getCobros = async (
     concepto?: ConceptoCobro;
     estudianteId?: string;
     cicloLectivoId?: string;
+    nivelId?: string;
   },
 ) => {
   const where: Record<string, unknown> = { institucionId };
@@ -144,6 +145,16 @@ export const getCobros = async (
 
   if (filtros?.cicloLectivoId) {
     where.cicloLectivoId = filtros.cicloLectivoId;
+  }
+
+  if (filtros?.nivelId) {
+    where.estudiante = {
+      inscripciones: {
+        some: {
+          clase: { nivelId: filtros.nivelId },
+        },
+      },
+    };
   }
 
   return prisma.cobro.findMany({

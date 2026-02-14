@@ -123,3 +123,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  aside {
+    display: none !important;
+  }
+  header {
+    display: none !important;
+  }
+  div[class*="ml-64"],
+  div[class*="ml-20"] {
+    margin-left: 0 !important;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+}

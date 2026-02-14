@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { getErrorMessage } from '../utils/error-helpers';
 import { registrarAuditLog } from '../services/audit.service';
 import { parsePagination } from '../utils/pagination';
-import { excelQueue } from '../queues';
+import { excelQueue, exportarTodoQueue } from '../queues';
 
 /**
  * GET /sabana/niveles
@@ -250,6 +250,39 @@ export const exportarExcelHandler = async (req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     req.log.error({ err: error }, 'Error encolando exportación Excel');
+    return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
+  }
+};
+
+/**
+ * GET /sabana/:cicloLectivoId/exportar-todo
+ * Encola exportación de TODAS las sábanas (una hoja por nivel) en un solo Excel
+ */
+export const exportarTodoHandler = async (req: Request, res: Response) => {
+  try {
+    const cicloLectivoId = req.params.cicloLectivoId as string;
+    const user = req.user;
+
+    if (!user?.institucionId) {
+      return res.status(400).json({ error: 'Usuario sin institución asignada' });
+    }
+
+    if (!cicloLectivoId) {
+      return res.status(400).json({ error: 'Debe proporcionar cicloLectivoId' });
+    }
+
+    const job = await exportarTodoQueue.add('exportar-todo', {
+      cicloLectivoId,
+      institucionId: user.institucionId,
+      userId: user.usuarioId,
+    });
+
+    return res.status(202).json({
+      jobId: job.id,
+      message: 'Exportación de todas las sábanas iniciada.',
+    });
+  } catch (error: unknown) {
+    req.log.error({ err: error }, 'Error encolando exportación de todas las sábanas');
     return res.status(500).json({ error: getErrorMessage(error) || 'Error del servidor' });
   }
 };

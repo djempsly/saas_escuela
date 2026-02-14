@@ -22,6 +22,7 @@ import {
   XCircle,
   Clock,
   Download,
+  Layers,
 } from 'lucide-react';
 
 interface Nivel {
@@ -40,7 +41,7 @@ interface JobStatus {
   queue: string;
   status: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
   progress: number | Record<string, unknown>;
-  result: { url?: string; fileName?: string } | null;
+  result: { url?: string; fileName?: string; totalNiveles?: number } | null;
   failedReason: string | null;
 }
 
@@ -62,6 +63,7 @@ export default function ExportarSabanaPage() {
   const [cicloId, setCicloId] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingTodo, setIsSubmittingTodo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -131,6 +133,23 @@ export default function ExportarSabanaPage() {
     }
   };
 
+  const handleExportTodo = async () => {
+    setIsSubmittingTodo(true);
+    setError(null);
+    setJobId(null);
+    setJobStatus(null);
+
+    try {
+      const res = await sabanaApi.exportarTodo(cicloId);
+      setJobId(res.data.jobId);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.response?.data?.message || apiErr.response?.data?.error || 'Error al iniciar exportacion');
+    } finally {
+      setIsSubmittingTodo(false);
+    }
+  };
+
   const handleReset = () => {
     setJobId(null);
     setJobStatus(null);
@@ -196,17 +215,31 @@ export default function ExportarSabanaPage() {
           )}
 
           {!jobId && (
-            <Button
-              onClick={handleExport}
-              disabled={!nivelId || !cicloId || isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-              )}
-              Exportar a Excel
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleExport}
+                disabled={!nivelId || !cicloId || isSubmitting || isSubmittingTodo}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
+                Exportar Nivel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExportTodo}
+                disabled={!cicloId || isSubmitting || isSubmittingTodo}
+              >
+                {isSubmittingTodo ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Layers className="h-4 w-4 mr-2" />
+                )}
+                Exportar Todos los Niveles
+              </Button>
+            </div>
           )}
 
           {error && (
@@ -249,7 +282,12 @@ export default function ExportarSabanaPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-green-600">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Exportacion completada</span>
+                  <span className="font-medium">
+                    Exportacion completada
+                    {jobStatus.result?.totalNiveles
+                      ? ` (${jobStatus.result.totalNiveles} niveles)`
+                      : ''}
+                  </span>
                 </div>
                 {jobStatus.result?.url ? (
                   <Button asChild>

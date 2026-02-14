@@ -15,6 +15,9 @@ const getDefaultPasswordByRole = (rol: string): string => {
     COORDINADOR: 'coordinador123',
     COORDINADOR_ACADEMICO: 'academico123',
     SECRETARIA: 'secretaria123',
+    BIBLIOTECARIO: 'bibliotecario123',
+    DIGITADOR: 'digitador123',
+    PSICOLOGO: 'psicologo123',
     DIRECTOR: 'director123',
     ADMIN: 'admin123',
   };
@@ -288,6 +291,9 @@ export const findStaffByInstitucion = async (
     Role.COORDINADOR_ACADEMICO,
     Role.DOCENTE,
     Role.SECRETARIA,
+    Role.BIBLIOTECARIO,
+    Role.DIGITADOR,
+    Role.PSICOLOGO,
   ];
 
   return prisma.user.findMany({

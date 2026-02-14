@@ -191,7 +191,9 @@ function PlanCards({ planes, frecuenciaAnual, onStripe, onPayPal, onAzul, onMonC
                   >
                     {currentPlanId ? 'Cambiar (PayPal)' : 'Pagar con PayPal'}
                   </Button>
-                  {/* AZUL */}
+                  {/* TODO: Habilitar cuando estén configurados */}
+                  {/* CARDNET, AZUL, MONCASH desactivados temporalmente */}
+                  {/*
                   <Button
                     className="w-full bg-[#003DA5] hover:bg-[#002d7a] text-white"
                     onClick={() => onAzul(plan.id)}
@@ -200,7 +202,6 @@ function PlanCards({ planes, frecuenciaAnual, onStripe, onPayPal, onAzul, onMonC
                     <Landmark className="w-4 h-4 mr-2" />
                     {currentPlanId ? 'Cambiar (AZUL)' : 'Pagar con AZUL'}
                   </Button>
-                  {/* MonCash */}
                   <Button
                     className="w-full bg-[#e31937] hover:bg-[#c0152e] text-white"
                     onClick={() => onMonCash(plan.id)}
@@ -209,7 +210,6 @@ function PlanCards({ planes, frecuenciaAnual, onStripe, onPayPal, onAzul, onMonC
                     <Smartphone className="w-4 h-4 mr-2" />
                     {currentPlanId ? 'Cambiar (MonCash)' : 'Pagar con MonCash'}
                   </Button>
-                  {/* CardNet */}
                   <Button
                     className="w-full bg-[#1a1a2e] hover:bg-[#16162a] text-white"
                     onClick={() => onCardNet(plan.id)}
@@ -218,6 +218,7 @@ function PlanCards({ planes, frecuenciaAnual, onStripe, onPayPal, onAzul, onMonC
                     <CreditCard className="w-4 h-4 mr-2" />
                     {currentPlanId ? 'Cambiar (CardNet)' : 'Pagar con CardNet'}
                   </Button>
+                  */}
                 </div>
               )}
             </CardContent>

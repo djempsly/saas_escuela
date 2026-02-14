@@ -263,6 +263,19 @@ export default function UsuariosPage() {
     }
   };
 
+  // Calcular estadisticas
+  const stats = {
+    total: usuarios.length,
+    activos: usuarios.filter((u) => u.activo).length,
+    estudiantes: usuarios.filter((u) => u.role === 'ESTUDIANTE').length,
+    docentes: usuarios.filter((u) => u.role === 'DOCENTE').length,
+    coordinadores: usuarios.filter((u) => u.role === 'COORDINADOR' || u.role === 'COORDINADOR_ACADEMICO').length,
+    secretarias: usuarios.filter((u) => u.role === 'SECRETARIA').length,
+    bibliotecarios: usuarios.filter((u) => u.role === 'BIBLIOTECARIO').length,
+    digitadores: usuarios.filter((u) => u.role === 'DIGITADOR').length,
+    psicologos: usuarios.filter((u) => u.role === 'PSICOLOGO').length,
+  };
+
   const filteredUsuarios = usuarios.filter((u) => {
     const matchSearch =
       u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -295,6 +308,64 @@ export default function UsuariosPage() {
             Nuevo Usuario
           </Button>
         </div>
+      </div>
+
+      {/* Estadisticas */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-sm text-muted-foreground">Total</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-green-600">{stats.activos}</div>
+            <div className="text-sm text-muted-foreground">Activos</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-blue-600">{stats.estudiantes}</div>
+            <div className="text-sm text-muted-foreground">Estudiantes</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-green-600">{stats.docentes}</div>
+            <div className="text-sm text-muted-foreground">Docentes</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-purple-600">{stats.coordinadores}</div>
+            <div className="text-sm text-muted-foreground">Coordinadores</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-orange-600">{stats.secretarias}</div>
+            <div className="text-sm text-muted-foreground">Secretarias</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-teal-600">{stats.bibliotecarios}</div>
+            <div className="text-sm text-muted-foreground">Bibliotecarios</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-cyan-600">{stats.digitadores}</div>
+            <div className="text-sm text-muted-foreground">Digitadores</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-pink-600">{stats.psicologos}</div>
+            <div className="text-sm text-muted-foreground">Psicologos</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filtros */}

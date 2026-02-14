@@ -144,6 +144,7 @@ const menuItems = {
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
     { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Mi Asistencia', icon: CheckSquare },
+    { href: '/dashboard/mis-cobros', label: 'Mis Cobros', icon: DollarSign },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
   ],
@@ -253,7 +254,7 @@ export function Sidebar({ isOpen, onToggle, branding, user }: SidebarProps) {
         )}
         {isOpen && (
           <span className="ml-3 font-semibold text-white truncate">
-            {branding?.nombre || 'Plataforma Escolar'}
+            {branding?.nombre || 'LHAMS'}
           </span>
         )}
       </div>

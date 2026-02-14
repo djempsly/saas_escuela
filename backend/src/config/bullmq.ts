@@ -6,6 +6,7 @@ export const bullmqConnection = redis;
 export const QUEUE_NAMES = {
   GENERAR_BOLETIN: 'generar-boletin',
   EXPORTAR_EXCEL: 'exportar-excel',
+  EXPORTAR_TODO: 'exportar-todo',
   NOTIFICACIONES_MASIVAS: 'notificaciones-masivas',
   VERIFICAR_SUSCRIPCIONES: 'verificar-suscripciones',
   RECORDATORIO_MANTENIMIENTO: 'recordatorio-mantenimiento',

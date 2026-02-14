@@ -46,11 +46,12 @@ type S3Folder =
   | 'videos'
   | 'perfiles'
   | 'imagenes'
-  | 'recursos';
+  | 'recursos'
+  | 'exports';
 
 const ALL_FOLDERS: S3Folder[] = [
   'logos', 'favicons', 'heroes', 'login-logos', 'login-bgs',
-  'fotos', 'videos', 'perfiles', 'imagenes', 'recursos',
+  'fotos', 'videos', 'perfiles', 'imagenes', 'recursos', 'exports',
 ];
 
 const PRIVATE_FOLDERS = new Set<S3Folder>(['perfiles', 'recursos']);

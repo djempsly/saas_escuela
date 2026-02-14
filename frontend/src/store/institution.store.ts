@@ -7,6 +7,7 @@ export interface InstitutionBranding {
   lema?: string;
   logoUrl?: string;
   logoPosicion?: string;
+  faviconUrl?: string;
   fondoLoginUrl?: string;
   colorPrimario: string;
   colorSecundario: string;

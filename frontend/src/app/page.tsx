@@ -297,7 +297,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-8 h-8 text-primary" />
-            <span className="font-bold text-xl">EduPlatform</span>
+            <span className="font-bold text-xl">LHAMS</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-primary">
@@ -320,12 +320,10 @@ export default function LandingPage() {
       <section className="pt-32 pb-20 px-4">
         <div className="container mx-auto text-center max-w-4xl">
           <h1 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6">
-            Plataforma Educativa
-            <span className="text-primary"> Multitenant</span>
+            LHAMS
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Solución integral para la gestión de instituciones educativas.
-            Administra estudiantes, docentes, calificaciones y más desde un solo lugar.
+            Dios Jireh — Gestión Educativa
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">
@@ -473,10 +471,10 @@ export default function LandingPage() {
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-6 h-6 text-primary" />
-            <span className="font-semibold">EduPlatform</span>
+            <span className="font-semibold">LHAMS</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} EduPlatform. Todos los derechos reservados.
+            © {new Date().getFullYear()} LHAMS. Todos los derechos reservados.
           </p>
         </div>
       </footer>

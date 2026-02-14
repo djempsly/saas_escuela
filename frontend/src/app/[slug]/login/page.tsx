@@ -86,6 +86,25 @@ export default function InstitutionLoginPage() {
     }
   }, [slug]);
 
+  // Aplicar titulo y favicon en la pestana del navegador
+  useEffect(() => {
+    if (branding?.nombre) {
+      document.title = branding.nombre;
+    }
+    const faviconSrc = (branding as unknown as { faviconUrl?: string })?.faviconUrl
+      || branding?.logoUrl;
+    if (faviconSrc) {
+      const url = getMediaUrl(faviconSrc);
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = url;
+    }
+  }, [branding]);
+
   const t = translations[currentLocale];
 
   // Obtener idiomas disponibles para esta institución

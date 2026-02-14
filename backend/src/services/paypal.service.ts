@@ -39,7 +39,7 @@ export async function crearOrdenPayPal(
         },
       ],
       applicationContext: {
-        brandName: 'Plataforma Escolar',
+        brandName: 'LHAMS',
         returnUrl: PAYPAL_SUCCESS_URL,
         cancelUrl: PAYPAL_CANCEL_URL,
         userAction: OrderApplicationContextUserAction.PayNow,

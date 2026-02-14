@@ -132,6 +132,9 @@ export default function PersonalPage() {
     coordinadores: staff.filter((s) => s.role === 'COORDINADOR' || s.role === 'COORDINADOR_ACADEMICO').length,
     docentes: staff.filter((s) => s.role === 'DOCENTE').length,
     secretarias: staff.filter((s) => s.role === 'SECRETARIA').length,
+    bibliotecarios: staff.filter((s) => s.role === 'BIBLIOTECARIO').length,
+    digitadores: staff.filter((s) => s.role === 'DIGITADOR').length,
+    psicologos: staff.filter((s) => s.role === 'PSICOLOGO').length,
   };
 
   return (
@@ -145,7 +148,7 @@ export default function PersonalPage() {
       </div>
 
       {/* Estadisticas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold">{stats.total}</div>
@@ -174,6 +177,24 @@ export default function PersonalPage() {
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold text-orange-600">{stats.secretarias}</div>
             <div className="text-sm text-muted-foreground">Secretarias</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-teal-600">{stats.bibliotecarios}</div>
+            <div className="text-sm text-muted-foreground">Bibliotecarios</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-cyan-600">{stats.digitadores}</div>
+            <div className="text-sm text-muted-foreground">Digitadores</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="text-2xl font-bold text-pink-600">{stats.psicologos}</div>
+            <div className="text-sm text-muted-foreground">Psicologos</div>
           </CardContent>
         </Card>
       </div>
