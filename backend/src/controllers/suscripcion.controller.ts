@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { getPlanes, getSuscripcionByInstitucion, getAllSuscripciones, asignarPlanManual, getPagosHistorial } from '../services/suscripcion.service';
+import { getPlanes, getSuscripcionByInstitucion, getAllSuscripciones, asignarPlanManual, getPagosHistorial, getDashboardSuscripciones } from '../services/suscripcion.service';
 import { crearCheckoutSession, crearPortalSession, procesarWebhook } from '../services/stripe.service';
+import { crearOrdenPayPal, capturarPagoPayPal, verificarWebhookPayPal, procesarWebhookPayPal } from '../services/paypal.service';
 import { sanitizeErrorMessage } from '../utils/security';
 
 export const getPlanesHandler = async (_req: Request, res: Response) => {
@@ -68,7 +69,74 @@ export const crearPortalHandler = async (req: Request, res: Response) => {
   }
 };
 
+// ===== PayPal handlers =====
+
+export const crearOrdenPayPalHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const parsed = checkoutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() });
+    }
+
+    const { planId, frecuencia } = parsed.data;
+    const result = await crearOrdenPayPal(req.resolvedInstitucionId, planId, frecuencia);
+    return res.status(200).json(result);
+  } catch (error: unknown) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+const capturarPayPalSchema = z.object({
+  orderId: z.string(),
+});
+
+export const capturarPagoPayPalHandler = async (req: Request, res: Response) => {
+  try {
+    if (!req.resolvedInstitucionId) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
+    const parsed = capturarPayPalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() });
+    }
+
+    const result = await capturarPagoPayPal(parsed.data.orderId);
+    return res.status(200).json(result);
+  } catch (error: unknown) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
+export const paypalWebhookHandler = async (req: Request, res: Response) => {
+  try {
+    const isValid = await verificarWebhookPayPal(req.headers, JSON.stringify(req.body));
+    if (!isValid) {
+      return res.status(400).json({ message: 'Webhook PayPal inválido' });
+    }
+
+    const { event_type, resource } = req.body as { event_type: string; resource: Record<string, unknown> };
+    await procesarWebhookPayPal(event_type, resource);
+    return res.status(200).json({ received: true });
+  } catch (error: unknown) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
+
 // ===== Admin handlers =====
+
+export const getDashboardSuscripcionesHandler = async (_req: Request, res: Response) => {
+  try {
+    const data = await getDashboardSuscripciones();
+    return res.status(200).json(data);
+  } catch (error: unknown) {
+    return res.status(500).json({ message: sanitizeErrorMessage(error) });
+  }
+};
 
 export const getAllSuscripcionesHandler = async (req: Request, res: Response) => {
   try {

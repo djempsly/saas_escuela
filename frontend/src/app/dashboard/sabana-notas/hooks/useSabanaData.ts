@@ -25,7 +25,8 @@ export function useSabanaData() {
 
   const isDocente = user?.role === 'DOCENTE';
   const isReadOnly = user?.role === 'DIRECTOR' || user?.role === 'ADMIN' ||
-    user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO';
+    user?.role === 'COORDINADOR' || user?.role === 'COORDINADOR_ACADEMICO' ||
+    user?.role === 'ESTUDIANTE' || user?.role === 'PSICOLOGO';
 
   // Queries
   const { data: niveles = [], isLoading: isLoadingNiveles } = useQuery({

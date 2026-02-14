@@ -92,6 +92,17 @@ export const getClaseByIdHandler = async (req: Request, res: Response) => {
     if (!clase) {
       return res.status(404).json({ message: 'Clase no encontrada' });
     }
+
+    // Para estudiantes, verificar que tiene inscripción activa en esta clase
+    if (req.user?.rol === Role.ESTUDIANTE) {
+      const inscrito = clase.inscripciones?.some(
+        (i) => i.estudiante.id === req.user!.usuarioId.toString(),
+      );
+      if (!inscrito) {
+        return res.status(404).json({ message: 'Clase no encontrada' });
+      }
+    }
+
     return res.status(200).json(clase);
   } catch (error: unknown) {
     return res.status(500).json({ message: sanitizeErrorMessage(error) });

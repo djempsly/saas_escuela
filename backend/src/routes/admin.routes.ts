@@ -14,6 +14,7 @@ import {
 } from '../controllers/settings.controller';
 import {
   getAllSuscripcionesHandler,
+  getDashboardSuscripcionesHandler,
   asignarPlanManualHandler,
   getPagosHistorialHandler,
 } from '../controllers/suscripcion.controller';
@@ -65,6 +66,9 @@ router.put('/settings', updateSystemSettingsHandler);
 // ===== SUSCRIPCIONES =====
 // GET /api/v1/admin/suscripciones - Listar todas las suscripciones
 router.get('/suscripciones', getAllSuscripcionesHandler);
+
+// GET /api/v1/admin/suscripciones/dashboard - Dashboard con stats e instituciones
+router.get('/suscripciones/dashboard', getDashboardSuscripcionesHandler);
 
 // POST /api/v1/admin/suscripciones/asignar - Asignar plan manualmente
 router.post('/suscripciones/asignar', asignarPlanManualHandler);

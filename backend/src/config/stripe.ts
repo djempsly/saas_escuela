@@ -6,6 +6,6 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 export const STRIPE_SUCCESS_URL =
-  process.env.STRIPE_SUCCESS_URL || 'http://localhost:3000/suscripcion/exito';
+  process.env.STRIPE_SUCCESS_URL || 'http://localhost:3000/dashboard/suscripcion?status=exito';
 export const STRIPE_CANCEL_URL =
-  process.env.STRIPE_CANCEL_URL || 'http://localhost:3000/suscripcion/cancelado';
+  process.env.STRIPE_CANCEL_URL || 'http://localhost:3000/dashboard/suscripcion?status=cancelado';

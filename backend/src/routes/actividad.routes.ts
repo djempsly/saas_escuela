@@ -16,6 +16,7 @@ import { resolveTenantMiddleware } from '../middleware/tenant.middleware';
 import { uploadActividad } from '../middleware/upload.middleware';
 import { validateFileType } from '../middleware/file-validation.middleware';
 import { ROLES } from '../utils/zod.schemas';
+import { checkLimiteArchivosMiddleware } from '../middleware/checkLimiteArchivos.middleware';
 
 const router = Router();
 
@@ -51,10 +52,10 @@ router.get('/:id', getActividadByIdHandler);
 router.use(authMiddleware, roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), resolveTenantMiddleware);
 
 // Crear actividad con archivos opcionales
-router.post('/', uploadActividad, validateFileType, createActividadHandler);
+router.post('/', uploadActividad, validateFileType, checkLimiteArchivosMiddleware, createActividadHandler);
 
 // Actualizar actividad
-router.put('/:id', uploadActividad, validateFileType, updateActividadHandler);
+router.put('/:id', uploadActividad, validateFileType, checkLimiteArchivosMiddleware, updateActividadHandler);
 
 // Eliminar actividad
 router.delete('/:id', deleteActividadHandler);

@@ -28,6 +28,7 @@ import jobRoutes from './job.routes';
 import planRoutes from './plan.routes';
 import suscripcionRoutes from './suscripcion.routes';
 import mantenimientoRoutes from './mantenimiento.routes';
+import psicologiaRoutes from './psicologia.routes';
 
 const router = Router();
 
@@ -97,5 +98,8 @@ router.use('/suscripciones', suscripcionRoutes);
 
 // Rutas de mantenimiento (publica)
 router.use('/mantenimiento', mantenimientoRoutes);
+
+// Rutas de psicología
+router.use('/psicologia', psicologiaRoutes);
 
 export default router;

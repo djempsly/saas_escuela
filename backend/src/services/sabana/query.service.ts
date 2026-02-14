@@ -211,6 +211,7 @@ export const getSabanaByNivel = async (
   userId?: string,
   page: number = 1,
   limit: number = 50,
+  userRole?: string,
 ): Promise<SabanaData> => {
   // 1. Obtener el nivel y ciclo
   const nivel = await prisma.nivel.findUnique({
@@ -233,6 +234,20 @@ export const getSabanaByNivel = async (
     const cached = await redis.get(cacheKey);
     if (cached) {
       const cachedData = JSON.parse(cached) as SabanaData;
+
+      // SEGURIDAD: Si es ESTUDIANTE, filtrar solo sus propias calificaciones
+      if (userRole === 'ESTUDIANTE' && userId) {
+        cachedData.estudiantes = cachedData.estudiantes.filter(e => e.id === userId);
+        cachedData.metadatos.totalEstudiantes = cachedData.estudiantes.length;
+        cachedData.pagination = {
+          page: 1,
+          limit: cachedData.estudiantes.length || 1,
+          total: cachedData.estudiantes.length,
+          totalPages: cachedData.estudiantes.length > 0 ? 1 : 0,
+        };
+        return cachedData;
+      }
+
       // Paginar estudiantes post-cache
       const safeLim = Math.min(limit, 200);
       const totalEst = cachedData.estudiantes.length;
@@ -520,6 +535,19 @@ export const getSabanaByNivel = async (
     logger.error({ err }, 'Error guardando caché de sábana');
   }
 
+  // SEGURIDAD: Si es ESTUDIANTE, filtrar solo sus propias calificaciones
+  if (userRole === 'ESTUDIANTE' && userId) {
+    result.estudiantes = result.estudiantes.filter(e => e.id === userId);
+    result.metadatos.totalEstudiantes = result.estudiantes.length;
+    result.pagination = {
+      page: 1,
+      limit: result.estudiantes.length || 1,
+      total: result.estudiantes.length,
+      totalPages: result.estudiantes.length > 0 ? 1 : 0,
+    };
+    return result;
+  }
+
   // Paginar estudiantes post-cache
   const safeLimit = Math.min(limit, 200);
   const totalEstudiantesAll = result.estudiantes.length;
@@ -550,6 +578,9 @@ export const getNivelesParaSabana = async (
   if (userRole === 'COORDINADOR' && userId) {
     const nivelIds = await getCoordinadorNivelIds(userId);
     where.id = { in: nivelIds };
+  }
+  if (userRole === 'ESTUDIANTE' && userId) {
+    where.clases = { some: { inscripciones: { some: { estudianteId: userId, activa: true } } } };
   }
 
   return prisma.nivel.findMany({

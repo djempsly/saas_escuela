@@ -2,6 +2,7 @@ import dns from 'dns/promises';
 import prisma from '../config/db';
 import { logger } from '../config/logger';
 import { ConflictError, NotFoundError, ValidationError } from '../errors';
+import { parsePlanFeatures } from '../utils/plan-features';
 
 const SERVER_IP = process.env.SERVER_IP;
 const BASE_DOMAIN = process.env.BASE_DOMAIN;
@@ -64,6 +65,21 @@ async function verificarDominio(dominio: string): Promise<VerificacionResult> {
  * El dominio debe verificarse después (automática o manualmente).
  */
 export async function registrarDominio(institucionId: string, dominio: string) {
+  // Verificar que el plan incluye dominio propio
+  const suscripcion = await prisma.suscripcion.findUnique({
+    where: { institucionId },
+    include: { plan: { select: { features: true } } },
+  });
+
+  if (suscripcion) {
+    const features = parsePlanFeatures(suscripcion.plan.features);
+    if (!features.dominioPropio) {
+      throw new ValidationError(
+        'Tu plan actual no incluye dominio propio. Actualiza al plan Pro o Enterprise para usar un dominio personalizado.',
+      );
+    }
+  }
+
   // Limpiar y normalizar el dominio
   const dominioLimpio = dominio
     .toLowerCase()

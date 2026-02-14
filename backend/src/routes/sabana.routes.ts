@@ -24,14 +24,14 @@ router.use(authMiddleware);
 // Accesible por: DIRECTOR, COORDINADOR, COORDINADOR_ACADEMICO, DOCENTE
 router.get(
   '/niveles',
-  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.ESTUDIANTE, ROLES.PSICOLOGO]),
   getNivelesHandler,
 );
 
 // GET /sabana/ciclos-lectivos - Obtener ciclos lectivos activos
 router.get(
   '/ciclos-lectivos',
-  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.ESTUDIANTE, ROLES.PSICOLOGO]),
   getCiclosLectivosHandler,
 );
 
@@ -56,7 +56,7 @@ router.get(
 // DOCENTE: solo niveles donde tiene clases (verificado en el servicio)
 router.get(
   '/:nivelId/:cicloLectivoId',
-  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE]),
+  roleMiddleware([ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DOCENTE, ROLES.ESTUDIANTE, ROLES.PSICOLOGO]),
   getSabanaHandler,
 );
 

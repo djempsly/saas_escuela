@@ -63,6 +63,9 @@ const ROLES_DISPLAY: Record<string, string> = {
   DOCENTE: 'Docente',
   ESTUDIANTE: 'Estudiante',
   SECRETARIA: 'Secretaria',
+  BIBLIOTECARIO: 'Bibliotecario',
+  DIGITADOR: 'Digitador',
+  PSICOLOGO: 'Psicólogo',
 };
 
 const ROLES_CREABLES = [
@@ -71,6 +74,9 @@ const ROLES_CREABLES = [
   { value: 'SECRETARIA', label: 'Secretaria' },
   { value: 'COORDINADOR', label: 'Coordinador' },
   { value: 'COORDINADOR_ACADEMICO', label: 'Coordinador Académico' },
+  { value: 'BIBLIOTECARIO', label: 'Bibliotecario' },
+  { value: 'DIGITADOR', label: 'Digitador' },
+  { value: 'PSICOLOGO', label: 'Psicólogo' },
 ];
 
 const getDefaultPasswordByRole = (role: string): string => {
@@ -80,6 +86,9 @@ const getDefaultPasswordByRole = (role: string): string => {
     COORDINADOR: 'coordinador123',
     COORDINADOR_ACADEMICO: 'academico123',
     SECRETARIA: 'secretaria123',
+    BIBLIOTECARIO: 'bibliotecario123',
+    DIGITADOR: 'digitador123',
+    PSICOLOGO: 'psicologo123',
     DIRECTOR: 'director123',
     ADMIN: 'admin123',
   };

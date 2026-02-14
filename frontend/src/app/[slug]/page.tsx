@@ -316,130 +316,132 @@ function ActividadModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/90 overflow-y-auto">
       {/* Boton cerrar */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-50 text-white hover:text-gray-300 transition-colors"
+        className="fixed top-4 right-4 z-50 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
       >
         <X className="w-8 h-8" />
       </button>
 
-      {/* Seccion superior: Slider/Video */}
-      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
-        <div className="relative w-full max-w-5xl h-full max-h-[60vh]">
-          {showVideo && hasVideo ? (
-            // Mostrar video
-            <div className="w-full h-full bg-black rounded-lg overflow-hidden">
-              {renderVideo(videos[0])}
+      <div className="max-w-6xl mx-auto px-4 pt-16 pb-8">
+        {/* Seccion superior: Slider/Video */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="relative w-full" style={{ maxHeight: '65vh', aspectRatio: '16/10' }}>
+            {showVideo && hasVideo ? (
+              // Mostrar video
+              <div className="w-full h-full bg-black rounded-lg overflow-hidden">
+                {renderVideo(videos[0])}
+              </div>
+            ) : currentPhoto ? (
+              // Mostrar slider de fotos
+              <div className="relative w-full h-full bg-slate-900 rounded-lg overflow-hidden">
+                <Image
+                  src={currentPhoto}
+                  alt={actividad.titulo}
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
+
+                {/* Navegacion */}
+                {fotos.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevSlide}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={nextSlide}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+
+                    {/* Indicadores */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 px-4 py-2 rounded-full">
+                      {fotos.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentSlide(index)}
+                          className={`w-3 h-3 rounded-full transition-all ${
+                            index === validSlide ? 'bg-white scale-110' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Contador */}
+                    <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      {validSlide + 1} / {fotos.length}
+                    </div>
+                  </>
+                )}
+
+                {/* Boton ver video */}
+                {hasVideo && (
+                  <button
+                    onClick={() => setShowVideo(true)}
+                    className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors"
+                  >
+                    <Play className="w-4 h-4" />
+                    Ver Video
+                  </button>
+                )}
+              </div>
+            ) : hasVideo ? (
+              // Solo video, sin fotos
+              <div className="w-full h-full bg-black rounded-lg overflow-hidden">
+                {renderVideo(videos[0])}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Seccion inferior: Titulo y descripcion */}
+        <div className="bg-slate-100 rounded-xl">
+          <div className="max-w-5xl mx-auto p-8">
+            <div className="flex items-center gap-3 text-slate-500 text-sm mb-3">
+              <Calendar className="w-4 h-4" />
+              {formatDate(actividad.createdAt)}
+              <span className="mx-2">|</span>
+              Por: {actividad.autor.nombre} {actividad.autor.apellido}
             </div>
-          ) : currentPhoto ? (
-            // Mostrar slider de fotos
-            <div className="relative w-full h-full bg-slate-900 rounded-lg overflow-hidden">
-              <Image
-                src={currentPhoto}
-                alt={actividad.titulo}
-                fill
-                className="object-contain"
-                unoptimized
-              />
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">
+              {actividad.titulo}
+            </h2>
+            <p className="text-slate-700 text-base md:text-lg leading-relaxed whitespace-pre-line">
+              {actividad.contenido}
+            </p>
 
-              {/* Navegacion */}
-              {fotos.length > 1 && (
-                <>
-                  <button
-                    onClick={prevSlide}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
-                  >
-                    <ChevronLeft className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={nextSlide}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 p-3 rounded-full shadow-lg transition-all"
-                  >
-                    <ChevronRight className="w-6 h-6" />
-                  </button>
-
-                  {/* Indicadores */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 px-4 py-2 rounded-full">
-                    {fotos.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentSlide(index)}
-                        className={`w-3 h-3 rounded-full transition-all ${
-                          index === validSlide ? 'bg-white scale-110' : 'bg-white/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Contador */}
-                  <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-1.5 rounded-full text-sm flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4" />
-                    {validSlide + 1} / {fotos.length}
-                  </div>
-                </>
-              )}
-
-              {/* Boton ver video */}
-              {hasVideo && (
+            {/* Botones de navegacion entre fotos y video */}
+            {hasVideo && fotos.length > 0 && (
+              <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
+                <button
+                  onClick={() => setShowVideo(false)}
+                  className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
+                    !showVideo ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Fotos ({fotos.length})
+                </button>
                 <button
                   onClick={() => setShowVideo(true)}
-                  className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors"
+                  className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
+                    showVideo ? 'bg-slate-800 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  }`}
                 >
-                  <Play className="w-4 h-4" />
-                  Ver Video
+                  <Video className="w-4 h-4" />
+                  Video
                 </button>
-              )}
-            </div>
-          ) : hasVideo ? (
-            // Solo video, sin fotos
-            <div className="w-full h-full bg-black rounded-lg overflow-hidden">
-              {renderVideo(videos[0])}
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Seccion inferior: Titulo y descripcion */}
-      <div className="bg-white/10 backdrop-blur-sm border-t border-white/20">
-        <div className="max-w-5xl mx-auto p-6">
-          <div className="flex items-center gap-3 text-white/60 text-sm mb-3">
-            <Calendar className="w-4 h-4" />
-            {formatDate(actividad.createdAt)}
-            <span className="mx-2">|</span>
-            Por: {actividad.autor.nombre} {actividad.autor.apellido}
+              </div>
+            )}
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            {actividad.titulo}
-          </h2>
-          <p className="text-white/80 text-base md:text-lg leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
-            {actividad.contenido}
-          </p>
-
-          {/* Botones de navegacion entre fotos y video */}
-          {hasVideo && fotos.length > 0 && (
-            <div className="flex gap-3 mt-4 pt-4 border-t border-white/20">
-              <button
-                onClick={() => setShowVideo(false)}
-                className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
-                  !showVideo ? 'bg-white text-slate-900' : 'bg-white/20 text-white hover:bg-white/30'
-                }`}
-              >
-                <ImageIcon className="w-4 h-4" />
-                Fotos ({fotos.length})
-              </button>
-              <button
-                onClick={() => setShowVideo(true)}
-                className={`px-4 py-2 rounded-full text-sm flex items-center gap-2 transition-colors ${
-                  showVideo ? 'bg-white text-slate-900' : 'bg-white/20 text-white hover:bg-white/30'
-                }`}
-              >
-                <Video className="w-4 h-4" />
-                Video
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

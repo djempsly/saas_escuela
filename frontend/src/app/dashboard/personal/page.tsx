@@ -46,6 +46,9 @@ const ROLES_DISPLAY: Record<string, string> = {
   COORDINADOR_ACADEMICO: 'Coord. Academico',
   DOCENTE: 'Docente',
   SECRETARIA: 'Secretaria',
+  BIBLIOTECARIO: 'Bibliotecario',
+  DIGITADOR: 'Digitador',
+  PSICOLOGO: 'Psicologo',
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -53,6 +56,9 @@ const ROLE_COLORS: Record<string, string> = {
   COORDINADOR_ACADEMICO: 'bg-blue-100 text-blue-700',
   DOCENTE: 'bg-green-100 text-green-700',
   SECRETARIA: 'bg-orange-100 text-orange-700',
+  BIBLIOTECARIO: 'bg-teal-100 text-teal-700',
+  DIGITADOR: 'bg-cyan-100 text-cyan-700',
+  PSICOLOGO: 'bg-pink-100 text-pink-700',
 };
 
 export default function PersonalPage() {

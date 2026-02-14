@@ -56,6 +56,11 @@ export const queryKeys = {
   suscripciones: {
     mi: () => ['suscripciones', 'mi'] as const,
     adminList: (estado?: string) => ['suscripciones', 'admin', estado] as const,
+    adminDashboard: () => ['suscripciones', 'admin', 'dashboard'] as const,
     pagos: (institucionId: string) => ['suscripciones', 'pagos', institucionId] as const,
+  },
+  psicologia: {
+    notasBajas: (cicloLectivoId: string) => ['psicologia', 'notasBajas', cicloLectivoId] as const,
+    observaciones: (estudianteId: string) => ['psicologia', 'observaciones', estudianteId] as const,
   },
 };

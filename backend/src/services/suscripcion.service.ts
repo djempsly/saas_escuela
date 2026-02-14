@@ -64,6 +64,77 @@ export const getPagosHistorial = async (institucionId: string) => {
   });
 };
 
+export const getDashboardSuscripciones = async () => {
+  // All active institutions with their subscription (LEFT JOIN via optional relation)
+  const instituciones = await prisma.institucion.findMany({
+    where: { activo: true },
+    select: {
+      id: true,
+      nombre: true,
+      slug: true,
+      suscripcion: {
+        include: { plan: true },
+      },
+    },
+    orderBy: { nombre: 'asc' },
+  });
+
+  // Count active students per institution
+  const estudiantesCounts = await prisma.user.groupBy({
+    by: ['institucionId'],
+    where: { role: Role.ESTUDIANTE, activo: true },
+    _count: { id: true },
+  });
+  const estudiantesMap = new Map(
+    estudiantesCounts.map((e) => [e.institucionId, e._count.id]),
+  );
+
+  // Total income (all successful payments)
+  const ingresosTotales = await prisma.pagoHistorial.aggregate({
+    where: { estado: 'EXITOSO' },
+    _sum: { monto: true },
+  });
+
+  // Income this month
+  const now = new Date();
+  const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
+  const ingresosMes = await prisma.pagoHistorial.aggregate({
+    where: { estado: 'EXITOSO', fechaPago: { gte: inicioMes } },
+    _sum: { monto: true },
+  });
+
+  // Last payment per institution
+  const ultimosPagos = await prisma.pagoHistorial.findMany({
+    where: { estado: 'EXITOSO' },
+    orderBy: { fechaPago: 'desc' },
+    distinct: ['institucionId'],
+    select: {
+      institucionId: true,
+      monto: true,
+      fechaPago: true,
+    },
+  });
+  const ultimoPagoMap = new Map(
+    ultimosPagos.map((p) => [p.institucionId, { monto: p.monto, fechaPago: p.fechaPago }]),
+  );
+
+  const items = instituciones.map((inst) => ({
+    id: inst.id,
+    nombre: inst.nombre,
+    slug: inst.slug,
+    suscripcion: inst.suscripcion,
+    estudiantes: estudiantesMap.get(inst.id) || 0,
+    maxEstudiantes: inst.suscripcion?.plan?.maxEstudiantes ?? null,
+    ultimoPago: ultimoPagoMap.get(inst.id) || null,
+  }));
+
+  return {
+    items,
+    ingresosTotales: ingresosTotales._sum.monto?.toNumber() ?? 0,
+    ingresosMes: ingresosMes._sum.monto?.toNumber() ?? 0,
+  };
+};
+
 export const verificarSuscripcionActiva = async (institucionId: string) => {
   const suscripcion = await getSuscripcionByInstitucion(institucionId);
 

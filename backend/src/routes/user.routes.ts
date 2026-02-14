@@ -43,6 +43,9 @@ router.get(
     ROLES.COORDINADOR_ACADEMICO,
     ROLES.SECRETARIA,
     ROLES.DOCENTE,
+    ROLES.BIBLIOTECARIO,
+    ROLES.DIGITADOR,
+    ROLES.PSICOLOGO,
   ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
@@ -105,7 +108,7 @@ router.get('/:id', authMiddleware, resolveTenantMiddleware, getUserByIdHandler);
 router.post(
   '/',
   authMiddleware,
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR_ACADEMICO]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR_ACADEMICO, ROLES.DIGITADOR]),
   resolveTenantMiddleware,
   createUserHandler,
 );

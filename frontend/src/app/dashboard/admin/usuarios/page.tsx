@@ -65,6 +65,9 @@ const ROLES_DISPLAY: Record<string, string> = {
   DOCENTE: 'Docente',
   ESTUDIANTE: 'Estudiante',
   SECRETARIA: 'Secretaria',
+  BIBLIOTECARIO: 'Bibliotecario',
+  DIGITADOR: 'Digitador',
+  PSICOLOGO: 'Psicólogo',
 };
 
 const ROLES_CREABLES = [
@@ -74,6 +77,9 @@ const ROLES_CREABLES = [
   { value: 'SECRETARIA', label: 'Secretaria' },
   { value: 'COORDINADOR', label: 'Coordinador' },
   { value: 'COORDINADOR_ACADEMICO', label: 'Coordinador Académico' },
+  { value: 'BIBLIOTECARIO', label: 'Bibliotecario' },
+  { value: 'DIGITADOR', label: 'Digitador' },
+  { value: 'PSICOLOGO', label: 'Psicólogo' },
 ];
 
 const getDefaultPasswordByRole = (role: string): string => {
@@ -83,6 +89,9 @@ const getDefaultPasswordByRole = (role: string): string => {
     COORDINADOR: 'coordinador123',
     COORDINADOR_ACADEMICO: 'academico123',
     SECRETARIA: 'secretaria123',
+    BIBLIOTECARIO: 'bibliotecario123',
+    DIGITADOR: 'digitador123',
+    PSICOLOGO: 'psicologo123',
     DIRECTOR: 'director123',
     ADMIN: 'admin123',
   };
@@ -322,6 +331,9 @@ export default function AdminUsuariosPage() {
     DOCENTE: 'bg-green-100 text-green-700',
     ESTUDIANTE: 'bg-yellow-100 text-yellow-700',
     SECRETARIA: 'bg-orange-100 text-orange-700',
+    BIBLIOTECARIO: 'bg-teal-100 text-teal-700',
+    DIGITADOR: 'bg-cyan-100 text-cyan-700',
+    PSICOLOGO: 'bg-pink-100 text-pink-700',
   };
 
   return (
@@ -438,6 +450,9 @@ export default function AdminUsuariosPage() {
               <option value="DOCENTE">Docente</option>
               <option value="ESTUDIANTE">Estudiante</option>
               <option value="SECRETARIA">Secretaria</option>
+              <option value="BIBLIOTECARIO">Bibliotecario</option>
+              <option value="DIGITADOR">Digitador</option>
+              <option value="PSICOLOGO">Psicólogo</option>
             </select>
             <select
               value={filters.activo}

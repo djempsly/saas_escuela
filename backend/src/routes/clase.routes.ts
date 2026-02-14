@@ -28,6 +28,7 @@ router.use(
     ROLES.DOCENTE,
     ROLES.SECRETARIA,
     ROLES.ESTUDIANTE,
+    ROLES.DIGITADOR,
   ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,
@@ -36,14 +37,14 @@ router.use(
 // CRUD - Solo ADMIN, DIRECTOR y COORDINADOR pueden crear/editar/eliminar
 router.post(
   '/',
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.DIGITADOR]),
   createClaseHandler,
 );
 router.get('/', getClasesHandler);
 router.get('/:id', getClaseByIdHandler);
 router.put(
   '/:id',
-  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR]),
+  roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.COORDINADOR, ROLES.DIGITADOR]),
   updateClaseHandler,
 );
 router.delete('/:id', roleMiddleware([ROLES.ADMIN, ROLES.DIRECTOR]), deleteClaseHandler);

@@ -51,6 +51,7 @@ router.use(
     ROLES.COORDINADOR_ACADEMICO,
     ROLES.DOCENTE,
     ROLES.SECRETARIA,
+    ROLES.DIGITADOR,
   ]),
   resolveTenantMiddleware,
   requireTenantMiddleware,

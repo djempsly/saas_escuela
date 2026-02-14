@@ -182,7 +182,13 @@ api.interceptors.response.use(
         ? localStorage.getItem('refreshToken')
         : null;
 
+      console.log('[auth] 401 intercepted, attempting refresh...', {
+        hasRefreshToken: !!storedRefreshToken,
+        url: originalRequest.url,
+      });
+
       if (!storedRefreshToken) {
+        console.log('[auth] No refresh token found, logging out');
         forceLogout();
         return Promise.reject(error);
       }
@@ -206,6 +212,8 @@ api.interceptors.response.use(
           { withCredentials: true },
         );
         const { accessToken, refreshToken: newRefreshToken } = res.data;
+
+        console.log('[auth] Refresh successful, retrying request');
 
         // Update localStorage
         localStorage.setItem('token', accessToken);
@@ -232,7 +240,8 @@ api.interceptors.response.use(
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
+        console.log('[auth] Refresh failed, logging out', refreshError);
         isRefreshing = false;
         refreshSubscribers = [];
         forceLogout();
@@ -873,12 +882,18 @@ export const suscripcionesApi = {
   crearCheckout: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
     api.post('/suscripciones/checkout', data),
   crearPortal: () => api.post('/suscripciones/portal'),
+  crearOrdenPayPal: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
+    api.post('/suscripciones/paypal/crear-orden', data),
+  capturarPayPal: (orderId: string) =>
+    api.post('/suscripciones/paypal/capturar', { orderId }),
 };
 
 // Admin Suscripciones API
 export const adminSuscripcionesApi = {
   getAll: (estado?: string) =>
     api.get('/admin/suscripciones', { params: estado ? { estado } : {} }),
+  getDashboard: () =>
+    api.get('/admin/suscripciones/dashboard'),
   asignarPlan: (data: { institucionId: string; planId: string }) =>
     api.post('/admin/suscripciones/asignar', data),
   getPagos: (institucionId: string) =>
@@ -894,6 +909,18 @@ export const mantenimientoApi = {
   cancelar: (id: string) => api.delete(`/admin/mantenimiento/${id}`),
 };
 
+// Psicología API
+export const psicologiaApi = {
+  getNotasBajas: (cicloLectivoId: string) =>
+    api.get('/psicologia/notas-bajas', { params: { cicloLectivoId } }),
+  getObservaciones: (estudianteId: string) =>
+    api.get(`/psicologia/observaciones/${estudianteId}`),
+  crearObservacion: (data: { estudianteId: string; texto: string }) =>
+    api.post('/psicologia/observaciones', data),
+  eliminarObservacion: (id: string) =>
+    api.delete(`/psicologia/observaciones/${id}`),
+};
+
 // Tipos de roles disponibles
 export const ROLES = {
   ADMIN: 'ADMIN',
@@ -903,6 +930,9 @@ export const ROLES = {
   DOCENTE: 'DOCENTE',
   ESTUDIANTE: 'ESTUDIANTE',
   SECRETARIA: 'SECRETARIA',
+  BIBLIOTECARIO: 'BIBLIOTECARIO',
+  DIGITADOR: 'DIGITADOR',
+  PSICOLOGO: 'PSICOLOGO',
 } as const;
 
 export type RoleType = keyof typeof ROLES;

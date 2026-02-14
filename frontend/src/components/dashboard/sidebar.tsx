@@ -38,6 +38,8 @@ import {
   FileSpreadsheet,
   CreditCard,
   Wrench,
+  Library,
+  Brain,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -140,6 +142,7 @@ const menuItems = {
     { href: '/dashboard/mis-clases', label: 'Mis Clases', icon: BookOpen },
     { href: '/dashboard/mis-tareas', label: 'Mis Tareas', icon: FileText },
     { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/asistencia', label: 'Mi Asistencia', icon: CheckSquare },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
@@ -152,6 +155,38 @@ const menuItems = {
     { href: '/dashboard/estudiantes/importar', label: 'Importar Estudiantes', icon: Upload },
     { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
     { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
+    { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
+    { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
+  ],
+
+  // Bibliotecario - Cobros + ver estudiantes
+  BIBLIOTECARIO: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/cobros', label: 'Cobros', icon: DollarSign },
+    { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
+    { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
+  ],
+
+  // Digitador - Como secretaria sin cobros, con gestión de clases
+  DIGITADOR: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/estudiantes/importar', label: 'Importar Estudiantes', icon: Upload },
+    { href: '/dashboard/clases', label: 'Clases', icon: BookOpen },
+    { href: '/dashboard/inscripciones', label: 'Inscripciones', icon: UserPlus },
+    { href: '/dashboard/asistencia', label: 'Asistencia', icon: CheckSquare },
+    { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
+    { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
+  ],
+
+  // Psicólogo - Notas bajas, estudiantes, calificaciones (lectura), sábana
+  PSICOLOGO: [
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/psicologia', label: 'Notas Bajas', icon: Brain },
+    { href: '/dashboard/estudiantes', label: 'Estudiantes', icon: GraduationCap },
+    { href: '/dashboard/calificaciones', label: 'Calificaciones', icon: ClipboardList },
+    { href: '/dashboard/sabana-notas', label: 'Sábana de Notas', icon: Table2 },
     { href: '/dashboard/calendario', label: 'Calendario', icon: Calendar },
     { href: '/dashboard/mensajes', label: 'Mensajes', icon: MessageSquare },
   ],

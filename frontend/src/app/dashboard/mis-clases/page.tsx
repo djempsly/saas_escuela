@@ -23,21 +23,29 @@ export default function MisClasesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       try {
-        // Para docentes, obtener sus clases asignadas
-        // Para estudiantes, obtener clases inscritas
-        const response = user?.role === 'DOCENTE'
-          ? await clasesApi.getAll()
-          : await inscripcionesApi.getMisClases();
-        setClases(response.data.data || response.data || []);
+        if (user?.role === 'DOCENTE') {
+          // Para docentes, obtener sus clases asignadas
+          const response = await clasesApi.getAll();
+          setClases(response.data.data || response.data || []);
+        } else {
+          // Para estudiantes, obtener clases inscritas
+          // La API devuelve inscripciones con clase anidada, extraer el objeto clase
+          const response = await inscripcionesApi.getMisClases();
+          const inscripciones = response.data.data || response.data || [];
+          const clasesFromInscripciones = inscripciones
+            .map((insc: Record<string, unknown>) => insc.clase)
+            .filter(Boolean);
+          setClases(clasesFromInscripciones);
+        }
       } catch (error) {
         console.error('Error:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetch();
+    fetchData();
   }, [user?.role]);
 
   return (

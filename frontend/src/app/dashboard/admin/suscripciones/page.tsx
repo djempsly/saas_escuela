@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,15 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { adminSuscripcionesApi, planesApi, institucionesApi } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
 import {
@@ -28,9 +37,12 @@ import {
   CreditCard,
   Search,
   Building2,
-  Calendar,
   Receipt,
   Plus,
+  DollarSign,
+  AlertTriangle,
+  Users,
+  Ban,
 } from 'lucide-react';
 
 interface Plan {
@@ -42,16 +54,30 @@ interface Plan {
   features: string[];
 }
 
-interface Suscripcion {
+interface DashboardSuscripcion {
   id: string;
-  institucionId: string;
   planId: string;
   estado: string;
   fechaInicio: string;
   fechaFin: string | null;
   proximoPago: string | null;
   plan: Plan;
-  institucion: { id: string; nombre: string; slug: string };
+}
+
+interface DashboardItem {
+  id: string;
+  nombre: string;
+  slug: string;
+  suscripcion: DashboardSuscripcion | null;
+  estudiantes: number;
+  maxEstudiantes: number | null;
+  ultimoPago: { monto: string | number; fechaPago: string } | null;
+}
+
+interface DashboardData {
+  items: DashboardItem[];
+  ingresosTotales: number;
+  ingresosMes: number;
 }
 
 interface Pago {
@@ -69,6 +95,8 @@ interface Institucion {
   nombre: string;
 }
 
+type TabFilter = 'todas' | 'sin_suscripcion' | 'activas' | 'atrasadas' | 'canceladas';
+
 const estadoBadge: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'destructive' | 'secondary' }> = {
   ACTIVA: { label: 'Activa', variant: 'success' },
   VENCIDA: { label: 'Vencida', variant: 'destructive' },
@@ -83,9 +111,32 @@ const pagoBadge: Record<string, { label: string; variant: 'success' | 'destructi
   REEMBOLSADO: { label: 'Reembolsado', variant: 'warning' },
 };
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+}
+
+function filterByTab(items: DashboardItem[], tab: TabFilter): DashboardItem[] {
+  switch (tab) {
+    case 'sin_suscripcion':
+      return items.filter((i) => !i.suscripcion);
+    case 'activas':
+      return items.filter((i) => i.suscripcion?.estado === 'ACTIVA');
+    case 'atrasadas':
+      return items.filter((i) =>
+        i.suscripcion?.estado === 'VENCIDA' || i.suscripcion?.estado === 'PERIODO_GRACIA',
+      );
+    case 'canceladas':
+      return items.filter((i) =>
+        i.suscripcion?.estado === 'CANCELADA' || i.suscripcion?.estado === 'SUSPENDIDA',
+      );
+    default:
+      return items;
+  }
+}
+
 export default function AdminSuscripcionesPage() {
   const queryClient = useQueryClient();
-  const [filtroEstado, setFiltroEstado] = useState<string>('');
+  const [tab, setTab] = useState<TabFilter>('todas');
   const [busqueda, setBusqueda] = useState('');
   const [showAsignarDialog, setShowAsignarDialog] = useState(false);
   const [showPagosDialog, setShowPagosDialog] = useState(false);
@@ -93,13 +144,15 @@ export default function AdminSuscripcionesPage() {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [pagosInstitucionId, setPagosInstitucionId] = useState('');
 
-  const { data: suscripciones = [], isLoading } = useQuery<Suscripcion[]>({
-    queryKey: queryKeys.suscripciones.adminList(filtroEstado || undefined),
+  const { data: dashboard, isLoading } = useQuery<DashboardData>({
+    queryKey: queryKeys.suscripciones.adminDashboard(),
     queryFn: async () => {
-      const res = await adminSuscripcionesApi.getAll(filtroEstado || undefined);
-      return res.data?.data || res.data || [];
+      const res = await adminSuscripcionesApi.getDashboard();
+      return res.data;
     },
   });
+
+  const items = dashboard?.items ?? [];
 
   const { data: planes = [] } = useQuery<Plan[]>({
     queryKey: queryKeys.planes.list(),
@@ -140,88 +193,128 @@ export default function AdminSuscripcionesPage() {
 
   // Stats
   const stats = {
-    total: suscripciones.length,
-    activas: suscripciones.filter((s) => s.estado === 'ACTIVA').length,
-    vencidas: suscripciones.filter((s) => s.estado === 'VENCIDA').length,
-    suspendidas: suscripciones.filter((s) => s.estado === 'SUSPENDIDA').length,
+    total: items.length,
+    activas: items.filter((i) => i.suscripcion?.estado === 'ACTIVA').length,
+    sinSuscripcion: items.filter((i) => !i.suscripcion).length,
+    atrasadas: items.filter((i) =>
+      i.suscripcion?.estado === 'VENCIDA' || i.suscripcion?.estado === 'PERIODO_GRACIA',
+    ).length,
+    ingresosTotales: dashboard?.ingresosTotales ?? 0,
+    ingresosMes: dashboard?.ingresosMes ?? 0,
   };
 
-  // Filter by search
-  const filtered = suscripciones.filter((s) =>
-    !busqueda || s.institucion.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  // Filter by tab then search
+  const tabFiltered = filterByTab(items, tab);
+  const filtered = tabFiltered.filter((i) =>
+    !busqueda || i.nombre.toLowerCase().includes(busqueda.toLowerCase()),
   );
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Suscripciones</h1>
-        <p className="text-muted-foreground">Gestiona las suscripciones de todas las instituciones</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Suscripciones</h1>
+          <p className="text-muted-foreground">Gestiona las suscripciones de todas las instituciones</p>
+        </div>
+        <Button onClick={() => setShowAsignarDialog(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Asignar plan
+        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-sm text-muted-foreground">Total</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{stats.activas}</div>
-            <p className="text-sm text-muted-foreground">Activas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600">{stats.vencidas}</div>
-            <p className="text-sm text-muted-foreground">Vencidas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">{stats.suspendidas}</div>
-            <p className="text-sm text-muted-foreground">Suspendidas</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por institucion..."
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex items-center gap-2 mb-1">
+              <Building2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Instituciones</span>
             </div>
-            <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Todas</SelectItem>
-                <SelectItem value="ACTIVA">Activa</SelectItem>
-                <SelectItem value="VENCIDA">Vencida</SelectItem>
-                <SelectItem value="CANCELADA">Cancelada</SelectItem>
-                <SelectItem value="PERIODO_GRACIA">Periodo de Gracia</SelectItem>
-                <SelectItem value="SUSPENDIDA">Suspendida</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={() => setShowAsignarDialog(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Asignar plan
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-muted-foreground">Activas</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">{stats.activas}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Ban className="w-4 h-4 text-slate-500" />
+              <span className="text-sm text-muted-foreground">Sin plan</span>
+            </div>
+            <div className="text-2xl font-bold text-slate-500">{stats.sinSuscripcion}</div>
+          </CardContent>
+        </Card>
+        <Card className={stats.atrasadas > 0 ? 'border-red-200 bg-red-50' : ''}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <span className="text-sm text-muted-foreground">Atrasadas</span>
+            </div>
+            <div className="text-2xl font-bold text-red-600">{stats.atrasadas}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Ingresos totales</span>
+            </div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.ingresosTotales)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-muted-foreground">Este mes</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.ingresosMes)}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* List */}
+      {/* Tabs + Search */}
+      <div className="flex flex-col gap-4">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TabFilter)}>
+          <TabsList>
+            <TabsTrigger value="todas">
+              Todas ({items.length})
+            </TabsTrigger>
+            <TabsTrigger value="sin_suscripcion">
+              Sin plan ({stats.sinSuscripcion})
+            </TabsTrigger>
+            <TabsTrigger value="activas">
+              Activas ({stats.activas})
+            </TabsTrigger>
+            <TabsTrigger value="atrasadas">
+              Atrasadas ({stats.atrasadas})
+            </TabsTrigger>
+            <TabsTrigger value="canceladas">
+              Canceladas
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por institucion..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -229,60 +322,114 @@ export default function AdminSuscripcionesPage() {
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No se encontraron suscripciones.
+            No se encontraron instituciones.
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((sub) => (
-            <Card key={sub.id}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">{sub.institucion.nombre}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <CreditCard className="w-3 h-3" />
-                        Plan {sub.plan.nombre}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="text-right text-sm hidden md:block">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        Inicio: {new Date(sub.fechaInicio).toLocaleDateString('es')}
-                      </div>
-                      {sub.proximoPago && (
-                        <div className="text-muted-foreground">
-                          Proximo pago: {new Date(sub.proximoPago).toLocaleDateString('es')}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Institucion</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Estudiantes</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Ultimo pago</TableHead>
+                  <TableHead>Proximo pago</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center shrink-0">
+                          <Building2 className="w-4 h-4 text-slate-600" />
                         </div>
+                        <span className="font-medium">{item.nombre}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.suscripcion ? (
+                        <span>{item.suscripcion.plan.nombre}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Sin plan</span>
                       )}
-                    </div>
-                    <Badge variant={estadoBadge[sub.estado]?.variant || 'secondary'}>
-                      {estadoBadge[sub.estado]?.label || sub.estado}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPagosInstitucionId(sub.institucionId);
-                        setShowPagosDialog(true);
-                      }}
-                    >
-                      <Receipt className="w-4 h-4 mr-1" />
-                      Pagos
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{item.estudiantes}</span>
+                        {item.maxEstudiantes !== null && (
+                          <span className="text-muted-foreground">/ {item.maxEstudiantes}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.suscripcion ? (
+                        <Badge variant={estadoBadge[item.suscripcion.estado]?.variant || 'secondary'}>
+                          {estadoBadge[item.suscripcion.estado]?.label || item.suscripcion.estado}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Sin suscripcion</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.ultimoPago ? (
+                        <div className="text-sm">
+                          <div>{formatCurrency(Number(item.ultimoPago.monto))}</div>
+                          <div className="text-muted-foreground">
+                            {new Date(item.ultimoPago.fechaPago).toLocaleDateString('es')}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {item.suscripcion?.proximoPago ? (
+                        <span className="text-sm">
+                          {new Date(item.suscripcion.proximoPago).toLocaleDateString('es')}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setPagosInstitucionId(item.id);
+                            setShowPagosDialog(true);
+                          }}
+                        >
+                          <Receipt className="w-3.5 h-3.5 mr-1" />
+                          Pagos
+                        </Button>
+                        {!item.suscripcion && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedInstitucionId(item.id);
+                              setShowAsignarDialog(true);
+                            }}
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Asignar
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* Asignar Plan Dialog */}
@@ -372,38 +519,38 @@ export default function AdminSuscripcionesPage() {
             </p>
           ) : (
             <div className="max-h-96 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 font-medium">Fecha</th>
-                    <th className="text-left py-2 font-medium">Plan</th>
-                    <th className="text-right py-2 font-medium">Monto</th>
-                    <th className="text-center py-2 font-medium">Estado</th>
-                    <th className="text-left py-2 font-medium">Descripcion</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="text-center">Estado</TableHead>
+                    <TableHead>Descripcion</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {pagos.map((pago) => (
-                    <tr key={pago.id} className="border-b last:border-0">
-                      <td className="py-2">
+                    <TableRow key={pago.id}>
+                      <TableCell>
                         {new Date(pago.fechaPago).toLocaleDateString('es')}
-                      </td>
-                      <td className="py-2">{pago.suscripcion?.plan?.nombre || '-'}</td>
-                      <td className="py-2 text-right">
+                      </TableCell>
+                      <TableCell>{pago.suscripcion?.plan?.nombre || '-'}</TableCell>
+                      <TableCell className="text-right">
                         ${Number(pago.monto).toFixed(2)} {pago.moneda}
-                      </td>
-                      <td className="py-2 text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         <Badge variant={pagoBadge[pago.estado]?.variant || 'secondary'}>
                           {pagoBadge[pago.estado]?.label || pago.estado}
                         </Badge>
-                      </td>
-                      <td className="py-2 text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {pago.descripcion || '-'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </DialogContent>

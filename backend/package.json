@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.984.0",
     "@aws-sdk/s3-request-presigner": "^3.984.0",
+    "@paypal/paypal-server-sdk": "^2.2.0",
     "@prisma/client": "^5.10.2",
     "@sentry/node": "^10.38.0",
     "@sentry/profiling-node": "^10.38.0",

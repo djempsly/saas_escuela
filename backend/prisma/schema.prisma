@@ -52,6 +52,8 @@ model User {
   institucion                 Institucion?               @relation("UsuariosInstitucion", fields: [institucionId], references: [id])
   coordinadorCiclosEducativos CicloEducativo[]           @relation("CoordinadorCicloEducativo")
   avisosMantenimiento         AvisoMantenimiento[]       @relation("AvisosMantenimiento")
+  observacionesEstudiante     ObservacionPsicologica[]   @relation("ObservacionesEstudiante")
+  observacionesPsicologo      ObservacionPsicologica[]   @relation("ObservacionesPsicologo")
 }
 
 model Institucion {
@@ -610,6 +612,9 @@ enum Role {
   DOCENTE
   ESTUDIANTE
   SECRETARIA
+  BIBLIOTECARIO
+  DIGITADOR
+  PSICOLOGO
 }
 
 enum Pais {
@@ -818,4 +823,19 @@ model PagoHistorial {
 
   @@index([suscripcionId])
   @@index([institucionId])
+}
+
+model ObservacionPsicologica {
+  id           String   @id @default(cuid())
+  estudianteId String
+  psicologoId  String
+  texto        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  estudiante   User     @relation("ObservacionesEstudiante", fields: [estudianteId], references: [id])
+  psicologo    User     @relation("ObservacionesPsicologo", fields: [psicologoId], references: [id])
+
+  @@index([estudianteId])
+  @@index([psicologoId])
 }

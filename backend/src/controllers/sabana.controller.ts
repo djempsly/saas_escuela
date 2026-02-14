@@ -83,6 +83,7 @@ export const getSabanaHandler = async (req: Request, res: Response) => {
       user.usuarioId,
       page,
       limit,
+      user.rol,
     );
     return res.json(sabana);
   } catch (error: unknown) {

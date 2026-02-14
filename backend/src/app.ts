@@ -134,7 +134,15 @@ if (process.env.NODE_ENV !== 'test') {
 
   // Middleware global: valida CSRF en POST/PUT/DELETE/PATCH
   // GET/HEAD/OPTIONS se excluyen automaticamente via ignoredMethods
-  app.use(doubleCsrfProtection);
+  // Excluir /auth/refresh del CSRF — el refresh token es un secreto propio que actua
+  // como proteccion anti-forgery, y el CSRF session identifier (basado en access token)
+  // ya no es valido cuando el access token expiro.
+  app.use((req, res, next) => {
+    if (req.path === '/api/v1/auth/refresh') {
+      return next();
+    }
+    doubleCsrfProtection(req, res, next);
+  });
 }
 
 // ============ Rutas Públicas (sin autenticación) ============

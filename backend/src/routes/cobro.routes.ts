@@ -36,7 +36,7 @@ router.get('/mis-cobros', roleMiddleware([ROLES.ESTUDIANTE]), async (req, res) =
 });
 
 // Rutas administrativas (DIRECTOR, SECRETARIA, COORDINADOR_ACADEMICO)
-router.use(roleMiddleware([ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO]));
+router.use(roleMiddleware([ROLES.DIRECTOR, ROLES.SECRETARIA, ROLES.COORDINADOR_ACADEMICO, ROLES.BIBLIOTECARIO]));
 
 // Listar todos los cobros
 router.get('/', getCobrosHandler);

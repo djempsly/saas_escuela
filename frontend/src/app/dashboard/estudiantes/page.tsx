@@ -202,10 +202,12 @@ export default function EstudiantesPage() {
           <h1 className="text-2xl font-bold">Estudiantes</h1>
           <p className="text-muted-foreground">Lista de estudiantes de la institución</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Estudiante
-        </Button>
+        {user?.role !== 'BIBLIOTECARIO' && user?.role !== 'PSICOLOGO' && (
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Estudiante
+          </Button>
+        )}
       </div>
 
       {/* Credenciales del estudiante creado */}
