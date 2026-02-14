@@ -17,6 +17,7 @@ import {
   getDashboardSuscripcionesHandler,
   asignarPlanManualHandler,
   getPagosHistorialHandler,
+  registrarPagoExternoHandler,
 } from '../controllers/suscripcion.controller';
 import {
   crearAvisoHandler,
@@ -72,6 +73,9 @@ router.get('/suscripciones/dashboard', getDashboardSuscripcionesHandler);
 
 // POST /api/v1/admin/suscripciones/asignar - Asignar plan manualmente
 router.post('/suscripciones/asignar', asignarPlanManualHandler);
+
+// POST /api/v1/admin/suscripciones/registrar-pago - Registrar pago externo
+router.post('/suscripciones/registrar-pago', registrarPagoExternoHandler);
 
 // GET /api/v1/admin/suscripciones/:institucionId/pagos - Historial de pagos
 router.get('/suscripciones/:institucionId/pagos', getPagosHistorialHandler);

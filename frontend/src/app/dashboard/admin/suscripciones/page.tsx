@@ -32,6 +32,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { adminSuscripcionesApi, planesApi, institucionesApi } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Loader2,
   CreditCard,
@@ -43,6 +45,7 @@ import {
   AlertTriangle,
   Users,
   Ban,
+  HandCoins,
 } from 'lucide-react';
 
 interface Plan {
@@ -140,9 +143,18 @@ export default function AdminSuscripcionesPage() {
   const [busqueda, setBusqueda] = useState('');
   const [showAsignarDialog, setShowAsignarDialog] = useState(false);
   const [showPagosDialog, setShowPagosDialog] = useState(false);
+  const [showRegistrarPagoDialog, setShowRegistrarPagoDialog] = useState(false);
   const [selectedInstitucionId, setSelectedInstitucionId] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [pagosInstitucionId, setPagosInstitucionId] = useState('');
+  const [pagoExterno, setPagoExterno] = useState({
+    institucionId: '',
+    monto: '',
+    moneda: 'USD',
+    metodo: '',
+    referencia: '',
+    descripcion: '',
+  });
 
   const { data: dashboard, isLoading } = useQuery<DashboardData>({
     queryKey: queryKeys.suscripciones.adminDashboard(),
@@ -168,7 +180,7 @@ export default function AdminSuscripcionesPage() {
       const res = await institucionesApi.getAll();
       return res.data?.data || res.data || [];
     },
-    enabled: showAsignarDialog,
+    enabled: showAsignarDialog || showRegistrarPagoDialog,
   });
 
   const { data: pagos = [], isLoading: loadingPagos } = useQuery<Pago[]>({
@@ -188,6 +200,22 @@ export default function AdminSuscripcionesPage() {
       setShowAsignarDialog(false);
       setSelectedInstitucionId('');
       setSelectedPlanId('');
+    },
+  });
+
+  const registrarPagoMutation = useMutation({
+    mutationFn: (data: {
+      institucionId: string;
+      monto: number;
+      moneda: string;
+      metodo: string;
+      referencia?: string;
+      descripcion?: string;
+    }) => adminSuscripcionesApi.registrarPago(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suscripciones', 'admin'] });
+      setShowRegistrarPagoDialog(false);
+      setPagoExterno({ institucionId: '', monto: '', moneda: 'USD', metodo: '', referencia: '', descripcion: '' });
     },
   });
 
@@ -217,10 +245,16 @@ export default function AdminSuscripcionesPage() {
           <h1 className="text-2xl font-bold">Suscripciones</h1>
           <p className="text-muted-foreground">Gestiona las suscripciones de todas las instituciones</p>
         </div>
-        <Button onClick={() => setShowAsignarDialog(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Asignar plan
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowRegistrarPagoDialog(true)}>
+            <HandCoins className="w-4 h-4 mr-2" />
+            Registrar pago
+          </Button>
+          <Button onClick={() => setShowAsignarDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Asignar plan
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -553,6 +587,122 @@ export default function AdminSuscripcionesPage() {
               </Table>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Registrar Pago Externo Dialog */}
+      <Dialog open={showRegistrarPagoDialog} onOpenChange={(open) => {
+        setShowRegistrarPagoDialog(open);
+        if (!open) setPagoExterno({ institucionId: '', monto: '', moneda: 'USD', metodo: '', referencia: '', descripcion: '' });
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Pago Externo</DialogTitle>
+            <DialogDescription>
+              Registra un pago recibido fuera de la plataforma (transferencia, efectivo, etc.)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Institucion</Label>
+              <Select value={pagoExterno.institucionId} onValueChange={(v) => setPagoExterno({ ...pagoExterno, institucionId: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar institucion" />
+                </SelectTrigger>
+                <SelectContent>
+                  {instituciones.map((inst) => (
+                    <SelectItem key={inst.id} value={inst.id}>
+                      {inst.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Monto</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={pagoExterno.monto}
+                  onChange={(e) => setPagoExterno({ ...pagoExterno, monto: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label>Moneda</Label>
+                <Select value={pagoExterno.moneda} onValueChange={(v) => setPagoExterno({ ...pagoExterno, moneda: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="DOP">DOP</SelectItem>
+                    <SelectItem value="HTG">HTG</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Metodo de pago</Label>
+              <Select value={pagoExterno.metodo} onValueChange={(v) => setPagoExterno({ ...pagoExterno, metodo: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar metodo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Transferencia bancaria">Transferencia bancaria</SelectItem>
+                  <SelectItem value="Efectivo">Efectivo</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                  <SelectItem value="Deposito">Deposito</SelectItem>
+                  <SelectItem value="Otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Referencia (opcional)</Label>
+              <Input
+                placeholder="Numero de transferencia, recibo, etc."
+                value={pagoExterno.referencia}
+                onChange={(e) => setPagoExterno({ ...pagoExterno, referencia: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Descripcion (opcional)</Label>
+              <Textarea
+                placeholder="Notas adicionales sobre el pago"
+                value={pagoExterno.descripcion}
+                onChange={(e) => setPagoExterno({ ...pagoExterno, descripcion: e.target.value })}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRegistrarPagoDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() =>
+                registrarPagoMutation.mutate({
+                  institucionId: pagoExterno.institucionId,
+                  monto: Number(pagoExterno.monto),
+                  moneda: pagoExterno.moneda,
+                  metodo: pagoExterno.metodo,
+                  referencia: pagoExterno.referencia || undefined,
+                  descripcion: pagoExterno.descripcion || undefined,
+                })
+              }
+              disabled={!pagoExterno.institucionId || !pagoExterno.monto || !pagoExterno.metodo || registrarPagoMutation.isPending}
+            >
+              {registrarPagoMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Registrar pago
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

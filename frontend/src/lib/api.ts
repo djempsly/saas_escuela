@@ -886,6 +886,14 @@ export const suscripcionesApi = {
     api.post('/suscripciones/paypal/crear-orden', data),
   capturarPayPal: (orderId: string) =>
     api.post('/suscripciones/paypal/capturar', { orderId }),
+  crearPagoAzul: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
+    api.post('/suscripciones/azul/crear-pago', data),
+  crearPagoMonCash: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
+    api.post('/suscripciones/moncash/crear-pago', data),
+  capturarMonCash: (transactionId: string) =>
+    api.post('/suscripciones/moncash/capturar', { transactionId }),
+  crearPagoCardNet: (data: { planId: string; frecuencia: 'mensual' | 'anual' }) =>
+    api.post('/suscripciones/cardnet/crear-pago', data),
 };
 
 // Admin Suscripciones API
@@ -898,6 +906,14 @@ export const adminSuscripcionesApi = {
     api.post('/admin/suscripciones/asignar', data),
   getPagos: (institucionId: string) =>
     api.get(`/admin/suscripciones/${institucionId}/pagos`),
+  registrarPago: (data: {
+    institucionId: string;
+    monto: number;
+    moneda: string;
+    metodo: string;
+    referencia?: string;
+    descripcion?: string;
+  }) => api.post('/admin/suscripciones/registrar-pago', data),
 };
 
 // Mantenimiento API

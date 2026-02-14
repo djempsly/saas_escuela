@@ -135,6 +135,63 @@ export const getDashboardSuscripciones = async () => {
   };
 };
 
+export const registrarPagoExterno = async (data: {
+  institucionId: string;
+  monto: number;
+  moneda: string;
+  metodo: string;
+  referencia?: string;
+  descripcion?: string;
+}) => {
+  // Ensure institution exists
+  const institucion = await prisma.institucion.findUnique({
+    where: { id: data.institucionId },
+  });
+  if (!institucion) {
+    throw new ForbiddenError('Institución no encontrada');
+  }
+
+  // Ensure the institution has a subscription
+  let suscripcion = await prisma.suscripcion.findUnique({
+    where: { institucionId: data.institucionId },
+  });
+
+  if (!suscripcion) {
+    // Create a basic subscription entry so we can link the payment
+    suscripcion = await prisma.suscripcion.create({
+      data: {
+        institucionId: data.institucionId,
+        planId: (await prisma.plan.findFirst({ where: { activo: true }, orderBy: { precioMensual: 'asc' } }))!.id,
+        estado: 'ACTIVA',
+        fechaInicio: new Date(),
+      },
+    });
+  }
+
+  const desc = [
+    `Pago externo - ${data.metodo}`,
+    data.referencia ? `Ref: ${data.referencia}` : null,
+    data.descripcion || null,
+  ].filter(Boolean).join(' | ');
+
+  const pago = await prisma.pagoHistorial.create({
+    data: {
+      suscripcionId: suscripcion.id,
+      institucionId: data.institucionId,
+      monto: data.monto,
+      moneda: data.moneda,
+      estado: 'EXITOSO',
+      descripcion: desc,
+    },
+    include: {
+      suscripcion: { include: { plan: true } },
+      institucion: { select: { id: true, nombre: true } },
+    },
+  });
+
+  return pago;
+};
+
 export const verificarSuscripcionActiva = async (institucionId: string) => {
   const suscripcion = await getSuscripcionByInstitucion(institucionId);
 

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { planesApi, suscripcionesApi } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
-import { Loader2, Check, CreditCard, Calendar, Users, Globe, Image, Video, ArrowUpCircle, Receipt, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Check, CreditCard, Calendar, Users, Globe, Image, Video, ArrowUpCircle, Receipt, CheckCircle2, XCircle, Smartphone, Landmark } from 'lucide-react';
 
 const featureLabels: Record<string, string> = {
   gestion_academica: 'Gestion Academica',
@@ -77,15 +77,19 @@ const estadoBadge: Record<string, { label: string; variant: 'default' | 'success
   SUSPENDIDA: { label: 'Suspendida', variant: 'destructive' },
 };
 
-function PlanCards({ planes, frecuenciaAnual, onSuscribirse, onPayPal, isCheckoutLoading, isPayPalLoading, currentPlanId }: {
+interface PlanCardsProps {
   planes: Plan[];
   frecuenciaAnual: boolean;
-  onSuscribirse: (planId: string) => void;
+  onStripe: (planId: string) => void;
   onPayPal: (planId: string) => void;
-  isCheckoutLoading: boolean;
-  isPayPalLoading: boolean;
+  onAzul: (planId: string) => void;
+  onMonCash: (planId: string) => void;
+  onCardNet: (planId: string) => void;
+  isLoading: boolean;
   currentPlanId?: string;
-}) {
+}
+
+function PlanCards({ planes, frecuenciaAnual, onStripe, onPayPal, onAzul, onMonCash, onCardNet, isLoading, currentPlanId }: PlanCardsProps) {
   return (
     <div className="grid md:grid-cols-3 gap-6">
       {planes.map((plan) => {
@@ -169,28 +173,50 @@ function PlanCards({ planes, frecuenciaAnual, onSuscribirse, onPayPal, isCheckou
                 </Button>
               ) : (
                 <div className="space-y-2">
+                  {/* Stripe */}
                   <Button
                     className="w-full"
                     variant={isPro ? 'default' : 'outline'}
-                    onClick={() => onSuscribirse(plan.id)}
-                    disabled={isCheckoutLoading || isPayPalLoading}
+                    onClick={() => onStripe(plan.id)}
+                    disabled={isLoading}
                   >
-                    {isCheckoutLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <CreditCard className="w-4 h-4 mr-2" />
-                    )}
-                    {currentPlanId ? 'Cambiar plan (tarjeta)' : 'Pagar con tarjeta'}
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {currentPlanId ? 'Cambiar (Tarjeta)' : 'Pagar con tarjeta'}
                   </Button>
+                  {/* PayPal */}
                   <Button
                     className="w-full bg-[#0070ba] hover:bg-[#005ea6] text-white"
                     onClick={() => onPayPal(plan.id)}
-                    disabled={isCheckoutLoading || isPayPalLoading}
+                    disabled={isLoading}
                   >
-                    {isPayPalLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    {currentPlanId ? 'Cambiar plan (PayPal)' : 'Pagar con PayPal'}
+                    {currentPlanId ? 'Cambiar (PayPal)' : 'Pagar con PayPal'}
+                  </Button>
+                  {/* AZUL */}
+                  <Button
+                    className="w-full bg-[#003DA5] hover:bg-[#002d7a] text-white"
+                    onClick={() => onAzul(plan.id)}
+                    disabled={isLoading}
+                  >
+                    <Landmark className="w-4 h-4 mr-2" />
+                    {currentPlanId ? 'Cambiar (AZUL)' : 'Pagar con AZUL'}
+                  </Button>
+                  {/* MonCash */}
+                  <Button
+                    className="w-full bg-[#e31937] hover:bg-[#c0152e] text-white"
+                    onClick={() => onMonCash(plan.id)}
+                    disabled={isLoading}
+                  >
+                    <Smartphone className="w-4 h-4 mr-2" />
+                    {currentPlanId ? 'Cambiar (MonCash)' : 'Pagar con MonCash'}
+                  </Button>
+                  {/* CardNet */}
+                  <Button
+                    className="w-full bg-[#1a1a2e] hover:bg-[#16162a] text-white"
+                    onClick={() => onCardNet(plan.id)}
+                    disabled={isLoading}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {currentPlanId ? 'Cambiar (CardNet)' : 'Pagar con CardNet'}
                   </Button>
                 </div>
               )}
@@ -214,6 +240,10 @@ export default function SuscripcionPage() {
   const paypalToken = searchParams.get('token');
   const [paypalCaptured, setPaypalCaptured] = useState(false);
 
+  // MonCash return: capture when redirected back with transactionId param
+  const moncashTxId = searchParams.get('transactionId');
+  const [moncashCaptured, setMoncashCaptured] = useState(false);
+
   useEffect(() => {
     if (paypalToken && !paypalCaptured) {
       setPaypalCaptured(true);
@@ -228,6 +258,21 @@ export default function SuscripcionPage() {
         });
     }
   }, [paypalToken, paypalCaptured, queryClient, router]);
+
+  useEffect(() => {
+    if (moncashTxId && !moncashCaptured) {
+      setMoncashCaptured(true);
+      suscripcionesApi
+        .capturarMonCash(moncashTxId)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.suscripciones.mi() });
+          router.replace('/dashboard/suscripcion?status=exito');
+        })
+        .catch(() => {
+          router.replace('/dashboard/suscripcion?status=cancelado');
+        });
+    }
+  }, [moncashTxId, moncashCaptured, queryClient, router]);
 
   // Show feedback banner and clean up URL
   useEffect(() => {
@@ -282,6 +327,42 @@ export default function SuscripcionPage() {
     },
   });
 
+  const azulMutation = useMutation({
+    mutationFn: (planId: string) =>
+      suscripcionesApi.crearPagoAzul({
+        planId,
+        frecuencia: frecuenciaAnual ? 'anual' : 'mensual',
+      }),
+    onSuccess: (res) => {
+      const url = res.data?.paymentUrl || res.data?.data?.paymentUrl;
+      if (url) window.location.href = url;
+    },
+  });
+
+  const moncashMutation = useMutation({
+    mutationFn: (planId: string) =>
+      suscripcionesApi.crearPagoMonCash({
+        planId,
+        frecuencia: frecuenciaAnual ? 'anual' : 'mensual',
+      }),
+    onSuccess: (res) => {
+      const url = res.data?.paymentUrl || res.data?.data?.paymentUrl;
+      if (url) window.location.href = url;
+    },
+  });
+
+  const cardnetMutation = useMutation({
+    mutationFn: (planId: string) =>
+      suscripcionesApi.crearPagoCardNet({
+        planId,
+        frecuencia: frecuenciaAnual ? 'anual' : 'mensual',
+      }),
+    onSuccess: (res) => {
+      const url = res.data?.paymentUrl || res.data?.data?.paymentUrl;
+      if (url) window.location.href = url;
+    },
+  });
+
   const portalMutation = useMutation({
     mutationFn: () => suscripcionesApi.crearPortal(),
     onSuccess: (res) => {
@@ -290,11 +371,17 @@ export default function SuscripcionPage() {
     },
   });
 
-  if (loadingSuscripcion || loadingPlanes || (paypalToken && !paypalCaptured)) {
+  const isAnyLoading = checkoutMutation.isPending || paypalMutation.isPending
+    || azulMutation.isPending || moncashMutation.isPending || cardnetMutation.isPending;
+
+  const isCapturing = (paypalToken && !paypalCaptured) || (moncashTxId && !moncashCaptured);
+
+  if (loadingSuscripcion || loadingPlanes || isCapturing) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         {paypalToken && <p className="text-muted-foreground">Procesando pago de PayPal...</p>}
+        {moncashTxId && <p className="text-muted-foreground">Procesando pago de MonCash...</p>}
       </div>
     );
   }
@@ -497,10 +584,12 @@ export default function SuscripcionPage() {
           <PlanCards
             planes={planes}
             frecuenciaAnual={frecuenciaAnual}
-            onSuscribirse={(planId) => checkoutMutation.mutate(planId)}
+            onStripe={(planId) => checkoutMutation.mutate(planId)}
             onPayPal={(planId) => paypalMutation.mutate(planId)}
-            isCheckoutLoading={checkoutMutation.isPending}
-            isPayPalLoading={paypalMutation.isPending}
+            onAzul={(planId) => azulMutation.mutate(planId)}
+            onMonCash={(planId) => moncashMutation.mutate(planId)}
+            onCardNet={(planId) => cardnetMutation.mutate(planId)}
+            isLoading={isAnyLoading}
           />
         </div>
       )}
@@ -529,10 +618,12 @@ export default function SuscripcionPage() {
           <PlanCards
             planes={planes}
             frecuenciaAnual={frecuenciaAnual}
-            onSuscribirse={(planId) => checkoutMutation.mutate(planId)}
+            onStripe={(planId) => checkoutMutation.mutate(planId)}
             onPayPal={(planId) => paypalMutation.mutate(planId)}
-            isCheckoutLoading={checkoutMutation.isPending}
-            isPayPalLoading={paypalMutation.isPending}
+            onAzul={(planId) => azulMutation.mutate(planId)}
+            onMonCash={(planId) => moncashMutation.mutate(planId)}
+            onCardNet={(planId) => cardnetMutation.mutate(planId)}
+            isLoading={isAnyLoading}
             currentPlanId={suscripcion.planId}
           />
         </div>
